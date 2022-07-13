@@ -7,13 +7,12 @@
 
 typedef struct parser parser;
 
-struct parser
-{
-    demogobbler_settings m_settings;
-    filereader m_reader;
+struct parser {
+  demogobbler_settings m_settings;
+  filereader m_reader;
+  int32_t demo_protocol;
+  int32_t net_protocol;
 };
 
-void parser_init(parser* thisptr, demogobbler_settings* settings);
-void parser_parse(parser* thisptr, const char* filepath);
-void _parse_header(parser* thisptr);
-void _parser_mainloop(parser* thisptr);
+void parser_init(parser *thisptr, demogobbler_settings *settings);
+void parser_parse(parser *thisptr, const char *filepath);

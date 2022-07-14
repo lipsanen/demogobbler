@@ -18,7 +18,7 @@ struct demogobbler_header {
   char game_directory[260];
   float seconds;
   int32_t tick_count;
-  int32_t event_count;
+  int32_t frame_count;
   int32_t signon_length;
 };
 

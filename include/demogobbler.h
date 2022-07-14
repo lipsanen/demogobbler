@@ -5,7 +5,9 @@ extern "C" {
 #endif
 
 #include "header.h"
+#include "io.h"
 #include "packettypes.h"
+#include "stdio.h"
 #include <stdbool.h>
 
 struct demogobbler_settings {
@@ -33,8 +35,34 @@ struct demogobbler_parser {
 typedef struct demogobbler_parser demogobbler_parser;
 
 void demogobbler_parser_init(demogobbler_parser *thisptr, demogobbler_settings *settings);
-void demogobbler_parser_parse(demogobbler_parser *thisptr, const char *filepath);
+void demogobbler_parser_parse_file(demogobbler_parser *thisptr, const char *filepath);
+void demogobbler_parser_parse(demogobbler_parser *thisptr, void *stream,
+                             input_interface input_interface);
 void demogobbler_parser_free(demogobbler_parser *thisptr);
+
+struct demogobbler_writer {
+  FILE *stream;
+  const char *last_error_message;
+  bool error_set;
+};
+
+typedef struct demogobbler_writer writer;
+
+void demogobbler_writer_init(writer *thisptr);
+void demogobbler_writer_open_file(writer *thisptr, const char *filepath);
+void demogobbler_writer_open(writer *thisptr, void *stream,
+                             output_interface output_interface);
+void demogobbler_writer_close(writer *thisptr);
+void demogobbler_write_consolecmd(writer *thisptr, demogobbler_consolecmd *message);
+void demogobbler_write_customdata(writer *thisptr, demogobbler_customdata *message);
+void demogobbler_write_datatables(writer *thisptr, demogobbler_datatables *message);
+void demogobbler_write_header(writer *thisptr, demogobbler_header *message);
+void demogobbler_write_packet(writer *thisptr, demogobbler_packet *message);
+void demogobbler_write_synctick(writer *thisptr, demogobbler_synctick *message);
+void demogobbler_write_stop(writer *thisptr, demogobbler_stop *message);
+void demogobbler_write_stringtables(writer *thisptr, demogobbler_stringtables *message);
+void demogobbler_write_usercmd(writer *thisptr, demogobbler_usercmd *message);
+void demogobbler_writer_free(writer *thisptr);
 
 #ifdef __cplusplus
 }

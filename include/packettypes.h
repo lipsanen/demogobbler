@@ -22,7 +22,7 @@ struct demogobbler_vector {
   float x, y, z;
 };
 
-typedef struct demogobbler_vector demogobbler_vector;
+typedef struct demogobbler_vector vector;
 
 struct demogobbler_message_preamble {
   uint8_t type;
@@ -34,12 +34,12 @@ typedef struct demogobbler_message_preamble demogobbler_message_preamble;
 
 struct demogobbler_cmdinfo {
   int32_t interp_flags;
-  demogobbler_vector view_origin;
-  demogobbler_vector view_angles;
-  demogobbler_vector local_viewangles;
-  demogobbler_vector view_origin2;
-  demogobbler_vector view_angles2;
-  demogobbler_vector local_viewangles2;
+  vector view_origin;
+  vector view_angles;
+  vector local_viewangles;
+  vector view_origin2;
+  vector view_angles2;
+  vector local_viewangles2;
 };
 
 typedef struct demogobbler_cmdinfo demogobbler_cmdinfo;
@@ -60,7 +60,7 @@ typedef void (*func_demogobbler_handle_packet)(demogobbler_packet *ptr);
 struct demogobbler_consolecmd {
   demogobbler_message_preamble preamble;
   int32_t size_bytes;
-  const char *console_cmd;
+  const char *data;
 };
 
 typedef struct demogobbler_consolecmd demogobbler_consolecmd;
@@ -87,7 +87,7 @@ typedef void (*func_demogobbler_handle_datatables)(demogobbler_datatables *ptr);
 
 struct demogobbler_stop {
   int32_t size_bytes; // Inferred, not in the demo
-  void *remaining_data;
+  void *data;
 };
 
 typedef struct demogobbler_stop demogobbler_stop;

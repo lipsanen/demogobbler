@@ -63,24 +63,6 @@ void filereader_readdata(filereader *thisptr, void *buffer, int bytes) {
   } while (bytesLeftToRead > 0 && !thisptr->eof);
 }
 
-float filereader_readfloat(filereader *thisptr) {
-  float val;
-  filereader_readdata(thisptr, &val, 4);
-  return val;
-}
-
-int32_t filereader_readint32(filereader *thisptr) {
-  int32_t val;
-  filereader_readdata(thisptr, &val, 4);
-  return val;
-}
-
-uint8_t filereader_readbyte(filereader *thisptr) {
-  uint8_t val;
-  filereader_readdata(thisptr, &val, 1);
-  return val;
-}
-
 void filereader_skipbytes(filereader *thisptr, int bytes) {
   // Going backwards not supported
   if (bytes < 0) {
@@ -95,6 +77,7 @@ void filereader_skipbytes(filereader *thisptr, int bytes) {
     thisptr->m_iBufferOffset = thisptr->m_iBytesAvailable;
     bytes -= bytesLeftInBuffer;
     fseek(thisptr->m_pStream, bytes, SEEK_CUR);
+    thisptr->m_uFileOffset += bytes;
   }
 }
 
@@ -106,4 +89,13 @@ void filereader_skipto(filereader *thisptr, uint64_t offset) {
 int64_t filereader_current_position(filereader *thisptr) {
   int64_t bytesLeftInBuffer = (thisptr->m_iBytesAvailable - thisptr->m_iBufferOffset);
   return thisptr->m_uFileOffset - bytesLeftInBuffer;
+}
+
+int64_t filereader_get_bytes_left(filereader* thisptr)
+{
+  fseek(thisptr->m_pStream, 0, SEEK_END);
+  int64_t offset = ftell(thisptr->m_pStream);
+  fseek(thisptr->m_pStream, thisptr->m_uFileOffset, SEEK_SET);
+
+  return offset - filereader_current_position(thisptr);
 }

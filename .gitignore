@@ -2,3 +2,5 @@ subprojects/benchmark*
 subprojects/googletest*
 subprojects/packagecache
 test_demos/
+debug*/
+release*/

@@ -4,7 +4,10 @@
 #include "packettypes.h"
 #include "stddef.h"
 
+const int STACK_SIZE = 1 << 15;
+
 #define thisreader &thisptr->m_reader
+#define thisallocator &thisptr->allocator
 
 void _parser_mainloop(parser *thisptr);
 void _parse_header(parser *thisptr);
@@ -20,6 +23,7 @@ bool _parse_anymessage(parser *thisptr);
 
 void parser_init(parser *thisptr, demogobbler_settings *settings) {
   thisptr->m_settings = *settings;
+  allocator_init(&thisptr->allocator, STACK_SIZE);
 }
 
 void parser_parse(parser *thisptr, const char *filepath) {
@@ -29,37 +33,41 @@ void parser_parse(parser *thisptr, const char *filepath) {
   FILE *stream = fopen(filepath, "rb");
 
   if (stream) {
-    filereader_init(&thisptr->m_reader, stream);
+    filereader_init(thisreader, stream);
     _parse_header(thisptr);
     _parser_mainloop(thisptr);
-    filereader_free(&thisptr->m_reader);
+    filereader_free(thisreader);
   }
 }
+
+void parser_free(parser *thisptr) { allocator_free(&thisptr->allocator); }
 
 void _parse_header(parser *thisptr) {
   demogobbler_header header;
-  filereader_readdata(&thisptr->m_reader, header.ID, 8);
-  thisptr->demo_protocol = header.demo_protocol = filereader_readint32(&thisptr->m_reader);
-  thisptr->net_protocol = header.net_protocol = filereader_readint32(&thisptr->m_reader);
+  filereader_readdata(thisreader, header.ID, 8);
+  thisptr->demo_protocol = header.demo_protocol = filereader_readint32(thisreader);
+  thisptr->net_protocol = header.net_protocol = filereader_readint32(thisreader);
 
   if (thisptr->m_settings.header_handler) {
-    filereader_readdata(&thisptr->m_reader, header.server_name, 260);
-    filereader_readdata(&thisptr->m_reader, header.client_name, 260);
-    filereader_readdata(&thisptr->m_reader, header.map_name, 260);
-    filereader_readdata(&thisptr->m_reader, header.game_directory, 260);
-    header.seconds = filereader_readfloat(&thisptr->m_reader);
-    header.tick_count = filereader_readint32(&thisptr->m_reader);
-    header.event_count = filereader_readint32(&thisptr->m_reader);
-    header.signon_length = filereader_readint32(&thisptr->m_reader);
+    filereader_readdata(thisreader, header.server_name, 260);
+    filereader_readdata(thisreader, header.client_name, 260);
+    filereader_readdata(thisreader, header.map_name, 260);
+    filereader_readdata(thisreader, header.game_directory, 260);
+    header.seconds = filereader_readfloat(thisreader);
+    header.tick_count = filereader_readint32(thisreader);
+    header.frame_count = filereader_readint32(thisreader);
+    header.signon_length = filereader_readint32(thisreader);
 
     thisptr->m_settings.header_handler(&header);
   }
-
-  filereader_skipto(&thisptr->m_reader, 0x430);
+  else
+  {
+    filereader_skipto(thisreader, 0x430);
+  }
 }
 
 bool _parse_anymessage(parser *thisptr) {
-  uint8_t type = filereader_readbyte(&thisptr->m_reader);
+  uint8_t type = filereader_readbyte(thisreader);
 
   switch (type) {
   case demogobbler_type_consolecmd:
@@ -106,6 +114,27 @@ bool _parse_anymessage(parser *thisptr) {
 void _parser_mainloop(parser *thisptr) {
   // Add check if the only thing we care about is the header
 
+  demogobbler_settings *settings = &thisptr->m_settings;
+  bool should_parse = false;
+
+#define NULL_CHECK(name)                                                                           \
+  if (settings->name##_handler)                                                                    \
+    should_parse = true;
+
+  NULL_CHECK(consolecmd);
+  NULL_CHECK(customdata);
+  NULL_CHECK(datatables);
+  NULL_CHECK(packet);
+  NULL_CHECK(synctick);
+  NULL_CHECK(stop);
+  NULL_CHECK(stringtables);
+  NULL_CHECK(usercmd);
+
+#undef NULL_CHECK
+
+  if (!should_parse)
+    return;
+
   while (_parse_anymessage(thisptr))
     ;
 }
@@ -117,9 +146,13 @@ void _parse_consolecmd(parser *thisptr) {
 
   if (thisptr->m_settings.consolecmd_handler) {
     message.size_bytes = filereader_readint32(thisreader);
-    message.console_cmd = NULL;
-    filereader_skipbytes(thisreader, message.size_bytes);
+
+    blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
+    filereader_readdata(thisreader, block.address, message.size_bytes);
+    message.data = block.address;
     thisptr->m_settings.consolecmd_handler(&message);
+    allocator_dealloc(thisallocator, block);
+  
   } else {
     message.size_bytes = filereader_readint32(thisreader);
     filereader_skipbytes(thisreader, message.size_bytes);
@@ -134,9 +167,12 @@ void _parse_customdata(parser *thisptr) {
   if (thisptr->m_settings.customdata_handler) {
     message.unknown = filereader_readint32(thisreader);
     message.size_bytes = filereader_readint32(thisreader);
-    message.data = NULL;
-    filereader_skipbytes(thisreader, message.size_bytes);
+  
+    blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
+    filereader_readdata(thisreader, block.address, message.size_bytes);
+    message.data = block.address;
     thisptr->m_settings.customdata_handler(&message);
+    allocator_dealloc(thisallocator, block);
   } else {
     filereader_skipbytes(thisreader, 4);
     message.size_bytes = filereader_readint32(thisreader);
@@ -151,13 +187,26 @@ void _parse_datatables(parser *thisptr) {
 
   if (thisptr->m_settings.datatables_handler) {
     message.size_bytes = filereader_readint32(thisreader);
-    message.data = NULL;
-    filereader_skipbytes(thisreader, message.size_bytes);
+  
+    blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
+    filereader_readdata(thisreader, block.address, message.size_bytes);
+    message.data = block.address;
     thisptr->m_settings.datatables_handler(&message);
+    allocator_dealloc(thisallocator, block);
   } else {
     message.size_bytes = filereader_readint32(thisreader);
     filereader_skipbytes(thisreader, message.size_bytes);
   }
+}
+
+void _parse_cmdinfo(parser* thisptr, demogobbler_cmdinfo* cmdinfo) {
+  cmdinfo->interp_flags = filereader_readint32(thisreader);
+  cmdinfo->view_origin = filereader_readvector(thisreader);
+  cmdinfo->view_angles = filereader_readvector(thisreader);
+  cmdinfo->local_viewangles = filereader_readvector(thisreader);
+  cmdinfo->view_origin2 = filereader_readvector(thisreader);
+  cmdinfo->view_angles2 = filereader_readvector(thisreader);
+  cmdinfo->local_viewangles2 = filereader_readvector(thisreader);
 }
 
 void _parse_packet(parser *thisptr, enum demogobbler_type type) {
@@ -166,13 +215,16 @@ void _parse_packet(parser *thisptr, enum demogobbler_type type) {
   PARSE_PREAMBLE();
 
   if (thisptr->m_settings.packet_handler) {
-    filereader_skipbytes(thisreader, 76); // cmdinfo
+    _parse_cmdinfo(thisptr, &message.cmdinfo[0]);
     message.in_sequence = filereader_readint32(thisreader);
     message.out_sequence = filereader_readint32(thisreader);
     message.size_bytes = filereader_readint32(thisreader);
-    message.data = NULL;
-    filereader_skipbytes(thisreader, message.size_bytes);
+
+    blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
+    filereader_readdata(thisreader, block.address, message.size_bytes);
+    message.data = block.address;
     thisptr->m_settings.packet_handler(&message);
+    allocator_dealloc(thisallocator, block);
   } else {
     filereader_skipbytes(thisreader, 84);
     message.size_bytes = filereader_readint32(thisreader);
@@ -184,10 +236,13 @@ void _parse_stop(parser *thisptr) {
 
   if (thisptr->m_settings.stop_handler) {
     demogobbler_stop message;
-    message.remaining_data = NULL;
-    message.size_bytes = 0;
-
+    message.size_bytes = filereader_get_bytes_left(thisreader);
+  
+    blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
+    filereader_readdata(thisreader, block.address, message.size_bytes);
+    message.data = block.address;
     thisptr->m_settings.stop_handler(&message);
+    allocator_dealloc(thisallocator, block);
   }
 }
 
@@ -198,9 +253,12 @@ void _parse_stringtables(parser *thisptr, int32_t type) {
 
   if (thisptr->m_settings.stringtables_handler) {
     message.size_bytes = filereader_readint32(thisreader);
-    message.data = NULL;
-    filereader_skipbytes(thisreader, message.size_bytes);
+
+    blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
+    filereader_readdata(thisreader, block.address, message.size_bytes);
+    message.data = block.address;
     thisptr->m_settings.stringtables_handler(&message);
+    allocator_dealloc(thisallocator, block);
   } else {
     message.size_bytes = filereader_readint32(thisreader);
     filereader_skipbytes(thisreader, message.size_bytes);
@@ -225,9 +283,12 @@ void _parse_usercmd(parser *thisptr) {
   if (thisptr->m_settings.usercmd_handler) {
     message.cmd = filereader_readint32(thisreader);
     message.size_bytes = filereader_readint32(thisreader);
-    message.data = NULL;
-    filereader_skipbytes(thisreader, message.size_bytes);
+  
+    blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
+    filereader_readdata(thisreader, block.address, message.size_bytes);
+    message.data = block.address;
     thisptr->m_settings.usercmd_handler(&message);
+    allocator_dealloc(thisallocator, block);
   } else {
     filereader_skipbytes(thisreader, 4);
     int32_t size = filereader_readint32(thisreader);

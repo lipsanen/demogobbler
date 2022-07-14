@@ -11,7 +11,7 @@ void print_header(demogobbler_header *header) {
   printf("Game directory: %s\n", header->game_directory);
   printf("Seconds: %f\n", header->seconds);
   printf("Tick count: %d\n", header->tick_count);
-  printf("Event count: %d\n", header->event_count);
+  printf("Frame count: %d\n", header->frame_count);
   printf("Signon length: %d\n", header->signon_length);
 }
 
@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
   settings.header_handler = print_header;
 
   demogobbler_parser_init(&parser, &settings);
-  demogobbler_parser_parse(&parser, argv[1]);
+  demogobbler_parser_parse_file(&parser, argv[1]);
   demogobbler_parser_free(&parser);
 
   return 0;

@@ -1,4 +1,12 @@
-project('demolime', ['c', 'cpp'], default_options : ['c_std=c11', 'cpp_std=c++17'])
+project('demogobbler', ['c', 'cpp'], default_options : ['c_std=c11', 'cpp_std=c++17'])
+
+if get_option('buildtype').startswith('debug')
+  add_project_arguments('-DDEBUG', language : 'c')
+endif
+
+if get_option('buildtype').startswith('release')
+  add_project_arguments('-fno-omit-frame-pointer', language : 'c')
+endif
 
 goblin_export = include_directories(['include'])
 goblin_all =  include_directories(['include', 'src'])
@@ -6,6 +14,6 @@ goblin_all =  include_directories(['include', 'src'])
 subdir('src')
 subdir('test')
 subdir('bench')
-subdir('tools/copydemo')
 subdir('tools/demodump')
 subdir('tools/listgobbler')
+subdir('tools/perftest')

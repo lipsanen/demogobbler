@@ -13,7 +13,7 @@ void demogobbler_parser_init(demogobbler_parser *thisptr, demogobbler_settings *
   thisptr->last_parse_successful = false;
 }
 
-void demogobbler_parser_parse(demogobbler_parser *thisptr, const char *filepath) {
+void demogobbler_parser_parse_file(demogobbler_parser *thisptr, const char *filepath) {
   if (!thisptr)
     return;
 

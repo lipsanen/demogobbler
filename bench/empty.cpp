@@ -10,7 +10,7 @@ static void null_pointer(benchmark::State& state)
 
     for(auto _ : state)
     {
-        demogobbler_parser_parse(&parser, NULL);
+        demogobbler_parser_parse_file(&parser, NULL);
     }
 }
 

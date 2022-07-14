@@ -5,7 +5,7 @@ extern "C" {
 #endif
 
 #include "header.h"
-#include "io.h"
+#include "demogobbler_io.h"
 #include "packettypes.h"
 #include "stdio.h"
 #include <stdbool.h>

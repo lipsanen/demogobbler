@@ -1,5 +1,6 @@
 #pragma once
 
+#include "demogobbler_io.h"
 #include "packettypes.h"
 #include "stdbool.h"
 #include "stdint.h"
@@ -11,19 +12,19 @@ struct filereader {
   int64_t m_iBytesAvailable;
   int32_t m_iBufferOffset;
   bool eof;
-  FILE *m_pStream;
+  void *stream;
+  input_interface input_funcs;
 };
 
 typedef struct filereader filereader;
 
-void filereader_init(filereader *reader, FILE *stream);
+void filereader_init(filereader *thisptr, void* stream, input_interface funcs);
 void filereader_free(filereader *reader);
 void filereader_readchunk(filereader *reader);
-void filereader_readdata(filereader *thisptr, void *buffer, int bytes);
+size_t filereader_readdata(filereader *thisptr, void *buffer, int bytes);
 void filereader_skipbytes(filereader *thisptr, int bytes);
 void filereader_skipto(filereader *thisptr, uint64_t offset);
 int64_t filereader_current_position(filereader *thisptr);
-int64_t filereader_get_bytes_left(filereader* thisptr);
 
 static inline int32_t filereader_readint32(filereader *thisptr)
 {

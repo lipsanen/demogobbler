@@ -17,5 +17,5 @@ struct parser {
 };
 
 void parser_init(parser *thisptr, demogobbler_settings *settings);
-void parser_parse(parser *thisptr, const char *filepath);
+void parser_parse(parser *thisptr, void* stream, input_interface input);
 void parser_free(parser* thisptr);

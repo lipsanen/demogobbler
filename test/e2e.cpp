@@ -44,5 +44,5 @@ TEST(E2E, realcreative_14) {
 }
 
 TEST(E2E, realcreative_14_copy) {
-  copy_demo("./test_demos/realcreative-14.dem", "./test_demos/realcreative-14-copy.dem");
+  copy_demo_test("./test_demos/realcreative-14.dem");
 }

@@ -8,8 +8,8 @@ extern "C" {
 #include <stdlib.h>
 
 // For parsing
-typedef size_t (*demogobbler_input_read)(void* dest, size_t bytes, void* input_stream);
-typedef int (*demogobbler_input_seek)(void* input_stream, long int offset, int whence);
+typedef size_t (*demogobbler_input_read)(void* stream, void* dest, size_t bytes);
+typedef int (*demogobbler_input_seek)(void* stream, long int offset);
 
 struct demogobbler_input_interface
 {
@@ -20,7 +20,7 @@ struct demogobbler_input_interface
 typedef struct demogobbler_input_interface input_interface;
 
 // For writing
-typedef size_t (*demogobbler_output_write)(const void* src, size_t bytes, void* output_stream);
+typedef size_t (*demogobbler_output_write)(void* stream, const void* src, size_t bytes);
 
 struct demogobbler_output_interface
 {

@@ -1,3 +1,3 @@
 #pragma once
 
-void copy_demo(const char* filepath, const char* output);
+void copy_demo_test(const char* filepath);

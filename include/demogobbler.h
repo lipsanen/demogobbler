@@ -28,8 +28,8 @@ void demogobbler_settings_init(demogobbler_settings *settings);
 
 struct demogobbler_parser {
   void *_parser;
-  const char *last_parse_error_message;
-  bool last_parse_successful;
+  const char *error_message;
+  bool error;
 };
 
 typedef struct demogobbler_parser demogobbler_parser;
@@ -41,9 +41,11 @@ void demogobbler_parser_parse(demogobbler_parser *thisptr, void *stream,
 void demogobbler_parser_free(demogobbler_parser *thisptr);
 
 struct demogobbler_writer {
-  FILE *stream;
-  const char *last_error_message;
+  void *_stream;
+  const char *error_message;
+  output_interface output_funcs;
   bool error_set;
+  bool _custom_stream;
 };
 
 typedef struct demogobbler_writer writer;

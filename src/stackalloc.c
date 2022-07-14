@@ -1,6 +1,7 @@
 #include "stackalloc.h"
-#include "stdio.h"
-#include "stdlib.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 blk stackallocator_alloc(allocator* thisptr, size_t bytes)
 {
@@ -81,4 +82,40 @@ void stackallocator_free(allocator* thisptr)
   thisptr->allocated = 0;
   thisptr->size = 0;
   free(thisptr->stack);
+}
+
+bool stackallocator_space_on_stack(allocator* thisptr, size_t bytes)
+{
+  if((bytes & 0x7) != 0)
+  {
+    bytes = bytes + 8 - (bytes & 0x7);
+  }
+
+  return bytes <= (thisptr->size - thisptr->allocated);
+}
+
+bool stackallocator_onstack(allocator* thisptr, blk block)
+{
+  uint8_t* ptr = (uint8_t*)block.address;
+  uint8_t* stack = (uint8_t*)thisptr->stack;
+
+  return ptr >= stack && ptr <= stack + thisptr->size;
+}
+
+blk stackallocator_realloc(allocator* thisptr, blk block, size_t bytes)
+{
+  bool was_stack = stackallocator_onstack(thisptr, block);
+
+  if((!was_stack && stackallocator_space_on_stack(thisptr, bytes)) ||
+  (was_stack && !stackallocator_space_on_stack(thisptr, bytes - block.size)))
+  {
+    blk new_block = stackallocator_alloc(thisptr, bytes);
+    memcpy(new_block.address, block.address, block.size);
+    stackallocator_dealloc(thisptr, block);
+
+    return new_block;
+  }
+
+  stackallocator_dealloc(thisptr, block);
+  return stackallocator_alloc(thisptr, bytes);
 }

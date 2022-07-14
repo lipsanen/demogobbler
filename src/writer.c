@@ -1,38 +1,46 @@
 #include "demogobbler.h"
+#include "streams.h"
 #include <stdlib.h>
 #include <string.h>
 
 void demogobbler_writer_init(writer *thisptr) { memset(thisptr, 0, sizeof(writer)); }
 
 void demogobbler_writer_open_file(writer *thisptr, const char *filepath) {
-  thisptr->stream = fopen(filepath, "wb");
+  thisptr->_stream = fopen(filepath, "wb");
+  thisptr->output_funcs = (output_interface){ fstream_write };
+  thisptr->_custom_stream = false;
 
-  if (!thisptr->stream) {
+  if (!thisptr->_stream) {
     thisptr->error_set = true;
-    thisptr->last_error_message = "Unable to open file";
+    thisptr->error_message = "Unable to open file";
   }
+}
+void demogobbler_writer_open(writer *thisptr, void *stream, output_interface output_interface) {
+  thisptr->_stream = stream;
+  thisptr->output_funcs = output_interface;
 }
 
 void demogobbler_writer_close(writer *thisptr) {
-  if (thisptr->stream) {
-    fclose(thisptr->stream);
-    thisptr->stream = NULL;
+  if (thisptr->_custom_stream && thisptr->_stream) {
+    fclose(thisptr->_stream);
+    thisptr->_stream = NULL;
   }
 }
 
-#define WRITE_BYTE(field) fwrite(&message->field, 1, 1, thisptr->stream);
-#define WRITE_INT32(field) fwrite(&message->field, 1, 4, thisptr->stream);
-#define WRITE_STRING(field, length) fwrite(&message->field, 1, length, thisptr->stream);
+#define WRITE_BYTE(field) thisptr->output_funcs.write(thisptr->_stream, &message->field, 1);
+#define WRITE_INT32(field) thisptr->output_funcs.write(thisptr->_stream, &message->field, 4);
+#define WRITE_STRING(field, length)                                                                \
+  thisptr->output_funcs.write(thisptr->_stream, &message->field, length);
 #define WRITE_CMDINFO_VEC(field)                                                                   \
-  fwrite(&(cmdinfo->field.x), 1, 4, thisptr->stream);                                              \
-  fwrite(&(cmdinfo->field.y), 1, 4, thisptr->stream);                                              \
-  fwrite(&(cmdinfo->field.z), 1, 4, thisptr->stream);
+  thisptr->output_funcs.write(thisptr->_stream, &(cmdinfo->field.x), 4);                           \
+  thisptr->output_funcs.write(thisptr->_stream, &(cmdinfo->field.y), 4);                           \
+  thisptr->output_funcs.write(thisptr->_stream, &(cmdinfo->field.z), 4);
 #define WRITE_PREAMBLE()                                                                           \
   WRITE_BYTE(preamble.type);                                                                       \
   WRITE_INT32(preamble.tick);
 #define WRITE_DATA()                                                                               \
   WRITE_INT32(size_bytes);                                                                         \
-  fwrite(message->data, 1, message->size_bytes, thisptr->stream)
+  thisptr->output_funcs.write(thisptr->_stream, message->data, message->size_bytes)
 
 void demogobbler_write_consolecmd(writer *thisptr, demogobbler_consolecmd *message) {
   WRITE_PREAMBLE();
@@ -67,7 +75,7 @@ void demogobbler_write_header(writer *thisptr, demogobbler_header *message) {
 void demogobbler_write_packet(writer *thisptr, demogobbler_packet *message) {
   WRITE_PREAMBLE();
   demogobbler_cmdinfo *cmdinfo = &message->cmdinfo[0];
-  fwrite(&cmdinfo->interp_flags, 1, 4, thisptr->stream);
+  thisptr->output_funcs.write(thisptr->_stream, &cmdinfo->interp_flags, 4);
   WRITE_CMDINFO_VEC(view_origin);
   WRITE_CMDINFO_VEC(view_angles);
   WRITE_CMDINFO_VEC(local_viewangles);
@@ -86,8 +94,8 @@ void demogobbler_write_synctick(writer *thisptr, demogobbler_synctick *message) 
 
 void demogobbler_write_stop(writer *thisptr, demogobbler_stop *message) {
   enum demogobbler_type t = demogobbler_type_stop;
-  fwrite(&t, 1, 1, thisptr->stream);
-  fwrite(message->data, 1, message->size_bytes, thisptr->stream);
+  thisptr->output_funcs.write(thisptr->_stream, &t, 1);
+  thisptr->output_funcs.write(thisptr->_stream, message->data, message->size_bytes);
 }
 
 void demogobbler_write_stringtables(writer *thisptr, demogobbler_stringtables *message) {
@@ -102,8 +110,5 @@ void demogobbler_write_usercmd(writer *thisptr, demogobbler_usercmd *message) {
 }
 
 void demogobbler_writer_free(writer *thisptr) {
-  if (thisptr->stream) {
-    fclose(thisptr->stream);
-    thisptr->stream = NULL;
-  }
+  demogobbler_writer_close(thisptr);
 }

@@ -26,14 +26,9 @@ void parser_init(parser *thisptr, demogobbler_settings *settings) {
   allocator_init(&thisptr->allocator, STACK_SIZE);
 }
 
-void parser_parse(parser *thisptr, const char *filepath) {
-  if (!filepath)
-    return;
-
-  FILE *stream = fopen(filepath, "rb");
-
+void parser_parse(parser *thisptr, void* stream, input_interface input) {
   if (stream) {
-    filereader_init(thisreader, stream);
+    filereader_init(thisreader, stream, input);
     _parse_header(thisptr);
     _parser_mainloop(thisptr);
     filereader_free(thisreader);
@@ -236,11 +231,25 @@ void _parse_stop(parser *thisptr) {
 
   if (thisptr->m_settings.stop_handler) {
     demogobbler_stop message;
-    message.size_bytes = filereader_get_bytes_left(thisreader);
   
-    blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
-    filereader_readdata(thisreader, block.address, message.size_bytes);
+    const int bytes_per_read = 4096;
+    size_t bytes = 0;
+    size_t bytesReadIt;
+    blk block = allocator_alloc(&thisptr->allocator, bytes_per_read);
+
+    do
+    {
+      if(bytes + bytes_per_read > block.size)
+      {
+        block = allocator_realloc(&thisptr->allocator, block, bytes + bytes_per_read);
+      }
+  
+      bytesReadIt = filereader_readdata(thisreader, (uint8_t*)block.address + bytes, bytes_per_read);
+      bytes += bytesReadIt;
+    } while(bytesReadIt == bytes_per_read);
+    message.size_bytes = bytes;
     message.data = block.address;
+
     thisptr->m_settings.stop_handler(&message);
     allocator_dealloc(thisallocator, block);
   }

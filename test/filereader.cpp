@@ -2,6 +2,7 @@
 #include <filesystem>
 extern "C" {
 #include "filereader.h"
+#include "streams.h"
 }
 
 struct FileReaderTest : ::testing::Test {
@@ -32,7 +33,7 @@ void write_data_ints(int count, const char *filepath) {
 void read_data_filereader(void *ptr, std::size_t size, const char *filepath) {
   FILE *input = fopen(filepath, "rb");
   filereader reader;
-  filereader_init(&reader, input);
+  filereader_init(&reader, input, (input_interface){fstream_read, fstream_seek});
   filereader_readdata(&reader, ptr, size);
   filereader_free(&reader);
 }
@@ -54,7 +55,7 @@ TEST_F(FileReaderTest, readint32_works) {
 
   FILE *input = fopen(filepath, "rb");
   filereader reader;
-  filereader_init(&reader, input);
+  filereader_init(&reader, input, (input_interface){fstream_read, fstream_seek});
 
   for (int i = 0; i < count; ++i) {
     int value = filereader_readint32(&reader);
@@ -71,7 +72,7 @@ TEST_F(FileReaderTest, skipbytes_works) {
 
   FILE *input = fopen(filepath, "rb");
   filereader reader;
-  filereader_init(&reader, input);
+  filereader_init(&reader, input, (input_interface){fstream_read, fstream_seek});
   filereader_skipbytes(&reader, sizeof(int) * 256);
 
   for (int i = 256; i < count; ++i) {
@@ -89,7 +90,7 @@ TEST_F(FileReaderTest, skipto_works) {
 
   FILE *input = fopen(filepath, "rb");
   filereader reader;
-  filereader_init(&reader, input);
+  filereader_init(&reader, input, (input_interface){fstream_read, fstream_seek});
 
   for (int i = 0; i < 256; ++i) {
     int value = filereader_readint32(&reader);

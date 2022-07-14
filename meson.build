@@ -7,7 +7,10 @@ if get_option('buildtype').startswith('debug')
 endif
 
 if get_option('buildtype').startswith('release')
+if current_c_compiler == 'clang' or current_c_compiler == 'gcc'
   add_project_arguments('-fno-omit-frame-pointer', language : 'c')
+else
+endif
 endif
 
 goblin_export = include_directories(['include'])

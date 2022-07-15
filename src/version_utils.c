@@ -10,8 +10,14 @@ struct version_pair {
 typedef struct version_pair version_pair;
 
 static version_pair versions[] = {
-    {"aperturetag", portal2}, {"portal2", portal2}, {"portalreloaded", portal2}, {"TWTM", portal2},
-    {"csgo", csgo},           {"left4dead2", l4d2}, {"left4dead", l4d}};
+    {"aperturetag", portal2},
+    {"portal2", portal2},
+    {"portalreloaded", portal2},
+    {"portal_stories", portal2},
+    {"TWTM", portal2},
+    {"csgo", csgo},
+    {"left4dead2", l4d2},
+    {"left4dead", l4d}};
 
 demo_version get_demo_version(demogobbler_header *header) {
   for (size_t i = 0; i < ARRAYSIZE(versions); ++i) {

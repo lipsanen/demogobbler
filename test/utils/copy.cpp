@@ -20,10 +20,16 @@ DECLARE_WRITE_FUNC(stop);
 DECLARE_WRITE_FUNC(synctick);
 DECLARE_WRITE_FUNC(usercmd);
 
+void handle_version(demo_version version)
+{
+  w.version = version;
+}
+
 void copy_demo_test(const char* filepath)
 {
   memory_stream output;
   memory_stream input;
+  output.ground_truth = &input;
   input.fill_with_file(filepath);
 
   demogobbler_writer_init(&w);
@@ -43,6 +49,7 @@ void copy_demo_test(const char* filepath)
     settings.stringtables_handler = stringtables_handler;
     settings.synctick_handler = synctick_handler;
     settings.usercmd_handler = usercmd_handler;
+    settings.demo_version_handler = handle_version;
 
     input_interface input_funcs = {memory_stream_read, memory_stream_seek};
 
@@ -63,7 +70,7 @@ void copy_demo_test(const char* filepath)
   {
     if(ptr1[i] != ptr2[i])
     {
-      EXPECT_EQ(ptr1[i], ptr2[i]) << " expected output/input bytes to match.";
+      EXPECT_EQ(ptr1[i], ptr2[i]) << " expected output/input bytes to match at index " << i;
       break;
     }
   }

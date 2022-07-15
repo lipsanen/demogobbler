@@ -1,5 +1,7 @@
 #include "demogobbler.h"
 #include "streams.h"
+#include "utils.h"
+#include "version_utils.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -7,7 +9,7 @@ void demogobbler_writer_init(writer *thisptr) { memset(thisptr, 0, sizeof(writer
 
 void demogobbler_writer_open_file(writer *thisptr, const char *filepath) {
   thisptr->_stream = fopen(filepath, "wb");
-  thisptr->output_funcs = (output_interface){ fstream_write };
+  thisptr->output_funcs = (output_interface){fstream_write};
   thisptr->_custom_stream = false;
 
   if (!thisptr->_stream) {
@@ -18,10 +20,11 @@ void demogobbler_writer_open_file(writer *thisptr, const char *filepath) {
 void demogobbler_writer_open(writer *thisptr, void *stream, output_interface output_interface) {
   thisptr->_stream = stream;
   thisptr->output_funcs = output_interface;
+  thisptr->_custom_stream = true;
 }
 
 void demogobbler_writer_close(writer *thisptr) {
-  if (thisptr->_custom_stream && thisptr->_stream) {
+  if (!thisptr->_custom_stream && thisptr->_stream) {
     fclose(thisptr->_stream);
     thisptr->_stream = NULL;
   }
@@ -37,7 +40,9 @@ void demogobbler_writer_close(writer *thisptr) {
   thisptr->output_funcs.write(thisptr->_stream, &(cmdinfo->field.z), 4);
 #define WRITE_PREAMBLE()                                                                           \
   WRITE_BYTE(preamble.type);                                                                       \
-  WRITE_INT32(preamble.tick);
+  WRITE_INT32(preamble.tick); \
+  if(version_has_slot_in_preamble(thisptr->version)) WRITE_BYTE(preamble.slot);
+
 #define WRITE_DATA()                                                                               \
   WRITE_INT32(size_bytes);                                                                         \
   thisptr->output_funcs.write(thisptr->_stream, message->data, message->size_bytes)
@@ -74,17 +79,21 @@ void demogobbler_write_header(writer *thisptr, demogobbler_header *message) {
 
 void demogobbler_write_packet(writer *thisptr, demogobbler_packet *message) {
   WRITE_PREAMBLE();
-  demogobbler_cmdinfo *cmdinfo = &message->cmdinfo[0];
-  thisptr->output_funcs.write(thisptr->_stream, &cmdinfo->interp_flags, 4);
-  WRITE_CMDINFO_VEC(view_origin);
-  WRITE_CMDINFO_VEC(view_angles);
-  WRITE_CMDINFO_VEC(local_viewangles);
-  WRITE_CMDINFO_VEC(view_origin2);
-  WRITE_CMDINFO_VEC(view_angles2);
-  WRITE_CMDINFO_VEC(local_viewangles2);
+
+  for (int i = 0; i < version_cmdinfo_size(thisptr->version); ++i) {
+    demogobbler_cmdinfo *cmdinfo = &message->cmdinfo[i];
+    thisptr->output_funcs.write(thisptr->_stream, &cmdinfo->interp_flags, 4);
+
+    WRITE_CMDINFO_VEC(view_origin);
+    WRITE_CMDINFO_VEC(view_angles);
+    WRITE_CMDINFO_VEC(local_viewangles);
+    WRITE_CMDINFO_VEC(view_origin2);
+    WRITE_CMDINFO_VEC(view_angles2);
+    WRITE_CMDINFO_VEC(local_viewangles2);
+  }
+
   WRITE_INT32(in_sequence);
   WRITE_INT32(out_sequence);
-
   WRITE_DATA();
 }
 
@@ -109,6 +118,4 @@ void demogobbler_write_usercmd(writer *thisptr, demogobbler_usercmd *message) {
   WRITE_DATA();
 }
 
-void demogobbler_writer_free(writer *thisptr) {
-  demogobbler_writer_close(thisptr);
-}
+void demogobbler_writer_free(writer *thisptr) { demogobbler_writer_close(thisptr); }

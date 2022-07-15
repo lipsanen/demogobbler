@@ -9,6 +9,7 @@ endif
 if get_option('buildtype').startswith('release')
 if current_c_compiler == 'clang' or current_c_compiler == 'gcc'
   add_project_arguments('-fno-omit-frame-pointer', language : 'c')
+  add_project_arguments('-Werror-implicit-function-declaration', language : 'c')
 else
 endif
 endif

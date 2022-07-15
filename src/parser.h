@@ -14,6 +14,7 @@ struct parser {
   allocator allocator;
   int32_t demo_protocol;
   int32_t net_protocol;
+  demo_version _demo_version;
 };
 
 void parser_init(parser *thisptr, demogobbler_settings *settings);

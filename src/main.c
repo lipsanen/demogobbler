@@ -3,6 +3,7 @@
 #include "streams.h"
 #include <stddef.h>
 #include <stdlib.h>
+#include <string.h>
 
 void demogobbler_parser_init(demogobbler_parser *thisptr, demogobbler_settings *settings) {
   if (!thisptr)
@@ -51,13 +52,5 @@ void demogobbler_parser_free(demogobbler_parser *thisptr) {
 }
 
 void demogobbler_settings_init(demogobbler_settings *settings) {
-  settings->consolecmd_handler = NULL;
-  settings->customdata_handler = NULL;
-  settings->datatables_handler = NULL;
-  settings->header_handler = NULL;
-  settings->packet_handler = NULL;
-  settings->stop_handler = NULL;
-  settings->stringtables_handler = NULL;
-  settings->synctick_handler = NULL;
-  settings->usercmd_handler = NULL;
+  memset(settings, 0, sizeof(demogobbler_settings));
 }

@@ -46,8 +46,7 @@ typedef struct demogobbler_cmdinfo demogobbler_cmdinfo;
 
 struct demogobbler_packet {
   demogobbler_message_preamble preamble;
-  demogobbler_cmdinfo cmdinfo[2]; // 2 for games with split screen, we'll just
-                                  // leave it unused for other games
+  demogobbler_cmdinfo cmdinfo[4]; // allocates memory enough for all games
   int32_t in_sequence;
   int32_t out_sequence;
   int32_t size_bytes;

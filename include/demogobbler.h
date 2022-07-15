@@ -10,10 +10,19 @@ extern "C" {
 #include "stdio.h"
 #include <stdbool.h>
 
+enum demogobbler_demo_version {
+  csgo, l4d, l4d2, portal2, orangebox
+};
+
+typedef enum demogobbler_demo_version demo_version;
+
+typedef void (*func_demogobbler_handle_demo_version) (demo_version version);
+
 struct demogobbler_settings {
   func_demogobbler_handle_consolecmd consolecmd_handler;
   func_demogobbler_handle_customdata customdata_handler;
   func_demogobbler_handle_datatables datatables_handler;
+  func_demogobbler_handle_demo_version demo_version_handler;
   func_demogobbler_handle_header header_handler;
   func_demogobbler_handle_packet packet_handler;
   func_demogobbler_handle_synctick synctick_handler;
@@ -46,6 +55,7 @@ struct demogobbler_writer {
   output_interface output_funcs;
   bool error_set;
   bool _custom_stream;
+  demo_version version;
 };
 
 typedef struct demogobbler_writer writer;

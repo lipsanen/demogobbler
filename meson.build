@@ -1,6 +1,6 @@
 project('demogobbler', ['c', 'cpp'], default_options : ['c_std=c11', 'cpp_std=c++17', 'default_library=both'])
 
-current_c_compiler = meson.get_compiler('c').get_id()
+current_c_compiler = meson.get_compiler('c', native : false).get_id()
 
 if get_option('buildtype').startswith('debug')
   add_project_arguments('-DDEBUG', language : 'c')

@@ -45,6 +45,7 @@ typedef struct demogobbler_parser demogobbler_parser;
 
 void demogobbler_parser_init(demogobbler_parser *thisptr, demogobbler_settings *settings);
 void demogobbler_parser_parse_file(demogobbler_parser *thisptr, const char *filepath);
+void demogobbler_parser_parse_buffer(demogobbler_parser* thisptr, void* buffer, size_t size);
 void demogobbler_parser_parse(demogobbler_parser *thisptr, void *stream,
                              input_interface input_interface);
 void demogobbler_parser_free(demogobbler_parser *thisptr);

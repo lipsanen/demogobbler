@@ -55,6 +55,7 @@ void copy_demo_test(const char* filepath)
 
     demogobbler_parser_init(&parser, &settings);
     demogobbler_parser_parse(&parser, &input, input_funcs );
+    EXPECT_EQ(parser.error, false);
     demogobbler_parser_free(&parser);
 
     demogobbler_writer_close(&w);

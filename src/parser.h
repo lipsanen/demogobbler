@@ -15,6 +15,8 @@ struct parser {
   int32_t demo_protocol;
   int32_t net_protocol;
   demo_version _demo_version;
+  const char* error_message;
+  bool error;
 };
 
 void parser_init(parser *thisptr, demogobbler_settings *settings);

@@ -26,6 +26,8 @@ bool _parse_anymessage(parser *thisptr);
 
 void parser_init(parser *thisptr, demogobbler_settings *settings) {
   thisptr->m_settings = *settings;
+  thisptr->error = false;
+  thisptr->error_message = NULL;
   allocator_init(&thisptr->allocator, STACK_SIZE);
 }
 
@@ -102,11 +104,13 @@ bool _parse_anymessage(parser *thisptr) {
     _parse_stringtables(thisptr, 9);
     break;
   default:
+    thisptr->error = true;
+    thisptr->error_message = "Invalid message type";
     break;
   }
 
-  return type != demogobbler_type_stop &&
-         !thisptr->m_reader.eof; // Return false when done parsing demo, or when at eof
+  return type != demogobbler_type_stop && !thisptr->m_reader.eof &&
+         !thisptr->error; // Return false when done parsing demo, or when at eof
 }
 
 #define PARSE_PREAMBLE()                                                                           \
@@ -217,23 +221,21 @@ void _parse_packet(parser *thisptr, enum demogobbler_type type) {
   message.preamble.type = type;
   PARSE_PREAMBLE();
 
+  for (int i = 0; i < version_cmdinfo_size(thisptr->_demo_version); ++i) {
+    _parse_cmdinfo(thisptr, &message.cmdinfo[i]);
+  }
+
+  message.in_sequence = filereader_readint32(thisreader);
+  message.out_sequence = filereader_readint32(thisreader);
+  message.size_bytes = filereader_readint32(thisreader);
+
   if (thisptr->m_settings.packet_handler) {
-    for (int i = 0; i < version_cmdinfo_size(thisptr->_demo_version); ++i) {
-      _parse_cmdinfo(thisptr, &message.cmdinfo[i]);
-    }
-
-    message.in_sequence = filereader_readint32(thisreader);
-    message.out_sequence = filereader_readint32(thisreader);
-    message.size_bytes = filereader_readint32(thisreader);
-
     blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
     filereader_readdata(thisreader, block.address, message.size_bytes);
     message.data = block.address;
     thisptr->m_settings.packet_handler(&message);
     allocator_dealloc(thisallocator, block);
   } else {
-    filereader_skipbytes(thisreader, 84);
-    message.size_bytes = filereader_readint32(thisreader);
     filereader_skipbytes(thisreader, message.size_bytes);
   }
 }

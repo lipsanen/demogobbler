@@ -16,7 +16,7 @@ enum demogobbler_demo_version {
 
 typedef enum demogobbler_demo_version demo_version;
 
-typedef void (*func_demogobbler_handle_demo_version) (demo_version version);
+typedef void (*func_demogobbler_handle_demo_version) (void* clientState, demo_version version);
 
 struct demogobbler_settings {
   func_demogobbler_handle_consolecmd consolecmd_handler;
@@ -37,6 +37,7 @@ void demogobbler_settings_init(demogobbler_settings *settings);
 
 struct demogobbler_parser {
   void *_parser;
+  void *clientState;
   const char *error_message;
   bool error;
 };

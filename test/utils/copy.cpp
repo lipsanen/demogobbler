@@ -4,10 +4,8 @@
 #include <algorithm>
 #include <cstring>
 
-writer w;
-
-#define DECLARE_WRITE_FUNC(type) static void type ##_handler(demogobbler_ ## type *message) {\
-  demogobbler_write_ ## type (&w, message); \
+#define DECLARE_WRITE_FUNC(type) static void type ##_handler(void* w, demogobbler_ ## type *message) {\
+  demogobbler_write_ ## type ((writer*)w, message); \
 }
 
 DECLARE_WRITE_FUNC(consolecmd);
@@ -20,13 +18,14 @@ DECLARE_WRITE_FUNC(stop);
 DECLARE_WRITE_FUNC(synctick);
 DECLARE_WRITE_FUNC(usercmd);
 
-void handle_version(demo_version version)
+void handle_version(void* w, demo_version version)
 {
-  w.version = version;
+  ((writer*)w)->version = version;
 }
 
 void copy_demo_test(const char* filepath)
 {
+  writer w;
   memory_stream output;
   memory_stream input;
   output.ground_truth = &input;
@@ -54,6 +53,7 @@ void copy_demo_test(const char* filepath)
     input_interface input_funcs = {memory_stream_read, memory_stream_seek};
 
     demogobbler_parser_init(&parser, &settings);
+    parser.clientState = &w;
     demogobbler_parser_parse(&parser, &input, input_funcs );
     EXPECT_EQ(parser.error, false);
     demogobbler_parser_free(&parser);

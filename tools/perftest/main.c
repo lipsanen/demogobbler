@@ -2,38 +2,38 @@
 #include "stdio.h"
 #include <stdlib.h>
 
-void print_header(demogobbler_header *header) {
+void print_header(void* a, demogobbler_header *header) {
 }
 
-void print_consolecmd(demogobbler_consolecmd* message)
+void print_consolecmd(void* a, demogobbler_consolecmd* message)
 {
 }
 
-void print_customdata(demogobbler_customdata* message)
+void print_customdata(void* a, demogobbler_customdata* message)
 {
 }
 
-void print_datatables(demogobbler_datatables* message)
+void print_datatables(void* a, demogobbler_datatables* message)
 {
 }
 
-void print_packet(demogobbler_packet* message)
+void print_packet(void* a, demogobbler_packet* message)
 {
 }
 
-void print_stringtables(demogobbler_stringtables* message)
+void print_stringtables(void* a, demogobbler_stringtables* message)
 {
 }
 
-void print_stop(demogobbler_stop* message)
+void print_stop(void* a, demogobbler_stop* message)
 {
 }
 
-void print_synctick(demogobbler_synctick* message)
+void print_synctick(void* a, demogobbler_synctick* message)
 {
 }
 
-void print_usercmd(demogobbler_usercmd* message)
+void print_usercmd(void* a, demogobbler_usercmd* message)
 {
 }
 

@@ -11,7 +11,7 @@ TEST(E2E, copy_demos) {
   }
 }
 
-static void packet_handler(demogobbler_packet* packet)
+static void packet_handler(void*, demogobbler_packet*)
 {
 }
 

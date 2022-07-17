@@ -1,7 +1,7 @@
 #include "demogobbler.h"
 #include "stdio.h"
 
-void print_header(demogobbler_header *header) {
+void print_header(void* a, demogobbler_header *header) {
   printf("ID: %s\n", header->ID);
   printf("Demo protocol: %d\n", header->demo_protocol);
   printf("Net protocol: %d\n", header->net_protocol);
@@ -19,42 +19,43 @@ void print_header(demogobbler_header *header) {
   printf("\tType %d, Tick %d, \n", message->preamble.type, message->preamble.tick);
 
 
-void print_consolecmd(demogobbler_consolecmd* message)
+void print_consolecmd(void* a, demogobbler_consolecmd* message)
 {
   PRINT_MESSAGE_PREAMBLE(consolecmd);
+  printf("\t%s\n", message->data);
 }
 
-void print_customdata(demogobbler_customdata* message)
+void print_customdata(void* a, demogobbler_customdata* message)
 {
   PRINT_MESSAGE_PREAMBLE(customdata);
 }
 
-void print_datatables(demogobbler_datatables* message)
+void print_datatables(void* a, demogobbler_datatables* message)
 {
   PRINT_MESSAGE_PREAMBLE(datatables);
 }
 
-void print_packet(demogobbler_packet* message)
+void print_packet(void* a, demogobbler_packet* message)
 {
   PRINT_MESSAGE_PREAMBLE(packet);
 }
 
-void print_stringtables(demogobbler_stringtables* message)
+void print_stringtables(void* a, demogobbler_stringtables* message)
 {
   PRINT_MESSAGE_PREAMBLE(stringtables);
 }
 
-void print_stop(demogobbler_stop* message)
+void print_stop(void* a, demogobbler_stop* message)
 {
   printf("stop:\n");
 }
 
-void print_synctick(demogobbler_synctick* message)
+void print_synctick(void* a, demogobbler_synctick* message)
 {
   PRINT_MESSAGE_PREAMBLE(synctick);
 }
 
-void print_usercmd(demogobbler_usercmd* message)
+void print_usercmd(void* a, demogobbler_usercmd* message)
 {
   PRINT_MESSAGE_PREAMBLE(usercmd);
 }

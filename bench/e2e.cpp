@@ -4,15 +4,15 @@
 #include <iostream>
 #include <filesystem>
 
-static void header_handler(demogobbler_header *header) {}
-static void consolecmd_handler(demogobbler_consolecmd *message) {}
-static void customdata_handler(demogobbler_customdata *message) {}
-static void datatables_handler(demogobbler_datatables *message) {}
-static void packet_handler(demogobbler_packet *packet) {}
-static void stringtables_handler(demogobbler_stringtables *message) {}
-static void stop_handler(demogobbler_stop *message) {}
-static void synctick_handler(demogobbler_synctick *message) {}
-static void usercmd_handler(demogobbler_usercmd *message) {}
+static void header_handler(void*, demogobbler_header *header) {}
+static void consolecmd_handler(void*, demogobbler_consolecmd *message) {}
+static void customdata_handler(void*, demogobbler_customdata *message) {}
+static void datatables_handler(void*, demogobbler_datatables *message) {}
+static void packet_handler(void*, demogobbler_packet *packet) {}
+static void stringtables_handler(void*, demogobbler_stringtables *message) {}
+static void stop_handler(void*, demogobbler_stop *message) {}
+static void synctick_handler(void*, demogobbler_synctick *message) {}
+static void usercmd_handler(void*, demogobbler_usercmd *message) {}
 
 static void test_demos_setup_and_teardown(benchmark::State &state) {
   auto demos = get_test_demos();

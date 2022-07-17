@@ -22,7 +22,7 @@ struct demogobbler_header {
   int32_t signon_length;
 };
 
-typedef void (*func_demogobbler_handle_header)(demogobbler_header *header);
+typedef void (*func_demogobbler_handle_header)(void* clientState, demogobbler_header *header);
 
 #ifdef __cplusplus
 }

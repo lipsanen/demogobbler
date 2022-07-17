@@ -10,6 +10,7 @@ if get_option('buildtype').startswith('release')
 if current_c_compiler == 'clang' or current_c_compiler == 'gcc'
   add_project_arguments('-fno-omit-frame-pointer', language : 'c')
   add_project_arguments('-Werror-implicit-function-declaration', language : 'c')
+  add_project_arguments('-Werror=incompatible-pointer-types', language : 'c')
 else
 endif
 endif
@@ -23,3 +24,4 @@ subdir('bench')
 subdir('tools/demodump')
 subdir('tools/listgobbler')
 subdir('tools/perftest')
+subdir('tools/mercury')

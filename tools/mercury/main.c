@@ -1,7 +1,15 @@
-#include "demogobbler.h"
-#include "stdio.h"
+#include "freddie.h"
+#include <stdio.h>
 
-void print_header(void* a, demogobbler_header *header) {
+int main(int argc, char **argv) {
+  if (argc <= 1) {
+    printf("Usage: mercury <filepath>\n");
+    return 0;
+  }
+
+  demogobbler_freddie output = demogobbler_freddie_file(argv[1]);
+  demogobbler_header* header = &output.header;
+
   printf("ID: %s\n", header->ID);
   printf("Demo protocol: %d\n", header->demo_protocol);
   printf("Net protocol: %d\n", header->net_protocol);
@@ -13,21 +21,14 @@ void print_header(void* a, demogobbler_header *header) {
   printf("Tick count: %d\n", header->tick_count);
   printf("Frame count: %d\n", header->frame_count);
   printf("Signon length: %d\n", header->signon_length);
-}
 
-int main(int argc, char **argv) {
-  if (argc <= 1) {
-    printf("Usage: listgobbler <filepath>\n");
-    return 0;
+  printf("Got %d cmd infos\n", output.cmdinfo_count);
+
+  for(size_t i=0; i < output.consolecmd_count; ++i) {
+    freddie_consolecmd cmd = output.consolecmd[i];
+    if(cmd.tick >= 0)
+      printf("%d: %s\n", cmd.tick, cmd.cmd);
   }
 
-  demogobbler_parser parser;
-  demogobbler_settings settings;
-  settings.header_handler = print_header;
-
-  demogobbler_parser_init(&parser, &settings);
-  demogobbler_parser_parse_file(&parser, argv[1]);
-  demogobbler_parser_free(&parser);
-
-  return 0;
+  demogobbler_freddie_free(&output);
 }

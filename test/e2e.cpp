@@ -33,7 +33,7 @@ TEST(E2E, buffer_stream_test) {
   void* buffer = malloc(length);
 
   fseek(stream, 0, SEEK_SET);
-  auto bytes = fread(buffer, 1, length, stream);
+  fread(buffer, 1, length, stream);
   fclose(stream);
 
   demogobbler_parser parser;

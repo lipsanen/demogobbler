@@ -59,7 +59,7 @@ typedef void (*func_demogobbler_handle_packet)(void* clientState, demogobbler_pa
 struct demogobbler_consolecmd {
   demogobbler_message_preamble preamble;
   int32_t size_bytes;
-  const char *data;
+  char *data;
 };
 
 typedef struct demogobbler_consolecmd demogobbler_consolecmd;

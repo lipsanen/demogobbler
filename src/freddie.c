@@ -41,7 +41,6 @@ static void consolecmd_handler(void *clientData, demogobbler_consolecmd *message
 
   // DANGER, the cmd field is now pointing into the bermuda triangle
   insert_point->__offset = dynamic_array_offset(&wip->output._memory_chunk, dest);
-  int i = 0;
 }
 
 void demogobbler_freddie_parse_internal(wip_freddie *wip, void *stream, input_interface interface) {
@@ -72,7 +71,6 @@ void demogobbler_freddie_parse_internal(wip_freddie *wip, void *stream, input_in
     const char* str = (const char*)wip->output._memory_chunk.ptr + wip->output.consolecmd[i].__offset;
     freddie_consolecmd* freddie_cmd = &wip->output.consolecmd[i];
     freddie_cmd ->cmd = str;
-    int a = 0;
   }
 }
 

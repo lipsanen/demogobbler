@@ -58,6 +58,9 @@ void _parse_header(parser *thisptr) {
   header.frame_count = filereader_readint32(thisreader);
   header.signon_length = filereader_readint32(thisreader);
 
+  // Add null terminators if they are missing
+  header.ID[7] = header.server_name[259] = header.client_name[259] = header.map_name[259] = header.game_directory[259] = '\0';
+
   thisptr->_demo_version = get_demo_version(&header);
 
   if (thisptr->m_settings.demo_version_handler) {
@@ -151,19 +154,26 @@ void _parse_consolecmd(parser *thisptr) {
   demogobbler_consolecmd message;
   message.preamble.type = demogobbler_type_consolecmd;
   PARSE_PREAMBLE();
+  message.size_bytes = filereader_readint32(thisreader);
 
-  if (thisptr->m_settings.consolecmd_handler) {
-    message.size_bytes = filereader_readint32(thisreader);
+  if(message.size_bytes >= 0)
+  {
+    if (thisptr->m_settings.consolecmd_handler) {
+      blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
+      filereader_readdata(thisreader, block.address, message.size_bytes);
+      message.data = block.address;
+      message.data[message.size_bytes-1] = '\0'; // Add null terminator in-case malformed data
+      
+      thisptr->m_settings.consolecmd_handler(thisptr->parent->clientState, &message);
+      allocator_dealloc(thisallocator, block);
 
-    blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
-    filereader_readdata(thisreader, block.address, message.size_bytes);
-    message.data = block.address;
-    thisptr->m_settings.consolecmd_handler(thisptr->parent->clientState, &message);
-    allocator_dealloc(thisallocator, block);
-
-  } else {
-    message.size_bytes = filereader_readint32(thisreader);
-    filereader_skipbytes(thisreader, message.size_bytes);
+    } else {
+      filereader_skipbytes(thisreader, message.size_bytes);
+    }
+  }
+  else  {
+    thisptr->error = true;
+    thisptr->error_message = "Invalid consolecommand length";
   }
 }
 

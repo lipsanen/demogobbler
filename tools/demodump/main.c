@@ -68,6 +68,7 @@ int main(int argc, char **argv) {
 
   demogobbler_parser parser;
   demogobbler_settings settings;
+  demogobbler_settings_init(&settings);
   settings.consolecmd_handler = print_consolecmd;
   settings.customdata_handler = print_customdata;
   settings.datatables_handler = print_datatables;

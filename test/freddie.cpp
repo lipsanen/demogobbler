@@ -8,6 +8,5 @@ TEST(freddie, works) {
   {
     std::cout << "[----------] " << demo << std::endl;
     auto output = demogobbler_freddie_file(demo.c_str());
-    int i = 0;
   }
 }

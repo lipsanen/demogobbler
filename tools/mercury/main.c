@@ -22,7 +22,7 @@ int main(int argc, char **argv) {
   printf("Frame count: %d\n", header->frame_count);
   printf("Signon length: %d\n", header->signon_length);
 
-  printf("Got %d cmd infos\n", output.cmdinfo_count);
+  printf("Got %lu cmd infos\n", output.cmdinfo_count);
 
   for(size_t i=0; i < output.consolecmd_count; ++i) {
     freddie_consolecmd cmd = output.consolecmd[i];

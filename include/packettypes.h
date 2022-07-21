@@ -4,7 +4,8 @@
 extern "C" {
 #endif
 
-#include "stdint.h"
+#include "demogobbler_vector.h"
+#include <stdint.h>
 
 enum demogobbler_type {
   demogobbler_type_signon = 1,
@@ -17,12 +18,6 @@ enum demogobbler_type {
   // Customdata is 8
   // Stringtables is either 8 or 9 depending on version
 };
-
-struct demogobbler_vector {
-  float x, y, z;
-};
-
-typedef struct demogobbler_vector vector;
 
 struct demogobbler_message_preamble {
   uint8_t type;
@@ -54,7 +49,7 @@ struct demogobbler_packet {
 };
 
 typedef struct demogobbler_packet demogobbler_packet;
-typedef void (*func_demogobbler_handle_packet)(void* clientState, demogobbler_packet *ptr);
+typedef void (*func_demogobbler_handle_packet)(void* client_state, demogobbler_packet *ptr);
 
 struct demogobbler_consolecmd {
   demogobbler_message_preamble preamble;
@@ -63,7 +58,7 @@ struct demogobbler_consolecmd {
 };
 
 typedef struct demogobbler_consolecmd demogobbler_consolecmd;
-typedef void (*func_demogobbler_handle_consolecmd)(void* clientState, demogobbler_consolecmd *ptr);
+typedef void (*func_demogobbler_handle_consolecmd)(void* client_state, demogobbler_consolecmd *ptr);
 
 struct demogobbler_usercmd {
   demogobbler_message_preamble preamble;
@@ -73,7 +68,7 @@ struct demogobbler_usercmd {
 };
 
 typedef struct demogobbler_usercmd demogobbler_usercmd;
-typedef void (*func_demogobbler_handle_usercmd)(void* clientState, demogobbler_usercmd *ptr);
+typedef void (*func_demogobbler_handle_usercmd)(void* client_state, demogobbler_usercmd *ptr);
 
 struct demogobbler_datatables {
   demogobbler_message_preamble preamble;
@@ -82,7 +77,7 @@ struct demogobbler_datatables {
 };
 
 typedef struct demogobbler_datatables demogobbler_datatables;
-typedef void (*func_demogobbler_handle_datatables)(void* clientState, demogobbler_datatables *ptr);
+typedef void (*func_demogobbler_handle_datatables)(void* client_state, demogobbler_datatables *ptr);
 
 struct demogobbler_stop {
   int32_t size_bytes; // Inferred, not in the demo
@@ -90,7 +85,7 @@ struct demogobbler_stop {
 };
 
 typedef struct demogobbler_stop demogobbler_stop;
-typedef void (*func_demogobbler_handle_stop)(void* clientState, demogobbler_stop *ptr);
+typedef void (*func_demogobbler_handle_stop)(void* client_state, demogobbler_stop *ptr);
 
 
 struct demogobbler_synctick {
@@ -98,7 +93,7 @@ struct demogobbler_synctick {
 };
 
 typedef struct demogobbler_synctick demogobbler_synctick;
-typedef void (*func_demogobbler_handle_synctick)(void* clientState, demogobbler_synctick *ptr);
+typedef void (*func_demogobbler_handle_synctick)(void* client_state, demogobbler_synctick *ptr);
 
 struct demogobbler_customdata {
   demogobbler_message_preamble preamble;
@@ -108,7 +103,7 @@ struct demogobbler_customdata {
 };
 
 typedef struct demogobbler_customdata demogobbler_customdata;
-typedef void (*func_demogobbler_handle_customdata)(void* clientState, demogobbler_customdata *ptr);
+typedef void (*func_demogobbler_handle_customdata)(void* client_state, demogobbler_customdata *ptr);
 
 struct demogobbler_stringtables {
   demogobbler_message_preamble preamble;
@@ -117,7 +112,7 @@ struct demogobbler_stringtables {
 };
 
 typedef struct demogobbler_stringtables demogobbler_stringtables;
-typedef void (*func_demogobbler_handle_stringtables)(void* clientState, demogobbler_stringtables *header);
+typedef void (*func_demogobbler_handle_stringtables)(void* client_state, demogobbler_stringtables *header);
 
 #ifdef __cplusplus
 }

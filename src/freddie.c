@@ -52,7 +52,7 @@ void demogobbler_freddie_parse_internal(wip_freddie *wip, void *stream, input_in
   settings.header_handler = header_handler;
 
   demogobbler_parser_init(&parser, &settings);
-  parser.clientState = wip;
+  parser.client_state = wip;
 
   demogobbler_parser_parse(&parser, stream, interface);
   demogobbler_parser_free(&parser);

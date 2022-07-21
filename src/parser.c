@@ -2,6 +2,7 @@
 #include "demogobbler.h"
 #include "filereader.h"
 #include "packettypes.h"
+#include "parser_netmessages.h"
 #include "utils.h"
 #include "version_utils.h"
 #include <stddef.h>
@@ -59,16 +60,17 @@ void _parse_header(parser *thisptr) {
   header.signon_length = filereader_readint32(thisreader);
 
   // Add null terminators if they are missing
-  header.ID[7] = header.server_name[259] = header.client_name[259] = header.map_name[259] = header.game_directory[259] = '\0';
+  header.ID[7] = header.server_name[259] = header.client_name[259] = header.map_name[259] =
+      header.game_directory[259] = '\0';
 
   thisptr->_demo_version = get_demo_version(&header);
 
   if (thisptr->m_settings.demo_version_handler) {
-    thisptr->m_settings.demo_version_handler(thisptr->parent->clientState, thisptr->_demo_version);
+    thisptr->m_settings.demo_version_handler(thisptr->parent->client_state, thisptr->_demo_version);
   }
 
   if (thisptr->m_settings.header_handler) {
-    thisptr->m_settings.header_handler(thisptr->parent->clientState, &header);
+    thisptr->m_settings.header_handler(thisptr->parent->client_state, &header);
   }
 }
 
@@ -156,22 +158,19 @@ void _parse_consolecmd(parser *thisptr) {
   PARSE_PREAMBLE();
   message.size_bytes = filereader_readint32(thisreader);
 
-  if(message.size_bytes >= 0)
-  {
+  if (message.size_bytes >= 0) {
     if (thisptr->m_settings.consolecmd_handler) {
       blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
       filereader_readdata(thisreader, block.address, message.size_bytes);
       message.data = block.address;
-      message.data[message.size_bytes-1] = '\0'; // Add null terminator in-case malformed data
-      
-      thisptr->m_settings.consolecmd_handler(thisptr->parent->clientState, &message);
+      message.data[message.size_bytes - 1] = '\0'; // Add null terminator in-case malformed data
+      thisptr->m_settings.consolecmd_handler(thisptr->parent->client_state, &message);
       allocator_dealloc(thisallocator, block);
 
     } else {
       filereader_skipbytes(thisreader, message.size_bytes);
     }
-  }
-  else  {
+  } else {
     thisptr->error = true;
     thisptr->error_message = "Invalid consolecommand length";
   }
@@ -189,7 +188,7 @@ void _parse_customdata(parser *thisptr) {
     blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
     filereader_readdata(thisreader, block.address, message.size_bytes);
     message.data = block.address;
-    thisptr->m_settings.customdata_handler(thisptr->parent->clientState, &message);
+    thisptr->m_settings.customdata_handler(thisptr->parent->client_state, &message);
     allocator_dealloc(thisallocator, block);
   } else {
     filereader_skipbytes(thisreader, 4);
@@ -209,7 +208,7 @@ void _parse_datatables(parser *thisptr) {
     blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
     filereader_readdata(thisreader, block.address, message.size_bytes);
     message.data = block.address;
-    thisptr->m_settings.datatables_handler(thisptr->parent->clientState, &message);
+    thisptr->m_settings.datatables_handler(thisptr->parent->client_state, &message);
     allocator_dealloc(thisallocator, block);
   } else {
     message.size_bytes = filereader_readint32(thisreader);
@@ -240,11 +239,19 @@ void _parse_packet(parser *thisptr, enum demogobbler_type type) {
   message.out_sequence = filereader_readint32(thisreader);
   message.size_bytes = filereader_readint32(thisreader);
 
-  if (thisptr->m_settings.packet_handler) {
+  if (thisptr->m_settings.packet_handler || thisptr->m_settings.packet_net_message_handler) {
     blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
     filereader_readdata(thisreader, block.address, message.size_bytes);
     message.data = block.address;
-    thisptr->m_settings.packet_handler(thisptr->parent->clientState, &message);
+
+    if (thisptr->m_settings.packet_handler) {
+      thisptr->m_settings.packet_handler(thisptr->parent->client_state, &message);
+    }
+
+    if (thisptr->m_settings.packet_net_message_handler) {
+      parse_netmessages(thisptr, block.address, block.size);
+    }
+
     allocator_dealloc(thisallocator, block);
   } else {
     filereader_skipbytes(thisreader, message.size_bytes);
@@ -273,7 +280,7 @@ void _parse_stop(parser *thisptr) {
     message.size_bytes = bytes;
     message.data = block.address;
 
-    thisptr->m_settings.stop_handler(thisptr->parent->clientState, &message);
+    thisptr->m_settings.stop_handler(thisptr->parent->client_state, &message);
     allocator_dealloc(thisallocator, block);
   }
 }
@@ -289,7 +296,7 @@ void _parse_stringtables(parser *thisptr, int32_t type) {
     blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
     filereader_readdata(thisreader, block.address, message.size_bytes);
     message.data = block.address;
-    thisptr->m_settings.stringtables_handler(thisptr->parent->clientState, &message);
+    thisptr->m_settings.stringtables_handler(thisptr->parent->client_state, &message);
     allocator_dealloc(thisallocator, block);
   } else {
     message.size_bytes = filereader_readint32(thisreader);
@@ -303,7 +310,7 @@ void _parse_synctick(parser *thisptr) {
   PARSE_PREAMBLE();
 
   if (thisptr->m_settings.synctick_handler) {
-    thisptr->m_settings.synctick_handler(thisptr->parent->clientState, &message);
+    thisptr->m_settings.synctick_handler(thisptr->parent->client_state, &message);
   }
 }
 
@@ -319,7 +326,7 @@ void _parse_usercmd(parser *thisptr) {
     blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
     filereader_readdata(thisreader, block.address, message.size_bytes);
     message.data = block.address;
-    thisptr->m_settings.usercmd_handler(thisptr->parent->clientState, &message);
+    thisptr->m_settings.usercmd_handler(thisptr->parent->client_state, &message);
     allocator_dealloc(thisallocator, block);
   } else {
     filereader_skipbytes(thisreader, 4);

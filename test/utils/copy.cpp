@@ -53,7 +53,7 @@ void copy_demo_test(const char* filepath)
     input_interface input_funcs = {memory_stream_read, memory_stream_seek};
 
     demogobbler_parser_init(&parser, &settings);
-    parser.clientState = &w;
+    parser.client_state = &w;
     demogobbler_parser_parse(&parser, &input, input_funcs );
     EXPECT_EQ(parser.error, false);
     demogobbler_parser_free(&parser);

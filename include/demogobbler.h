@@ -7,7 +7,8 @@ extern "C" {
 #include "header.h"
 #include "demogobbler_io.h"
 #include "packettypes.h"
-#include "stdio.h"
+#include "packet_netmessages.h"
+#include <stdio.h>
 #include <stdbool.h>
 
 enum demogobbler_demo_version {
@@ -16,7 +17,7 @@ enum demogobbler_demo_version {
 
 typedef enum demogobbler_demo_version demo_version;
 
-typedef void (*func_demogobbler_handle_demo_version) (void* clientState, demo_version version);
+typedef void (*func_demogobbler_handle_demo_version) (void* client_state, demo_version version);
 
 struct demogobbler_settings {
   func_demogobbler_handle_consolecmd consolecmd_handler;
@@ -29,6 +30,7 @@ struct demogobbler_settings {
   func_demogobbler_handle_stop stop_handler;
   func_demogobbler_handle_stringtables stringtables_handler;
   func_demogobbler_handle_usercmd usercmd_handler;
+  func_demogobbler_handle_packet_net_message packet_net_message_handler;
 };
 
 typedef struct demogobbler_settings demogobbler_settings;
@@ -37,7 +39,7 @@ void demogobbler_settings_init(demogobbler_settings *settings);
 
 struct demogobbler_parser {
   void *_parser;
-  void *clientState;
+  void *client_state;
   const char *error_message;
   bool error;
 };

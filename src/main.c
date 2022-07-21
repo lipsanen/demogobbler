@@ -10,7 +10,7 @@ void demogobbler_parser_init(demogobbler_parser *thisptr, demogobbler_settings *
     return;
 
   thisptr->_parser = malloc(sizeof(parser));
-  thisptr->clientState = NULL;
+  thisptr->client_state = NULL;
   parser_init((parser *)thisptr->_parser, thisptr, settings);
   thisptr->error_message = NULL;
   thisptr->error = false;

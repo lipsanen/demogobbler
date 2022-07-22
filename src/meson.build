@@ -6,4 +6,7 @@ if current_c_compiler == 'clang' or current_c_compiler == 'gcc'
 else
   goblin_extra_args = []
 endif
-goblin = static_library('demogobbler', goblin_lib_files, include_directories : goblin_includes, c_args : goblin_extra_args)
+
+cc = meson.get_compiler('c')
+m_dep = cc.find_library('m', required : false)
+goblin = static_library('demogobbler', goblin_lib_files, include_directories : goblin_includes, c_args : goblin_extra_args, dependencies: m_dep)

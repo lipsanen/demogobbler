@@ -21,6 +21,19 @@ void demogobbler_bitstream_advance(bitstream* thisptr, unsigned int bits) {
   thisptr->bitoffset = new_offset;
 }
 
+bitstream demogobbler_bitstream_fork_and_advance(bitstream* stream, unsigned int bits) {
+  bitstream output;
+
+  output.bitoffset = stream->bitoffset;
+  output.bitsize = stream->bitoffset + bits;
+  output.data = stream->data;
+  output.overflow = stream->overflow;
+
+  demogobbler_bitstream_advance(stream, bits);
+
+  return output;
+}
+
 void demogobbler_bitstream_read_bits(bitstream *thisptr, void *dest, unsigned bits) {
   const uint8_t LOW_MASKS[] = {0x1, 0x3, 0x7, 0xF, 0x1F, 0x3F, 0x7F};
   uint8_t* data = (uint8_t*)thisptr->data + thisptr->bitoffset / 8;
@@ -124,4 +137,12 @@ size_t demogobbler_bitstream_read_cstring(bitstream* thisptr, char* dest, size_t
   thisptr->bitoffset += i * 8;
 
   return i;
+}
+
+vector demogobbler_bitstream_read_bitvector(bitstream* thisptr, unsigned int bits) {
+  vector out;
+  out.x = bitstream_read_uint(thisptr, bits) * (360.0f / (1 << bits));
+  out.y = bitstream_read_uint(thisptr, bits) * (360.0f / (1 << bits));
+  out.z = bitstream_read_uint(thisptr, bits) * (360.0f / (1 << bits));
+  return out;
 }

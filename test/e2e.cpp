@@ -15,7 +15,6 @@ static void packet_handler(void*, demogobbler_packet*) {
 }
 
 static void packet_net_message_handler(void* client_state, packet_net_message* message) {
-  std::cout << "[----------] Packet " << message->mtype << std::endl;
 }
 
 TEST(E2E, buffer_stream_test) {

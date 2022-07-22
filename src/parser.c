@@ -249,7 +249,7 @@ void _parse_packet(parser *thisptr, enum demogobbler_type type) {
     }
 
     if (thisptr->m_settings.packet_net_message_handler) {
-      parse_netmessages(thisptr, block.address, block.size);
+      parse_netmessages(thisptr, block.address, message.size_bytes);
     }
 
     allocator_dealloc(thisallocator, block);

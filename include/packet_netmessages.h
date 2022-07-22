@@ -140,7 +140,7 @@ struct demogobbler_svc_classinfo_serverclass {
 struct demogobbler_svc_classinfo {
   uint16_t length;
   bool create_on_client;
-  //struct demogobbler_svc_classinfo_serverclass *server_classes;
+  struct demogobbler_svc_classinfo_serverclass *server_classes;
 };
 
 struct demogobbler_svc_setpause {
@@ -163,6 +163,7 @@ struct demogobbler_svc_update_stringtable {
   unsigned int table_id : 5; // ID of the table
   uint16_t changed_entries;
   unsigned int data_length : 20; // Length of the data
+  bool exists : 1;
   bitstream data;
 };
 
@@ -197,11 +198,11 @@ struct demogobbler_svc_setview {
 
 struct demogobbler_svc_fixangle {
   bool relative;
-  uint16_t angle[3];
+  vector angle;
 };
 
 struct demogobbler_svc_crosshair_angle {
-  uint16_t angle[3];
+  vector angle;
 };
 
 struct demogobbler_svc_bsp_decal {

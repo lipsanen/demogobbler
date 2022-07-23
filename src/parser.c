@@ -42,6 +42,15 @@ void parser_parse(parser *thisptr, void *stream, input_interface input) {
   }
 }
 
+void parser_update_l4d2_version(parser* thisptr, int l4d2_version) {
+  thisptr->demo_version.l4d2_version = l4d2_version;
+  thisptr->demo_version.l4d2_version_finalized = true;
+  version_update_build_info(&thisptr->demo_version);
+  if(thisptr->m_settings.demo_version_handler) {
+    thisptr->m_settings.demo_version_handler(thisptr->parent->client_state, thisptr->demo_version);
+  }
+}
+
 void parser_free(parser *thisptr) { allocator_free(&thisptr->allocator); }
 
 void _parse_header(parser *thisptr) {

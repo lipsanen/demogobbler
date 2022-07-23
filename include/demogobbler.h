@@ -28,10 +28,11 @@ struct demogobbler_demo_version {
   unsigned int model_index_bits : 4;
   bool has_slot_in_preamble : 1;
   bool has_nettick_times : 1;
+  bool l4d2_version_finalized : 1;
   net_message_type* netmessage_array;
   unsigned int netmessage_count;
   unsigned int network_protocol;
-  unsigned int l4d_version;
+  unsigned int l4d2_version;
 };
 
 typedef struct demogobbler_demo_version demo_version_data;

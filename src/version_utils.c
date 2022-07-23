@@ -145,7 +145,7 @@ static void get_preamble_info(demo_version_data* version) {
       version->game == l4d2) {
     version->has_slot_in_preamble = true;
   } else {
-   version->has_slot_in_preamble =false;
+   version->has_slot_in_preamble = false;
   }
 }
 
@@ -196,7 +196,7 @@ static void get_stringtable_userdata_size_bits(demo_version_data* version) {
 }
 
 static void get_svc_user_message_bits(demo_version_data* version) {
-  if(version->game == l4d) {
+  if(version->game == l4d || version->game == l4d2) {
     version->svc_user_message_bits = 11;
   }
   else if (version->demo_protocol >= 4) {
@@ -208,7 +208,7 @@ static void get_svc_user_message_bits(demo_version_data* version) {
 }
 
 static void get_svc_prefetch_bits(demo_version_data* version) {
-  if(version->game == l4d2 && version->l4d_version >= 2091) {
+  if(version->game == l4d2 && version->l4d2_version >= 2091) {
     version->svc_prefetch_bits = 15;
   }
   else if(version->game == l4d2) {
@@ -220,7 +220,8 @@ static void get_svc_prefetch_bits(demo_version_data* version) {
 }
 
 static void get_model_index_bits(demo_version_data* version) {
-  if(version->game == l4d2 && version->l4d_version >= 2203) {
+  // Some tf2 parsers report this as 13 bits?
+  if(version->game == l4d2 && version->l4d2_version >= 2203) {
     version->model_index_bits = 12;
   }
   else {
@@ -250,7 +251,6 @@ demo_version_data get_demo_version(demogobbler_header *header) {
   version.game = orangebox;
   version.demo_protocol = header->demo_protocol;
   version.network_protocol = header->net_protocol;
-  version.l4d_version = 2147;
 
   if(version.demo_protocol <= 3) {
     if(version.network_protocol >= 24) {
@@ -269,17 +269,64 @@ demo_version_data get_demo_version(demogobbler_header *header) {
     }
   }
 
-  get_cmdinfo_size(&version);
-  get_preamble_info(&version);
-  get_net_message_array(&version);
-  get_net_message_bits(&version);
-  get_net_file_bits(&version);
-  get_has_nettick_times(&version);
-  get_stringtable_flags_bits(&version);
-  get_stringtable_userdata_size_bits(&version);
-  get_svc_user_message_bits(&version);
-  get_svc_prefetch_bits(&version);
-  get_model_index_bits(&version);
+  version.l4d2_version_finalized = true;
+
+  if(version.game == l4d2) {
+    if(header->net_protocol >= 2100) {
+      version.l4d2_version = 2203;
+    }
+    else if(header->net_protocol == 2042) {
+      // protocol 2042 is resolved in parsing svc_print
+      version.l4d2_version_finalized = false;
+      version.l4d2_version = 2042; 
+    }
+    else {
+      version.l4d2_version = header->net_protocol;
+    }
+  }
+  else {
+    version.l4d2_version = 0;
+  }
+
+  version_update_build_info(&version);
 
   return version;
+}
+
+void version_update_build_info(demo_version_data* version) {
+  // This can be re-run in the case of l4d2 demos
+  get_cmdinfo_size(version);
+  get_preamble_info(version);
+  get_net_message_array(version);
+  get_net_message_bits(version);
+  get_net_file_bits(version);
+  get_has_nettick_times(version);
+  get_stringtable_flags_bits(version);
+  get_stringtable_userdata_size_bits(version);
+  get_svc_user_message_bits(version);
+  get_svc_prefetch_bits(version);
+  get_model_index_bits(version);
+}
+
+bool get_l4d2_build(const char* str, int* out) {
+  const char l4d2_buildstring_start[] = "\nLeft 4 Dead 2\nMap";
+  int length_without_null = ARRAYSIZE(l4d2_buildstring_start) - 1;
+  for(int i=0; i < length_without_null; ++i) {
+    if(str[i] != l4d2_buildstring_start[i]) {
+      return false;
+    }
+  }
+
+  const char build_string[] = "Build:"; 
+  char* build_loc = strstr(str, build_string);
+
+  if(build_loc) {
+    char* build_num = build_loc + ARRAYSIZE(build_string);
+    *out = atoi(build_num);
+
+    return true;
+  }
+  else {
+    return false;
+  }
 }

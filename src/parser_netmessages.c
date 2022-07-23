@@ -94,7 +94,21 @@ static void handle_svc_print(parser *thisptr, bitstream *stream, packet_net_mess
                              char *scrap) {
   char *prev_string = NULL;
   struct demogobbler_svc_print *ptr = &message->message_svc_print;
+
   COPY_STRING(ptr->message);
+
+  if(thisptr->demo_version.game == l4d2 && thisptr->demo_version.l4d2_version == 2042) {
+    int l4d2_build = 0;
+    get_l4d2_build(ptr->message, &l4d2_build);
+
+    if(l4d2_build == 4710) {
+      parser_update_l4d2_version(thisptr, 2091);
+    }
+    else if(l4d2_build == 6403) {
+      parser_update_l4d2_version(thisptr, 2147);
+    }
+  }
+
   SEND_MESSAGE();
 }
 
@@ -107,7 +121,7 @@ static void handle_svc_serverinfo(parser *thisptr, bitstream *stream, packet_net
   ptr->is_hltv = bitstream_read_uint(stream, 1);
   ptr->is_dedicated = bitstream_read_uint(stream, 1);
 
-  if (thisptr->demo_version.game == l4d2 && thisptr->demo_version.l4d_version >= 2147)
+  if (thisptr->demo_version.game == l4d2 && thisptr->demo_version.l4d2_version >= 2147)
     ptr->unk_l4d_bit = bitstream_read_uint(stream, 1);
   else
     ptr->unk_l4d_bit = 0;
@@ -138,7 +152,7 @@ static void handle_svc_serverinfo(parser *thisptr, bitstream *stream, packet_net
   COPY_STRING(ptr->sky_name);
   COPY_STRING(ptr->host_name);
 
-  if(thisptr->demo_version.game == l4d2 && thisptr->demo_version.l4d_version >= 2147) {
+  if(thisptr->demo_version.game == l4d2 && thisptr->demo_version.l4d2_version >= 2147) {
     COPY_STRING(ptr->mission_name);
     COPY_STRING(ptr->mutation_name);
   }
@@ -252,7 +266,15 @@ static void handle_svc_voice_init(parser *thisptr, bitstream *stream, packet_net
   COPY_STRING(ptr->codec);
   ptr->quality = bitstream_read_uint(stream, 8);
   if (ptr->quality == 255) {
-    ptr->unk = bitstream_read_float(stream);
+    // Steampipe version uses shorts
+    if(thisptr->demo_version.game == steampipe) {
+      ptr->unk = bitstream_read_uint(stream, 16);
+    }
+    // Protocol 4 version uses floats?
+    else if (thisptr->demo_version.demo_protocol == 4) {
+      ptr->unk = bitstream_read_float(stream);
+    }
+    // Not available on other versions
   }
 }
 
@@ -502,10 +524,10 @@ void parse_netmessages(parser *thisptr, void *data, size_t size) {
     thisptr->error_message = "Bitstream overflowed during packet parsing";
   }
 
-  if (thisptr->error) {
+  /*if (thisptr->error) {
     printf("%s\n", thisptr->error_message);
     thisptr->error = false;
-  }
+  }*/
 
   allocator_dealloc(&thisptr->allocator, scrap_blk);
   //fprintf(stderr, "packet end:\n");

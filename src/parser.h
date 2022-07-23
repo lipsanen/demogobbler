@@ -13,9 +13,7 @@ struct parser {
   demogobbler_settings m_settings;
   filereader m_reader;
   allocator allocator;
-  int32_t demo_protocol;
-  int32_t net_protocol;
-  demo_version _demo_version;
+  demo_version_data demo_version;
   const char* error_message;
   bool error;
 };

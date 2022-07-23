@@ -14,9 +14,6 @@ TEST(E2E, copy_demos) {
 static void packet_handler(void*, demogobbler_packet*) {
 }
 
-static void packet_net_message_handler(void* client_state, packet_net_message* message) {
-}
-
 TEST(E2E, buffer_stream_test) {
   
   auto demos = get_test_demos();
@@ -43,7 +40,6 @@ TEST(E2E, buffer_stream_test) {
   demogobbler_settings_init(&settings);
 
   settings.packet_handler = packet_handler;
-  settings.packet_net_message_handler = packet_net_message_handler;
 
   demogobbler_parser_init(&parser, &settings);
   demogobbler_parser_parse_buffer(&parser, buffer, length);

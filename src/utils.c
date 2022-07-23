@@ -45,3 +45,9 @@ void* demogobbler_dynamic_array_get(dynamic_array* thisptr, int64_t offset)
     return NULL;
   }
 }
+
+unsigned int highest_bit_index(unsigned int i) {
+  int j;
+  for (j = 31; j >= 0 && (i & (1 << j)) == 0; j--);
+  return j;
+}

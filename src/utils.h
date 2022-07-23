@@ -27,3 +27,5 @@ static inline int64_t demogobbler_dynamic_array_offset(dynamic_array* thisptr, v
 #define dynamic_array_init demogobbler_dynamic_array_init
 #define dynamic_array_get demogobbler_dynamic_array_get
 #define dynamic_array_offset demogobbler_dynamic_array_offset
+
+unsigned int highest_bit_index(unsigned int number);

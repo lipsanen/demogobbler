@@ -41,7 +41,7 @@ void demogobbler_writer_close(writer *thisptr) {
 #define WRITE_PREAMBLE()                                                                           \
   WRITE_BYTE(preamble.type);                                                                       \
   WRITE_INT32(preamble.tick); \
-  if(version_has_slot_in_preamble(thisptr->version)) WRITE_BYTE(preamble.slot);
+  if(thisptr->version.has_slot_in_preamble) WRITE_BYTE(preamble.slot);
 
 #define WRITE_DATA()                                                                               \
   WRITE_INT32(size_bytes);                                                                         \
@@ -80,7 +80,7 @@ void demogobbler_write_header(writer *thisptr, demogobbler_header *message) {
 void demogobbler_write_packet(writer *thisptr, demogobbler_packet *message) {
   WRITE_PREAMBLE();
 
-  for (int i = 0; i < version_cmdinfo_size(thisptr->version); ++i) {
+  for (int i = 0; i < thisptr->version.cmdinfo_size; ++i) {
     demogobbler_cmdinfo *cmdinfo = &message->cmdinfo[i];
     thisptr->output_funcs.write(thisptr->_stream, &cmdinfo->interp_flags, 4);
 

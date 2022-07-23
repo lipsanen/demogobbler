@@ -18,9 +18,13 @@ DECLARE_WRITE_FUNC(stop);
 DECLARE_WRITE_FUNC(synctick);
 DECLARE_WRITE_FUNC(usercmd);
 
-void handle_version(void* w, demo_version version)
+
+void handle_version(void* w, demo_version_data version)
 {
   ((writer*)w)->version = version;
+}
+
+static void packet_net_message_handler(void* client_state, packet_net_message* message) {
 }
 
 void copy_demo_test(const char* filepath)
@@ -49,6 +53,7 @@ void copy_demo_test(const char* filepath)
     settings.synctick_handler = synctick_handler;
     settings.usercmd_handler = usercmd_handler;
     settings.demo_version_handler = handle_version;
+    settings.packet_net_message_handler = packet_net_message_handler;
 
     input_interface input_funcs = {memory_stream_read, memory_stream_seek};
 

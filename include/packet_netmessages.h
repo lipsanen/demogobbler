@@ -20,6 +20,7 @@ extern "C"
   macro(net_stringcmd) \
   macro(net_setconvar) \
   macro(net_signonstate) \
+  macro(net_splitscreen_user) \
   macro(svc_print) \
   macro(svc_serverinfo) \
   macro(svc_sendtable) \
@@ -38,12 +39,14 @@ extern "C"
   macro(svc_entity_message) \
   macro(svc_game_event) \
   macro(svc_packet_entities) \
+  macro(svc_splitscreen) \
   macro(svc_temp_entities) \
   macro(svc_prefetch) \
   macro(svc_menu) \
   macro(svc_game_event_list) \
   macro(svc_get_cvar_value) \
-  macro(net_splitscreen_user)
+  macro(svc_cmd_key_values) \
+  macro(svc_paintmap_data)
 // clang-format on
 
 #define DEMOGOBBLER_DECLARE_ENUMS(x) x,
@@ -95,8 +98,8 @@ struct demogobbler_net_signonstate {
   uint8_t signon_state;
   uint32_t spawn_count;
   uint32_t NE_num_server_players;
-  uint32_t NE_player_network_ids[64]; // maxplayers is 64?
   uint32_t NE_map_name_length;
+  bitstream NE_player_network_ids; 
   const char *NE_map_name;
 };
 
@@ -106,7 +109,9 @@ struct demogobbler_svc_serverinfo {
   bool is_dedicated;
   uint32_t server_count;
   int32_t client_crc;
+  int32_t stringtable_crc; // protocol 24 only
   int16_t max_classes;
+  char map_md5[16];
   int32_t map_crc;
   uint8_t player_count;
   uint8_t max_clients;
@@ -120,6 +125,7 @@ struct demogobbler_svc_serverinfo {
   // L4D specific
   char* mission_name;
   char* mutation_name;
+  bool unk_l4d_bit;
 
   // Network protocol 24
   bool has_replay;
@@ -161,7 +167,7 @@ struct demogobbler_svc_create_stringtable {
 
 struct demogobbler_svc_update_stringtable {
   unsigned int table_id : 5; // ID of the table
-  uint16_t changed_entries;
+  uint32_t changed_entries;
   unsigned int data_length : 20; // Length of the data
   bool exists : 1;
   bitstream data;
@@ -243,6 +249,12 @@ struct demogobbler_svc_packet_entities {
   bitstream data;
 };
 
+struct demogobbler_svc_splitscreen {
+  bool remove_user : 1;
+  unsigned int data_length : 11;
+  bitstream data;
+};
+
 struct demogobbler_svc_temp_entities {
   uint8_t num_entries;
   unsigned int data_length;
@@ -287,7 +299,7 @@ struct demogobbler_svc_cmd_key_values {
   bitstream data;
 };
 
-struct demogobbler_svc_paint_map_data {
+struct demogobbler_svc_paintmap_data {
   uint32_t data_length;
   bitstream data;
 };

@@ -11,13 +11,32 @@ extern "C" {
 #include <stdio.h>
 #include <stdbool.h>
 
-enum demogobbler_demo_version {
-  csgo, l4d, l4d2, portal2, orangebox
+enum demogobbler_game {
+  csgo, l4d, l4d2, portal2, orangebox, steampipe
 };
 
-typedef enum demogobbler_demo_version demo_version;
+struct demogobbler_demo_version {
+  enum demogobbler_game game : 3;
+  unsigned int netmessage_type_bits : 3;
+  unsigned int demo_protocol : 3;
+  unsigned int cmdinfo_size : 3;
+  unsigned int net_file_bits : 2;
+  unsigned int stringtable_flags_bits : 2;
+  unsigned int stringtable_userdata_size_bits : 5;
+  unsigned int svc_user_message_bits : 4;
+  unsigned int svc_prefetch_bits : 4;
+  unsigned int model_index_bits : 4;
+  bool has_slot_in_preamble : 1;
+  bool has_nettick_times : 1;
+  net_message_type* netmessage_array;
+  unsigned int netmessage_count;
+  unsigned int network_protocol;
+  unsigned int l4d_version;
+};
 
-typedef void (*func_demogobbler_handle_demo_version) (void* client_state, demo_version version);
+typedef struct demogobbler_demo_version demo_version_data;
+
+typedef void (*func_demogobbler_handle_demo_version) (void* client_state, demo_version_data version);
 
 struct demogobbler_settings {
   func_demogobbler_handle_consolecmd consolecmd_handler;
@@ -59,7 +78,7 @@ struct demogobbler_writer {
   output_interface output_funcs;
   bool error_set;
   bool _custom_stream;
-  demo_version version;
+  demo_version_data version;
 };
 
 typedef struct demogobbler_writer writer;

@@ -1,76 +1,13 @@
 #include "parser_netmessages.h"
 #include "utils.h"
-#include <math.h>
+#include "version_utils.h"
+#include <string.h>
 
-// clang-format off
-static net_message_type old_protocol_message_list[] =
-{
-  net_nop,
-  net_disconnect,
-  net_file,
-  net_tick,
-  net_stringcmd,
-  net_setconvar,
-  net_signonstate,
-  svc_print,
-  svc_serverinfo,
-  svc_sendtable,
-  svc_classinfo,
-  svc_setpause,
-  svc_create_stringtable,
-  svc_update_stringtable,
-  svc_voice_init,
-  svc_voice_data,
-  svc_invalid, // svc_HLTV
-  svc_sounds,
-  svc_setview,
-  svc_fixangle,
-  svc_crosshair_angle,
-  svc_bsp_decal,
-  svc_invalid, // svc_terrainmod
-  svc_user_message,
-  svc_entity_message,
-  svc_game_event,
-  svc_packet_entities,
-  svc_temp_entities,
-  svc_prefetch,
-  svc_menu,
-  svc_game_event_list,
-  svc_get_cvar_value
-};
-// clang-format on
-
-static net_message_type parser_get_message_type(parser *thisptr, unsigned int value) {
-  demo_version version = thisptr->_demo_version;
-  net_message_type *list;
-  size_t count;
-
-  if (version == orangebox) {
-    list = old_protocol_message_list;
-    count = ARRAYSIZE(old_protocol_message_list);
-  } else {
-    list = NULL;
-    count = 0;
-  }
-
-  if (value >= count || list[value] == svc_invalid) {
-    thisptr->error = true;
-    thisptr->error_message = "Encountered bad net message type.\n";
-    return svc_invalid;
-  } else {
-    return list[value];
-  }
-}
-
-#define TOSS_STRING() bitstream_read_cstring(stream, scrap, 4096);
-#define COPY_STRING2(variable)                                                                     \
+#define TOSS_STRING() bitstream_read_cstring(stream, scrap, 260);
+#define COPY_STRING(variable)                                                                      \
   prev_string = scrap;                                                                             \
-  scrap += bitstream_read_cstring(stream, scrap, 4096);                                            \
+  scrap += bitstream_read_cstring(stream, scrap, 260);                                            \
   variable = prev_string;
-#define COPY_STRING(member)                                                                        \
-  prev_string = scrap;                                                                             \
-  scrap += bitstream_read_cstring(stream, scrap, 4096);                                            \
-  message->message_##member = prev_string;
 #define SEND_MESSAGE()                                                                             \
   if (!stream->overflow && thisptr->m_settings.packet_net_message_handler)                         \
     thisptr->m_settings.packet_net_message_handler(thisptr->parent->client_state, message);
@@ -83,17 +20,19 @@ static void handle_net_nop(parser *thisptr, bitstream *stream, packet_net_messag
 static void handle_net_disconnect(parser *thisptr, bitstream *stream, packet_net_message *message,
                                   char *scrap) {
   char *prev_string = NULL;
-  COPY_STRING(net_disconnect.text);
+  struct demogobbler_net_disconnect *ptr = &message->message_net_disconnect;
+  COPY_STRING(ptr->text);
   SEND_MESSAGE();
 }
 
 static void handle_net_file(parser *thisptr, bitstream *stream, packet_net_message *message,
                             char *scrap) {
   char *prev_string = NULL;
-  message->message_net_file.transfer_id = bitstream_read_uint32(stream);
-  COPY_STRING(net_file.filename);
-  // TODO: Check number of bits here depending on game
-  message->message_net_file.file_requested = bitstream_read_uint(stream, 1);
+  struct demogobbler_net_file *ptr = &message->message_net_file;
+
+  ptr->transfer_id = bitstream_read_uint32(stream);
+  COPY_STRING(ptr->filename);
+  ptr->file_requested = bitstream_read_uint(stream, thisptr->demo_version.net_file_bits);
   SEND_MESSAGE();
 }
 
@@ -101,17 +40,19 @@ static void handle_net_tick(parser *thisptr, bitstream *stream, packet_net_messa
                             char *scrap) {
   const float net_tick_scale_up = 100000.0f;
   message->message_net_tick.tick = bitstream_read_uint32(stream);
-  // TODO: Not in OE
-  message->message_net_tick.host_frame_time = bitstream_read_uint(stream, 16) / net_tick_scale_up;
-  message->message_net_tick.host_frame_time_std_dev =
-      bitstream_read_uint(stream, 16) / net_tick_scale_up;
+  if (thisptr->demo_version.has_nettick_times) {
+    message->message_net_tick.host_frame_time = bitstream_read_uint(stream, 16) / net_tick_scale_up;
+    message->message_net_tick.host_frame_time_std_dev =
+        bitstream_read_uint(stream, 16) / net_tick_scale_up;
+  }
   SEND_MESSAGE();
 }
 
 static void handle_net_stringcmd(parser *thisptr, bitstream *stream, packet_net_message *message,
                                  char *scrap) {
   char *prev_string = NULL;
-  COPY_STRING(net_stringcmd.command);
+  struct demogobbler_net_stringcmd *ptr = &message->message_net_stringcmd;
+  COPY_STRING(ptr->command);
   SEND_MESSAGE();
 }
 
@@ -124,19 +65,26 @@ static void handle_net_setconvar(parser *thisptr, bitstream *stream, packet_net_
   ptr->convars = convars;
   ptr->count = bitstream_read_uint(stream, 8);
   for (size_t i = 0; i < message->message_net_setconvar.count; ++i) {
-    COPY_STRING2(convars[i].name);
-    COPY_STRING2(convars[i].value);
+    COPY_STRING(convars[i].name);
+    COPY_STRING(convars[i].value);
   }
   SEND_MESSAGE();
 }
 
 static void handle_net_signonstate(parser *thisptr, bitstream *stream, packet_net_message *message,
                                    char *scrap) {
-  message->message_net_signonstate.signon_state = bitstream_read_uint(stream, 8);
-  message->message_net_signonstate.spawn_count = bitstream_read_sint32(stream);
+  struct demogobbler_net_signonstate *ptr = &message->message_net_signonstate;
+  ptr->signon_state = bitstream_read_uint(stream, 8);
+  ptr->spawn_count = bitstream_read_sint32(stream);
 
-  // TODO: Add new protocol stuff
-
+  if (thisptr->demo_version.demo_protocol >= 4) {
+    ptr->NE_num_server_players = bitstream_read_uint32(stream);
+    unsigned int length = bitstream_read_uint32(stream) * 8;
+    ptr->NE_player_network_ids = bitstream_fork_and_advance(stream, length);
+    ptr->NE_map_name_length = bitstream_read_uint32(stream);
+    ptr->NE_map_name = scrap;
+    bitstream_read_bits(stream, scrap, ptr->NE_map_name_length * 8);
+  }
   // Uncrafted: GameState.ClientSoundSequence = 1; reset sound sequence number after receiving
   // SignOn sounds
   SEND_MESSAGE();
@@ -145,40 +93,68 @@ static void handle_net_signonstate(parser *thisptr, bitstream *stream, packet_ne
 static void handle_svc_print(parser *thisptr, bitstream *stream, packet_net_message *message,
                              char *scrap) {
   char *prev_string = NULL;
-  COPY_STRING(svc_print.message);
+  struct demogobbler_svc_print *ptr = &message->message_svc_print;
+  COPY_STRING(ptr->message);
   SEND_MESSAGE();
 }
 
 static void handle_svc_serverinfo(parser *thisptr, bitstream *stream, packet_net_message *message,
                                   char *scrap) {
+  struct demogobbler_svc_serverinfo *ptr = &message->message_svc_serverinfo;
   char *prev_string = NULL;
-  message->message_svc_serverinfo.network_protocol = bitstream_read_uint(stream, 16);
-  message->message_svc_serverinfo.server_count = bitstream_read_uint32(stream);
-  message->message_svc_serverinfo.is_hltv = bitstream_read_uint(stream, 1);
-  message->message_svc_serverinfo.is_dedicated = bitstream_read_uint(stream, 1);
-  // TODO: l4d add unknown bit
-  message->message_svc_serverinfo.client_crc = bitstream_read_sint32(stream);
-  // TODO: new demo protocol, string table crc
-  message->message_svc_serverinfo.max_classes = bitstream_read_uint(stream, 16);
-  // TODO: Add MD5 for network protocol 24
-  message->message_svc_serverinfo.map_crc = bitstream_read_uint32(stream);
-  message->message_svc_serverinfo.player_count = bitstream_read_uint(stream, 8);
-  message->message_svc_serverinfo.max_clients = bitstream_read_uint(stream, 8);
-  message->message_svc_serverinfo.tick_interval = bitstream_read_float(stream);
-  message->message_svc_serverinfo.platform = bitstream_read_uint(stream, 8);
-  COPY_STRING(svc_serverinfo.game_dir);
-  COPY_STRING(svc_serverinfo.map_name);
-  COPY_STRING(svc_serverinfo.sky_name);
-  COPY_STRING(svc_serverinfo.host_name);
+  ptr->network_protocol = bitstream_read_uint(stream, 16);
+  ptr->server_count = bitstream_read_uint32(stream);
+  ptr->is_hltv = bitstream_read_uint(stream, 1);
+  ptr->is_dedicated = bitstream_read_uint(stream, 1);
 
-  // TODO: Some shit is missing
+  if (thisptr->demo_version.game == l4d2 && thisptr->demo_version.l4d_version >= 2147)
+    ptr->unk_l4d_bit = bitstream_read_uint(stream, 1);
+  else
+    ptr->unk_l4d_bit = 0;
+
+  ptr->client_crc = bitstream_read_sint32(stream);
+
+  if (thisptr->demo_version.demo_protocol >= 4)
+    ptr->stringtable_crc = bitstream_read_uint32(stream);
+  else
+    ptr->stringtable_crc = 0;
+
+  ptr->max_classes = bitstream_read_uint(stream, 16);
+
+  if (thisptr->demo_version.game == steampipe) {
+    bitstream_read_bits(stream, ptr->map_md5, 16 * 8);
+    ptr->map_crc = 0;
+  } else {
+    memset(ptr->map_md5, 0, sizeof(ptr->map_md5));
+    ptr->map_crc = bitstream_read_uint32(stream);
+  }
+
+  ptr->player_count = bitstream_read_uint(stream, 8);
+  ptr->max_clients = bitstream_read_uint(stream, 8);
+  ptr->tick_interval = bitstream_read_float(stream);
+  ptr->platform = bitstream_read_uint(stream, 8);
+  COPY_STRING(ptr->game_dir);
+  COPY_STRING(ptr->map_name);
+  COPY_STRING(ptr->sky_name);
+  COPY_STRING(ptr->host_name);
+
+  if(thisptr->demo_version.game == l4d2 && thisptr->demo_version.l4d_version >= 2147) {
+    COPY_STRING(ptr->mission_name);
+    COPY_STRING(ptr->mutation_name);
+  }
+
+  if (thisptr->demo_version.game == steampipe)
+    ptr->has_replay = bitstream_read_uint(stream, 1);
+
   SEND_MESSAGE();
 }
 
 static void handle_svc_sendtable(parser *thisptr, bitstream *stream, packet_net_message *message,
                                  char *scrap) {
-  thisptr->error = true;
-  thisptr->error_message = "svc_sendtable parsing is not implemented";
+  struct demogobbler_svc_sendtable *ptr = &message->message_svc_sendtable;
+  ptr->needs_decoder = bitstream_read_uint(stream, 1);
+  ptr->length = bitstream_read_uint(stream, 16);
+  ptr->data = bitstream_fork_and_advance(stream, ptr->length);
   SEND_MESSAGE();
 }
 
@@ -188,7 +164,7 @@ static void handle_svc_classinfo(parser *thisptr, bitstream *stream, packet_net_
   struct demogobbler_svc_classinfo *ptr = &message->message_svc_classinfo;
   ptr->length = bitstream_read_uint(stream, 16);
   ptr->create_on_client = bitstream_read_uint(stream, 1);
-  unsigned int bits = log2(ptr->length) + 1;
+  unsigned int bits = highest_bit_index(ptr->length) + 1;
 
   // Could in theory have 32768 classes so use the stack allocator for this
   blk allocated = allocator_alloc(
@@ -196,10 +172,10 @@ static void handle_svc_classinfo(parser *thisptr, bitstream *stream, packet_net_
   ptr->server_classes = allocated.address;
 
   if (!ptr->create_on_client) {
-    for (unsigned int i = 0; i < ptr->length; ++i) {
+    for (unsigned int i = 0; i < ptr->length && !stream->overflow; ++i) {
       ptr->server_classes[i].class_id = bitstream_read_uint(stream, bits);
-      COPY_STRING2(ptr->server_classes[i].class_name);
-      COPY_STRING2(ptr->server_classes[i].datatable_name);
+      COPY_STRING(ptr->server_classes[i].class_name);
+      COPY_STRING(ptr->server_classes[i].datatable_name);
     }
   }
   SEND_MESSAGE();
@@ -216,14 +192,18 @@ static void handle_svc_create_stringtable(parser *thisptr, bitstream *stream,
                                           packet_net_message *message, char *scrap) {
   struct demogobbler_svc_create_stringtable *ptr = &message->message_svc_create_stringtable;
   char *prev_string = NULL;
-  COPY_STRING2(ptr->name);
+  COPY_STRING(ptr->name);
   unsigned int max_entries = bitstream_read_uint(stream, 16);
-  unsigned int num_entries_bits = log2(max_entries) + 1;
+  unsigned int num_entries_bits = highest_bit_index(max_entries) + 1;
   ptr->max_entries = max_entries;
   ptr->num_entries = bitstream_read_uint(stream, num_entries_bits);
-  // 21 bits for l4d2
-  unsigned int data_length = bitstream_read_uint(stream, 20);
-  ptr->data_length = data_length;
+
+  if (thisptr->demo_version.game == steampipe) {
+    ptr->data_length = bitstream_read_varuint32(stream);
+  } else {
+    ptr->data_length = bitstream_read_uint(stream, thisptr->demo_version.stringtable_userdata_size_bits);
+  }
+  
   bool fixed_size_data = bitstream_read_uint(stream, 1);
 
   if (fixed_size_data) {
@@ -234,8 +214,10 @@ static void handle_svc_create_stringtable(parser *thisptr, bitstream *stream,
     ptr->user_data_size_bits = 0;
   }
 
-  // TODO: Net protocol >= 15 only
-  ptr->flags = bitstream_read_uint(stream, 1); // 2 bits in new demo protocol
+  if (thisptr->demo_version.network_protocol >= 15) {
+    ptr->flags = bitstream_read_uint(stream, thisptr->demo_version.stringtable_flags_bits);
+  }
+
   ptr->data = bitstream_fork_and_advance(stream, ptr->data_length);
 
   SEND_MESSAGE();
@@ -251,7 +233,13 @@ static void handle_svc_update_stringtable(parser *thisptr, bitstream *stream,
   } else {
     ptr->changed_entries = 1;
   }
-  ptr->data_length = bitstream_read_uint(stream, 20);
+
+  if(thisptr->demo_version.network_protocol <= 7) {
+    ptr->data_length = bitstream_read_uint(stream, 16);
+  }
+  else {
+    ptr->data_length = bitstream_read_uint(stream, 20);
+  }
   ptr->data = bitstream_fork_and_advance(stream, ptr->data_length);
   SEND_MESSAGE();
 }
@@ -261,7 +249,7 @@ static void handle_svc_voice_init(parser *thisptr, bitstream *stream, packet_net
   struct demogobbler_svc_voice_init *ptr = &message->message_svc_voice_init;
   char *prev_string = NULL;
 
-  COPY_STRING2(ptr->codec);
+  COPY_STRING(ptr->codec);
   ptr->quality = bitstream_read_uint(stream, 8);
   if (ptr->quality == 255) {
     ptr->unk = bitstream_read_float(stream);
@@ -270,8 +258,11 @@ static void handle_svc_voice_init(parser *thisptr, bitstream *stream, packet_net
 
 static void handle_svc_voice_data(parser *thisptr, bitstream *stream, packet_net_message *message,
                                   char *scrap) {
-  thisptr->error = true;
-  thisptr->error_message = "svc_voice_data parsing is not implemented";
+  struct demogobbler_svc_voice_data *ptr = &message->message_svc_voice_data;
+  ptr->client = bitstream_read_uint(stream, 8);
+  ptr->proximity = bitstream_read_uint(stream, 8);
+  ptr->length = bitstream_read_uint(stream, 16);
+  ptr->data = bitstream_fork_and_advance(stream, ptr->length);
   SEND_MESSAGE();
 }
 
@@ -307,15 +298,23 @@ static void handle_svc_fixangle(parser *thisptr, bitstream *stream, packet_net_m
 
 static void handle_svc_crosshair_angle(parser *thisptr, bitstream *stream,
                                        packet_net_message *message, char *scrap) {
-  thisptr->error = true;
-  thisptr->error_message = "svc_crosshair_angle parsing is not implemented";
+  struct demogobbler_svc_crosshair_angle *ptr = &message->message_svc_crosshair_angle;
+  ptr->angle = bitstream_read_bitvector(stream, 16);
   SEND_MESSAGE();
 }
 
 static void handle_svc_bsp_decal(parser *thisptr, bitstream *stream, packet_net_message *message,
                                  char *scrap) {
-  thisptr->error = true;
-  thisptr->error_message = "svc_bsp_decal parsing is not implemented";
+  struct demogobbler_svc_bsp_decal *ptr = &message->message_svc_bsp_decal;
+  ptr->pos = bitstream_read_coordvector(stream);
+  ptr->decal_texture_index = bitstream_read_uint(stream, 9);
+  ptr->index_bool = bitstream_read_uint(stream, 1);
+
+  if(ptr->index_bool) {
+    ptr->entity_index = bitstream_read_uint(stream, 11);
+    ptr->model_index = bitstream_read_uint(stream, thisptr->demo_version.model_index_bits);
+  }
+  ptr->lowpriority = bitstream_read_uint(stream, 1);
   SEND_MESSAGE();
 }
 
@@ -323,22 +322,27 @@ static void handle_svc_user_message(parser *thisptr, bitstream *stream, packet_n
                                     char *scrap) {
   struct demogobbler_svc_user_message *ptr = &message->message_svc_user_message;
   ptr->msg_type = bitstream_read_uint(stream, 8);
-  ptr->length = bitstream_read_uint(stream, 11); // TODO: 12 for newer engines
+  ptr->length = bitstream_read_uint(stream, thisptr->demo_version.svc_user_message_bits);
   ptr->data = bitstream_fork_and_advance(stream, ptr->length);
   SEND_MESSAGE();
 }
 
 static void handle_svc_entity_message(parser *thisptr, bitstream *stream,
                                       packet_net_message *message, char *scrap) {
-  thisptr->error = true;
-  thisptr->error_message = "svc_entity_message parsing is not implemented";
+  struct demogobbler_svc_entity_message *ptr = &message->message_svc_entity_message;
+  ptr->entity_index = bitstream_read_uint(stream, 11);
+  ptr->class_id = bitstream_read_uint(stream, 9);
+  ptr->length = bitstream_read_uint(stream, 11);
+  ptr->data = bitstream_fork_and_advance(stream, ptr->length);
   SEND_MESSAGE();
 }
 
 static void handle_svc_game_event(parser *thisptr, bitstream *stream, packet_net_message *message,
                                   char *scrap) {
-  thisptr->error = true;
-  thisptr->error_message = "svc_game_event parsing is not implemented";
+  struct demogobbler_svc_game_event *ptr = &message->message_svc_game_event;
+  ptr->length = bitstream_read_uint(stream, 11);
+  ptr->data = bitstream_fork_and_advance(stream, ptr->length);
+
   SEND_MESSAGE();
 }
 
@@ -366,25 +370,34 @@ static void handle_svc_temp_entities(parser *thisptr, bitstream *stream,
                                      packet_net_message *message, char *scrap) {
   struct demogobbler_svc_temp_entities *ptr = &message->message_svc_temp_entities;
   ptr->num_entries = bitstream_read_uint(stream, 8);
-  ptr->data_length = bitstream_read_uint(stream, 17);
-  ptr->data = bitstream_fork_and_advance(stream, ptr->data_length);
 
-  // TODO: data length differences between engine builds
+  if(thisptr->demo_version.game == steampipe) {
+    ptr->data_length = bitstream_read_varuint32(stream);
+  }
+  else if(thisptr->demo_version.game == l4d2) {
+    ptr->data_length = bitstream_read_uint(stream, 18);
+  }
+  else {
+    ptr->data_length = bitstream_read_uint(stream, 17);
+  }
+  ptr->data = bitstream_fork_and_advance(stream, ptr->data_length);
 
   SEND_MESSAGE();
 }
 
 static void handle_svc_prefetch(parser *thisptr, bitstream *stream, packet_net_message *message,
                                 char *scrap) {
-  thisptr->error = true;
-  thisptr->error_message = "svc_prefetch parsing is not implemented";
+  struct demogobbler_svc_prefetch *ptr = &message->message_svc_prefetch;
+  ptr->sound_index = bitstream_read_uint(stream, thisptr->demo_version.svc_prefetch_bits);
   SEND_MESSAGE();
 }
 
 static void handle_svc_menu(parser *thisptr, bitstream *stream, packet_net_message *message,
                             char *scrap) {
-  thisptr->error = true;
-  thisptr->error_message = "svc_menu parsing is not implemented";
+  struct demogobbler_svc_menu *ptr = &message->message_svc_menu;
+  ptr->menu_type = bitstream_read_uint(stream, 16);
+  ptr->data_length = bitstream_read_uint32(stream);
+  ptr->data = bitstream_fork_and_advance(stream, ptr->data_length);
   SEND_MESSAGE();
 }
 
@@ -399,31 +412,71 @@ static void handle_svc_game_event_list(parser *thisptr, bitstream *stream,
 
 static void handle_svc_get_cvar_value(parser *thisptr, bitstream *stream,
                                       packet_net_message *message, char *scrap) {
-  thisptr->error = true;
-  thisptr->error_message = "svc_get_cvar_value parsing is not implemented";
+  char* prev_string = NULL;
+  struct demogobbler_svc_get_cvar_value *ptr = &message->message_svc_get_cvar_value;
+  ptr->cookie = bitstream_read_sint32(stream);
+  COPY_STRING(ptr->cvar_name);
   SEND_MESSAGE();
 }
 
 static void handle_net_splitscreen_user(parser *thisptr, bitstream *stream,
                                         packet_net_message *message, char *scrap) {
-  thisptr->error = true;
-  thisptr->error_message = "net_splitscreen_user parsing is not implemented";
+  message->message_net_splitscreen_user.unk = bitstream_read_uint(stream, 1);
   SEND_MESSAGE();
+}
+
+static void handle_svc_splitscreen(parser *thisptr, bitstream *stream, packet_net_message *message,
+                                   char *scrap) {
+  struct demogobbler_svc_splitscreen *ptr = &message->message_svc_splitscreen;
+  ptr->remove_user = bitstream_read_uint(stream, 1);
+  ptr->data_length = bitstream_read_uint(stream, 11);
+  ptr->data = bitstream_fork_and_advance(stream, ptr->data_length);
+  SEND_MESSAGE();
+}
+
+static void handle_svc_paintmap_data(parser *thisptr, bitstream *stream,
+                                     packet_net_message *message, char *scrap) {
+  thisptr->error = true;
+  thisptr->error_message = "svc_paintmap_data parsing is not implemented";
+  SEND_MESSAGE();
+}
+
+static void handle_svc_cmd_key_values(parser *thisptr, bitstream *stream,
+                                      packet_net_message *message, char *scrap) {
+  struct demogobbler_svc_cmd_key_values *ptr = &message->message_svc_cmd_key_values;
+  ptr->data_length = bitstream_read_uint32(stream);
+  ptr->data = bitstream_fork_and_advance(stream, ptr->data_length * 8);
+  SEND_MESSAGE();
+}
+
+static net_message_type parser_get_message_type(parser *thisptr, unsigned int value) {
+  net_message_type *list = thisptr->demo_version.netmessage_array;
+  size_t count = thisptr->demo_version.netmessage_count;
+
+  if (value >= count || list[value] == svc_invalid) {
+    thisptr->error = true;
+    thisptr->error_message = "Encountered bad net message type.\n";
+    return svc_invalid;
+  } else {
+    return list[value];
+  }
 }
 
 void parse_netmessages(parser *thisptr, void *data, size_t size) {
   bitstream stream = demogobbler_bitstream_create(data, size * 8);
+  //fprintf(stderr, "packet start:\n");
 
   // We allocate a single scrap buffer for the duration of parsing the packet that is as large as
   // the whole packet Should never run out of space as long as we don't make things larger as we
   // read it out
   blk scrap_blk = allocator_alloc(&thisptr->allocator, size);
   char *scrap = scrap_blk.address;
+  unsigned int bits = thisptr->demo_version.netmessage_type_bits;
 
-  while (demogobbler_bitstream_bits_left(&stream) >= 6 && !thisptr->error && !stream.overflow) {
-    unsigned int type_index;
-    demogobbler_bitstream_read_bits(&stream, &type_index, 6);
+  while (demogobbler_bitstream_bits_left(&stream) >= bits && !thisptr->error && !stream.overflow) {
+    unsigned int type_index = bitstream_read_uint(&stream, bits);
     net_message_type type = parser_get_message_type(thisptr, type_index);
+    //fprintf(stderr, "%d : %d\n", type_index, type);
     packet_net_message message;
     message._mtype = type_index;
     message.mtype = type;
@@ -455,4 +508,5 @@ void parse_netmessages(parser *thisptr, void *data, size_t size) {
   }
 
   allocator_dealloc(&thisptr->allocator, scrap_blk);
+  //fprintf(stderr, "packet end:\n");
 }

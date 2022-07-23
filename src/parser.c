@@ -47,8 +47,8 @@ void parser_free(parser *thisptr) { allocator_free(&thisptr->allocator); }
 void _parse_header(parser *thisptr) {
   demogobbler_header header;
   filereader_readdata(thisreader, header.ID, 8);
-  thisptr->demo_protocol = header.demo_protocol = filereader_readint32(thisreader);
-  thisptr->net_protocol = header.net_protocol = filereader_readint32(thisreader);
+  header.demo_protocol = filereader_readint32(thisreader);
+  header.net_protocol = filereader_readint32(thisreader);
 
   filereader_readdata(thisreader, header.server_name, 260);
   filereader_readdata(thisreader, header.client_name, 260);
@@ -63,10 +63,10 @@ void _parse_header(parser *thisptr) {
   header.ID[7] = header.server_name[259] = header.client_name[259] = header.map_name[259] =
       header.game_directory[259] = '\0';
 
-  thisptr->_demo_version = get_demo_version(&header);
+  thisptr->demo_version = get_demo_version(&header);
 
   if (thisptr->m_settings.demo_version_handler) {
-    thisptr->m_settings.demo_version_handler(thisptr->parent->client_state, thisptr->_demo_version);
+    thisptr->m_settings.demo_version_handler(thisptr->parent->client_state, thisptr->demo_version);
   }
 
   if (thisptr->m_settings.header_handler) {
@@ -100,7 +100,7 @@ bool _parse_anymessage(parser *thisptr) {
     _parse_usercmd(thisptr);
     break;
   case 8:
-    if (thisptr->demo_protocol < 4) {
+    if (thisptr->demo_version.demo_protocol < 4) {
       _parse_stringtables(thisptr, 8);
     } else {
       _parse_customdata(thisptr);
@@ -121,7 +121,7 @@ bool _parse_anymessage(parser *thisptr) {
 
 #define PARSE_PREAMBLE()                                                                           \
   message.preamble.tick = filereader_readint32(thisreader);                                        \
-  if (version_has_slot_in_preamble(thisptr->_demo_version))                                        \
+  if (thisptr->demo_version.has_slot_in_preamble)                                        \
     message.preamble.slot = filereader_readbyte(thisreader);
 
 void _parser_mainloop(parser *thisptr) {
@@ -231,7 +231,7 @@ void _parse_packet(parser *thisptr, enum demogobbler_type type) {
   message.preamble.type = type;
   PARSE_PREAMBLE();
 
-  for (int i = 0; i < version_cmdinfo_size(thisptr->_demo_version); ++i) {
+  for (int i = 0; i < thisptr->demo_version.cmdinfo_size; ++i) {
     _parse_cmdinfo(thisptr, &message.cmdinfo[i]);
   }
 

@@ -180,20 +180,22 @@ static void handle_svc_classinfo(parser *thisptr, bitstream *stream, packet_net_
   ptr->create_on_client = bitstream_read_uint(stream, 1);
   unsigned int bits = highest_bit_index(ptr->length) + 1;
 
-  // Could in theory have 32768 classes so use the stack allocator for this
-  blk allocated = allocator_alloc(
-      &thisptr->allocator, ptr->length * sizeof(struct demogobbler_svc_classinfo_serverclass));
-  ptr->server_classes = allocated.address;
-
+  // Could in theory have 32768 classes so use the allocator for this
   if (!ptr->create_on_client) {
+    blk allocated = allocator_alloc(
+      &thisptr->allocator, ptr->length * sizeof(struct demogobbler_svc_classinfo_serverclass));
+    ptr->server_classes = allocated.address;
     for (unsigned int i = 0; i < ptr->length && !stream->overflow; ++i) {
       ptr->server_classes[i].class_id = bitstream_read_uint(stream, bits);
       COPY_STRING(ptr->server_classes[i].class_name);
       COPY_STRING(ptr->server_classes[i].datatable_name);
     }
+    allocator_dealloc(&thisptr->allocator, allocated);
+  }
+  else {
+    ptr->server_classes = NULL;
   }
   SEND_MESSAGE();
-  allocator_dealloc(&thisptr->allocator, allocated);
 }
 
 static void handle_svc_setpause(parser *thisptr, bitstream *stream, packet_net_message *message,

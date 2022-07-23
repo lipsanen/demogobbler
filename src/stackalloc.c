@@ -50,7 +50,7 @@ void stackallocator_dealloc(allocator* thisptr, blk block)
   uint8_t* stack = (uint8_t*)thisptr->stack;
 
   // Check that the allocation came from the stack
-  if(ptr >= stack && ptr <= stack + thisptr->size)
+  if(ptr >= stack && ptr < stack + thisptr->size)
   {
     // Can only free things from the top of the stack
     if(ptr + block.size == stack + thisptr->allocated)

@@ -21,6 +21,7 @@ typedef struct demogobbler_bitstream bitstream;
 bitstream demogobbler_bitstream_create(void *data, size_t size);
 void demogobbler_bitstream_advance(bitstream *thisptr, unsigned int bits);
 bitstream demogobbler_bitstream_fork_and_advance(bitstream *stream, unsigned int bits);
+bool demogobbler_bitstream_read_bit(bitstream* thisptr);
 uint64_t demogobbler_bitstream_read_uint(bitstream *thisptr, unsigned int bits);
 int64_t demogobbler_bitstream_read_sint(bitstream *thisptr, unsigned int bits);
 float demogobbler_bitstream_read_float(bitstream *thisptr);
@@ -36,6 +37,7 @@ int32_t demogobbler_bitstream_read_sint32(bitstream *thisptr);
 #define bitstream_create demogobbler_bitstream_create
 #define bitstream_advance demogobbler_bitstream_advance
 #define bitstream_fork_and_advance demogobbler_bitstream_fork_and_advance
+#define bitstream_read_bit demogobbler_bitstream_read_bit
 #define bitstream_read_uint demogobbler_bitstream_read_uint
 #define bitstream_read_uint32 demogobbler_bitstream_read_uint32
 #define bitstream_read_varuint32 demogobbler_bitstream_read_varuint32

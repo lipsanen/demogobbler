@@ -96,11 +96,21 @@ void demogobbler_bitstream_read_bits(bitstream *thisptr, void *dest, unsigned bi
   thisptr->bitoffset += bits;
 }
 
+bool demogobbler_bitstream_read_bit(bitstream* thisptr) {
+  uint8_t MASKS[] = {0x1, 0x2, 0x4, 0x8, 0x10, 0x20, 0x40, 0x80};
+
+  uint8_t* ptr = (uint8_t*)thisptr->data + thisptr->bitoffset / 8;
+  int offset_alignment = thisptr->bitoffset & 0x7;
+  bitstream_advance(thisptr, 1);
+
+  return *ptr & MASKS[offset_alignment];
+}
+
 uint64_t demogobbler_bitstream_read_uint(bitstream *thisptr, unsigned int bits) {
   //fprintf(stderr, "reading %d : %d, bits %u\n", thisptr->bitoffset, thisptr->bitsize, bits);
   uint64_t value = 0;
   // If we have more than 40 bits left, then grab the next 40 bits
-  if(demogobbler_bitstream_bits_left(thisptr) >= 40 && bits <= 40) {
+  if(demogobbler_bitstream_bits_left(thisptr) >= 40 && bits <= 32) {
     uint8_t* ptr = (uint8_t*)thisptr->data + thisptr->bitoffset / 8;
     value = ((uint64_t)*(ptr + 4)) << 32 | ((uint64_t)*(ptr + 3)) << 24 |
     ((uint64_t)*(ptr + 2)) << 16 | ((uint64_t)*(ptr + 1)) << 8 | ((uint64_t)*ptr);

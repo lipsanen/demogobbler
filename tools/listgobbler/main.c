@@ -23,6 +23,7 @@ int main(int argc, char **argv) {
 
   demogobbler_parser parser;
   demogobbler_settings settings;
+  demogobbler_settings_init(&settings);
   settings.header_handler = print_header;
 
   demogobbler_parser_init(&parser, &settings);

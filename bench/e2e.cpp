@@ -65,6 +65,31 @@ static void testdemos_packet_only(benchmark::State &state) {
   demogobbler_parser_free(&parser);
 }
 
+static void packet_netmessage_handler(void*, demogobbler_packet_net_message* message) {}
+
+static void testdemos_netmessages(benchmark::State &state) {
+  // Benchmarks only the parsing portion
+  demogobbler_parser parser;
+  demogobbler_settings settings;
+  demogobbler_settings_init(&settings);
+
+  settings.packet_net_message_handler = packet_netmessage_handler;
+
+  demogobbler_parser_init(&parser, &settings);
+  auto demos = get_test_demos();
+
+  for (auto _ : state) {
+    for(auto& demo : demos)
+    {
+      demogobbler_parser_parse_file(&parser, demo.c_str());
+    }
+  }
+
+  state.SetItemsProcessed(state.iterations() * demos.size());
+
+  demogobbler_parser_free(&parser);
+}
+
 static void parse_only(demogobbler_parser* parser, const std::vector<std::string>& demos)
 {
   for(auto& file : demos)
@@ -126,3 +151,4 @@ BENCHMARK(test_demos_setup_and_teardown);
 BENCHMARK(testdemos_parse_only);
 BENCHMARK(testdemos_packet_only);
 BENCHMARK(testdemos_header_only);
+BENCHMARK(testdemos_netmessages);

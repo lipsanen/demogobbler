@@ -143,6 +143,7 @@ void _parser_mainloop(parser *thisptr) {
   if (settings->name##_handler)                                                                    \
     should_parse = true;
 
+  NULL_CHECK(packet_net_message);
   NULL_CHECK(consolecmd);
   NULL_CHECK(customdata);
   NULL_CHECK(datatables);

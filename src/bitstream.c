@@ -99,7 +99,19 @@ void demogobbler_bitstream_read_bits(bitstream *thisptr, void *dest, unsigned bi
 uint64_t demogobbler_bitstream_read_uint(bitstream *thisptr, unsigned int bits) {
   //fprintf(stderr, "reading %d : %d, bits %u\n", thisptr->bitoffset, thisptr->bitsize, bits);
   uint64_t value = 0;
-  demogobbler_bitstream_read_bits(thisptr, &value, bits);
+  // If we have more than 40 bits left, then grab the next 40 bits
+  if(demogobbler_bitstream_bits_left(thisptr) >= 40 && bits <= 40) {
+    uint8_t* ptr = (uint8_t*)thisptr->data + thisptr->bitoffset / 8;
+    value = ((uint64_t)*(ptr + 4)) << 32 | ((uint64_t)*(ptr + 3)) << 24 |
+    ((uint64_t)*(ptr + 2)) << 16 | ((uint64_t)*(ptr + 1)) << 8 | ((uint64_t)*ptr);
+    value >>= thisptr->bitoffset & 0x7;
+    value <<= (64 - bits);
+    value >>= (64 - bits);
+    bitstream_advance(thisptr, bits);
+  }
+  else {
+    demogobbler_bitstream_read_bits(thisptr, &value, bits);
+  }
   return value;
 }
 

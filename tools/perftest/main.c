@@ -37,6 +37,10 @@ void print_usercmd(void* a, demogobbler_usercmd* message)
 {
 }
 
+void print_netmessages(void* a, packet_net_message* message)
+{
+}
+
 int main(int argc, char **argv) {
   if (argc <= 2) {
     printf("Usage: perftest <filepath> <iterations>\n");
@@ -48,6 +52,7 @@ int main(int argc, char **argv) {
   {
     demogobbler_parser parser;
     demogobbler_settings settings;
+    demogobbler_settings_init(&settings);
     settings.consolecmd_handler = print_consolecmd;
     settings.customdata_handler = print_customdata;
     settings.datatables_handler = print_datatables;
@@ -57,6 +62,7 @@ int main(int argc, char **argv) {
     settings.stringtables_handler = print_stringtables;
     settings.synctick_handler = print_synctick;
     settings.usercmd_handler = print_usercmd;
+    settings.packet_net_message_handler = print_netmessages;
 
     demogobbler_parser_init(&parser, &settings);
     demogobbler_parser_parse_file(&parser, argv[1]);

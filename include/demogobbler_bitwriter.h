@@ -12,6 +12,8 @@ struct demogobbler_bitwriter {
   uint8_t *ptr;
   int64_t bitsize;
   int64_t bitoffset;
+  bool error;
+  char* error_message;
 };
 
 typedef struct demogobbler_bitwriter bitwriter;

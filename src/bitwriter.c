@@ -3,6 +3,7 @@
 #include <string.h>
 
 void demogobbler_bitwriter_init(bitwriter *thisptr, size_t initial_size_bits) {
+  memset(thisptr, 0, sizeof(*thisptr));
   initial_size_bits += initial_size_bits & 0x7;
   thisptr->ptr = malloc(initial_size_bits / 8);
   thisptr->bitoffset = 0;

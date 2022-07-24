@@ -8,6 +8,7 @@ extern "C"
 #include "demogobbler_bitstream.h"
 #include "demogobbler_bitwriter.h"
 #include "demogobbler_floats.h"
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -56,6 +57,36 @@ enum demogobbler_net_message_type { DEMOGOBBLER_MACRO_ALL_MESSAGES(DEMOGOBBLER_D
 typedef enum demogobbler_net_message_type net_message_type;
 
 #undef DEMOGOBBLER_DECLARE_ENUMS
+
+enum demogobbler_game {
+  csgo, l4d, l4d2, portal2, orangebox, steampipe
+};
+
+// This has to be here since
+// error: ISO C forbids forward references to ‘enum’ types [-Wpedantic]
+struct demogobbler_demo_version {
+  enum demogobbler_game game : 3;
+  unsigned int netmessage_type_bits : 3;
+  unsigned int demo_protocol : 3;
+  unsigned int cmdinfo_size : 3;
+  unsigned int net_file_bits : 2;
+  unsigned int stringtable_flags_bits : 2;
+  unsigned int stringtable_userdata_size_bits : 5;
+  unsigned int svc_user_message_bits : 4;
+  unsigned int svc_prefetch_bits : 4;
+  unsigned int model_index_bits : 4;
+  bool has_slot_in_preamble : 1;
+  bool has_nettick_times : 1;
+  bool l4d2_version_finalized : 1;
+  net_message_type* netmessage_array;
+  unsigned int netmessage_count;
+  unsigned int network_protocol;
+  unsigned int l4d2_version;
+};
+
+typedef struct demogobbler_demo_version demo_version_data;
+
+typedef void (*func_demogobbler_handle_demo_version) (void* client_state, demo_version_data version);
 
 struct demogobbler_net_nop {
   uint8_t _empty;
@@ -319,7 +350,7 @@ typedef struct demogobbler_packet_net_message packet_net_message;
 
 typedef void (*func_demogobbler_handle_packet_net_message)(void* client_state, packet_net_message* message);
 
-void demogobbler_write_message_to_array(bitwriter *writer, packet_net_message* message);
+void demogobbler_write_netmessage(bitwriter *writer, demo_version_data* version, packet_net_message* message);
 
 #undef DECLARE_MESSAGE_IN_UNION
 

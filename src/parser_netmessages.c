@@ -18,10 +18,7 @@ static void handle_net_nop(parser *thisptr, bitstream *stream, packet_net_messag
 }
 
 static void write_net_nop(bitwriter *writer, demo_version_data *version,
-                          packet_net_message *message) {
-  writer->error = true;
-  writer->error_message = "Writing not implemented for net_nop";
-}
+                          packet_net_message *message) {}
 
 static void handle_net_disconnect(parser *thisptr, bitstream *stream, packet_net_message *message,
                                   char *scrap) {
@@ -50,26 +47,32 @@ static void handle_net_file(parser *thisptr, bitstream *stream, packet_net_messa
 
 static void write_net_file(bitwriter *writer, demo_version_data *version,
                            packet_net_message *message) {
-  writer->error = true;
-  writer->error_message = "Writing not implemented for net_file";
+  struct demogobbler_net_file *ptr = &message->message_net_file;
+  bitwriter_write_uint32(writer, ptr->transfer_id);
+  bitwriter_write_cstring(writer, ptr->filename);
+  bitwriter_write_uint(writer, ptr->file_requested, version->net_file_bits);
 }
 
 static void handle_net_tick(parser *thisptr, bitstream *stream, packet_net_message *message,
                             char *scrap) {
-  const float net_tick_scale_up = 100000.0f;
-  message->message_net_tick.tick = bitstream_read_uint32(stream);
+  struct demogobbler_net_tick *ptr = &message->message_net_tick;
+  ptr->tick = bitstream_read_uint32(stream);
   if (thisptr->demo_version.has_nettick_times) {
-    message->message_net_tick.host_frame_time = bitstream_read_uint(stream, 16) / net_tick_scale_up;
-    message->message_net_tick.host_frame_time_std_dev =
-        bitstream_read_uint(stream, 16) / net_tick_scale_up;
+    ptr->host_frame_time = bitstream_read_uint(stream, 16);
+    ptr->host_frame_time_std_dev = bitstream_read_uint(stream, 16);
   }
   SEND_MESSAGE();
 }
 
 static void write_net_tick(bitwriter *writer, demo_version_data *version,
                            packet_net_message *message) {
-  writer->error = true;
-  writer->error_message = "Writing not implemented for net_tick";
+  struct demogobbler_net_tick *ptr = &message->message_net_tick;
+  bitwriter_write_uint32(writer, ptr->tick);
+
+  if (version->has_nettick_times) {
+    bitwriter_write_uint(writer, ptr->host_frame_time, 16);
+    bitwriter_write_uint(writer, ptr->host_frame_time_std_dev, 16);
+  }
 }
 
 static void handle_net_stringcmd(parser *thisptr, bitstream *stream, packet_net_message *message,
@@ -82,8 +85,8 @@ static void handle_net_stringcmd(parser *thisptr, bitstream *stream, packet_net_
 
 static void write_net_stringcmd(bitwriter *writer, demo_version_data *version,
                                 packet_net_message *message) {
-  writer->error = true;
-  writer->error_message = "Writing not implemented for net_stringcmd";
+  struct demogobbler_net_stringcmd *ptr = &message->message_net_stringcmd;
+  bitwriter_write_cstring(writer, ptr->command);
 }
 
 static void handle_net_setconvar(parser *thisptr, bitstream *stream, packet_net_message *message,
@@ -103,8 +106,13 @@ static void handle_net_setconvar(parser *thisptr, bitstream *stream, packet_net_
 
 static void write_net_setconvar(bitwriter *writer, demo_version_data *version,
                                 packet_net_message *message) {
-  writer->error = true;
-  writer->error_message = "Writing not implemented for net_setconvar";
+  struct demogobbler_net_setconvar *ptr = &message->message_net_setconvar;
+  bitwriter_write_uint(writer, ptr->count, 8);
+
+  for (size_t i = 0; i < ptr->count; ++i) {
+    bitwriter_write_cstring(writer, ptr->convars[i].name);
+    bitwriter_write_cstring(writer, ptr->convars[i].value);
+  }
 }
 
 static void handle_net_signonstate(parser *thisptr, bitstream *stream, packet_net_message *message,
@@ -128,8 +136,19 @@ static void handle_net_signonstate(parser *thisptr, bitstream *stream, packet_ne
 
 static void write_net_signonstate(bitwriter *writer, demo_version_data *version,
                                   packet_net_message *message) {
-  writer->error = true;
-  writer->error_message = "Writing not implemented for net_signonstate";
+  struct demogobbler_net_signonstate *ptr = &message->message_net_signonstate;
+  bitwriter_write_uint(writer, ptr->signon_state, 8);
+  bitwriter_write_uint32(writer, ptr->spawn_count);
+
+  if (version->demo_protocol >= 4) {
+    bitwriter_write_uint32(writer, ptr->NE_num_server_players);
+    uint32_t length =
+        (ptr->NE_player_network_ids.bitsize - ptr->NE_player_network_ids.bitoffset) / 8;
+    bitwriter_write_uint32(writer, length);
+    bitwriter_write_bitstream(writer, &ptr->NE_player_network_ids);
+    bitwriter_write_uint32(writer, ptr->NE_map_name_length);
+    bitwriter_write_bits(writer, ptr->NE_map_name, ptr->NE_map_name_length * 8);
+  }
 }
 
 static void handle_svc_print(parser *thisptr, bitstream *stream, packet_net_message *message,
@@ -155,8 +174,8 @@ static void handle_svc_print(parser *thisptr, bitstream *stream, packet_net_mess
 
 static void write_svc_print(bitwriter *writer, demo_version_data *version,
                             packet_net_message *message) {
-  writer->error = true;
-  writer->error_message = "Writing not implemented for svc_print";
+  struct demogobbler_svc_print *ptr = &message->message_svc_print;
+  bitwriter_write_cstring(writer, ptr->message);
 }
 
 static void handle_svc_serverinfo(parser *thisptr, bitstream *stream, packet_net_message *message,
@@ -212,8 +231,46 @@ static void handle_svc_serverinfo(parser *thisptr, bitstream *stream, packet_net
 
 static void write_svc_serverinfo(bitwriter *writer, demo_version_data *version,
                                  packet_net_message *message) {
-  writer->error = true;
-  writer->error_message = "Writing not implemented for svc_serverinfo";
+  struct demogobbler_svc_serverinfo *ptr = &message->message_svc_serverinfo;
+
+  bitwriter_write_uint(writer, ptr->network_protocol, 16);
+  bitwriter_write_uint32(writer, ptr->server_count);
+  bitwriter_write_bit(writer, ptr->is_hltv);
+  bitwriter_write_bit(writer, ptr->is_dedicated);
+
+  if (version->game == l4d2 && version->l4d2_version >= 2147)
+    bitwriter_write_bit(writer, ptr->unk_l4d_bit);
+
+  bitwriter_write_sint32(writer, ptr->client_crc);
+
+  if (version->demo_protocol >= 4)
+    bitwriter_write_uint32(writer, ptr->stringtable_crc);
+
+  bitwriter_write_uint(writer, ptr->max_classes, 16);
+
+  if (version->game == steampipe) {
+    bitwriter_write_bits(writer, ptr->map_md5, 16 * 8);
+  } else {
+    bitwriter_write_uint32(writer, ptr->map_crc);
+  }
+
+  bitwriter_write_uint(writer, ptr->player_count, 8);
+  bitwriter_write_uint(writer, ptr->max_clients, 8);
+  bitwriter_write_float(writer, ptr->tick_interval);
+  bitwriter_write_uint(writer, ptr->platform, 8);
+
+  bitwriter_write_cstring(writer, ptr->game_dir);
+  bitwriter_write_cstring(writer, ptr->map_name);
+  bitwriter_write_cstring(writer, ptr->sky_name);
+  bitwriter_write_cstring(writer, ptr->host_name);
+
+  if (version->game == l4d2 && version->l4d2_version >= 2147) {
+    bitwriter_write_cstring(writer, ptr->mission_name);
+    bitwriter_write_cstring(writer, ptr->mutation_name);
+  }
+
+  if (version->game == steampipe)
+    bitwriter_write_bit(writer, ptr->has_replay);
 }
 
 static void handle_svc_sendtable(parser *thisptr, bitstream *stream, packet_net_message *message,
@@ -258,8 +315,18 @@ static void handle_svc_classinfo(parser *thisptr, bitstream *stream, packet_net_
 
 static void write_svc_classinfo(bitwriter *writer, demo_version_data *version,
                                 packet_net_message *message) {
-  writer->error = true;
-  writer->error_message = "Writing not implemented for svc_classinfo";
+  struct demogobbler_svc_classinfo *ptr = &message->message_svc_classinfo;
+  bitwriter_write_uint(writer, ptr->length, 16);
+  bitwriter_write_bit(writer, ptr->create_on_client);
+  unsigned int bits = highest_bit_index(ptr->length) + 1;
+
+  if (!ptr->create_on_client) {
+    for (unsigned int i = 0; i < ptr->length; ++i) {
+      bitwriter_write_uint(writer, ptr->server_classes[i].class_id, bits);
+      bitwriter_write_cstring(writer, ptr->server_classes[i].class_name);
+      bitwriter_write_cstring(writer, ptr->server_classes[i].datatable_name);
+    }
+  }
 }
 
 static void handle_svc_setpause(parser *thisptr, bitstream *stream, packet_net_message *message,
@@ -270,8 +337,8 @@ static void handle_svc_setpause(parser *thisptr, bitstream *stream, packet_net_m
 
 static void write_svc_setpause(bitwriter *writer, demo_version_data *version,
                                packet_net_message *message) {
-  writer->error = true;
-  writer->error_message = "Writing not implemented for svc_setpause";
+  struct demogobbler_svc_setpause *ptr = &message->message_svc_setpause;
+  bitwriter_write_bit(writer, ptr->paused);
 }
 
 static void handle_svc_create_stringtable(parser *thisptr, bitstream *stream,
@@ -279,9 +346,8 @@ static void handle_svc_create_stringtable(parser *thisptr, bitstream *stream,
   struct demogobbler_svc_create_stringtable *ptr = &message->message_svc_create_stringtable;
   char *prev_string = NULL;
   COPY_STRING(ptr->name);
-  unsigned int max_entries = bitstream_read_uint(stream, 16);
-  unsigned int num_entries_bits = highest_bit_index(max_entries) + 1;
-  ptr->max_entries = max_entries;
+  ptr->max_entries = bitstream_read_uint(stream, 16);
+  unsigned int num_entries_bits = highest_bit_index(ptr->max_entries) + 1;
   ptr->num_entries = bitstream_read_uint(stream, num_entries_bits);
 
   if (thisptr->demo_version.game == steampipe) {
@@ -291,18 +357,20 @@ static void handle_svc_create_stringtable(parser *thisptr, bitstream *stream,
         bitstream_read_uint(stream, thisptr->demo_version.stringtable_userdata_size_bits);
   }
 
-  bool fixed_size_data = bitstream_read_bit(stream);
+  ptr->user_data_fixed_size = bitstream_read_bit(stream);
 
-  if (fixed_size_data) {
-    ptr->user_data_fixed_size = bitstream_read_uint(stream, 12);
+  if (ptr->user_data_fixed_size) {
+    ptr->user_data_size = bitstream_read_uint(stream, 12);
     ptr->user_data_size_bits = bitstream_read_uint(stream, 4);
   } else {
-    ptr->user_data_fixed_size = 0;
+    ptr->user_data_size = 0;
     ptr->user_data_size_bits = 0;
   }
 
   if (thisptr->demo_version.network_protocol >= 15) {
     ptr->flags = bitstream_read_uint(stream, thisptr->demo_version.stringtable_flags_bits);
+  } else {
+    ptr->flags = 0;
   }
 
   ptr->data = bitstream_fork_and_advance(stream, ptr->data_length);
@@ -312,8 +380,30 @@ static void handle_svc_create_stringtable(parser *thisptr, bitstream *stream,
 
 static void write_svc_create_stringtable(bitwriter *writer, demo_version_data *version,
                                          packet_net_message *message) {
-  writer->error = true;
-  writer->error_message = "Writing not implemented for svc_create_stringtable";
+  struct demogobbler_svc_create_stringtable *ptr = &message->message_svc_create_stringtable;
+  bitwriter_write_cstring(writer, ptr->name);
+  bitwriter_write_uint(writer, ptr->max_entries, 16);
+  unsigned int num_entries_bits = highest_bit_index(ptr->max_entries) + 1;
+  bitwriter_write_uint(writer, ptr->num_entries, num_entries_bits);
+
+  if (version->game == steampipe) {
+    bitwriter_write_varuint32(writer, ptr->data_length);
+  } else {
+    bitwriter_write_uint(writer, ptr->data_length, version->stringtable_userdata_size_bits);
+  }
+
+  bitwriter_write_bit(writer, ptr->user_data_fixed_size);
+
+  if (ptr->user_data_fixed_size) {
+    bitwriter_write_uint(writer, ptr->user_data_size, 12);
+    bitwriter_write_uint(writer, ptr->user_data_size_bits, 4);
+  }
+
+  if (version->network_protocol >= 15) {
+    bitwriter_write_uint(writer, ptr->flags, version->stringtable_flags_bits);
+  }
+
+  bitwriter_write_bitstream(writer, &ptr->data);
 }
 
 static void handle_svc_update_stringtable(parser *thisptr, bitstream *stream,
@@ -338,8 +428,21 @@ static void handle_svc_update_stringtable(parser *thisptr, bitstream *stream,
 
 static void write_svc_update_stringtable(bitwriter *writer, demo_version_data *version,
                                          packet_net_message *message) {
-  writer->error = true;
-  writer->error_message = "Writing not implemented for svc_update_stringtable";
+  struct demogobbler_svc_update_stringtable *ptr = &message->message_svc_update_stringtable;
+  bitwriter_write_uint(writer, ptr->table_id, 5);
+  bitwriter_write_bit(writer, ptr->exists);
+
+  if (ptr->exists) {
+    bitwriter_write_uint(writer, ptr->changed_entries, 16);
+  }
+
+  if (version->network_protocol <= 7) {
+    bitwriter_write_uint(writer, ptr->data_length, 16);
+  } else {
+    bitwriter_write_uint(writer, ptr->data_length, 20);
+  }
+
+  bitwriter_write_bitstream(writer, &ptr->data);
 }
 
 static void handle_svc_voice_init(parser *thisptr, bitstream *stream, packet_net_message *message,
@@ -360,12 +463,22 @@ static void handle_svc_voice_init(parser *thisptr, bitstream *stream, packet_net
     }
     // Not available on other versions
   }
+  SEND_MESSAGE();
 }
 
 static void write_svc_voice_init(bitwriter *writer, demo_version_data *version,
                                  packet_net_message *message) {
-  writer->error = true;
-  writer->error_message = "Writing not implemented for svc_voice_init";
+  struct demogobbler_svc_voice_init *ptr = &message->message_svc_voice_init;
+  bitwriter_write_cstring(writer, ptr->codec);
+  bitwriter_write_uint(writer, ptr->quality, 8);
+
+  if (ptr->quality == 255) {
+    if (version->game == steampipe) {
+      bitwriter_write_uint(writer, ptr->unk, 16);
+    } else if (version->demo_protocol == 4) {
+      bitwriter_write_float(writer, ptr->unk);
+    }
+  }
 }
 
 static void handle_svc_voice_data(parser *thisptr, bitstream *stream, packet_net_message *message,
@@ -401,8 +514,16 @@ static void handle_svc_sounds(parser *thisptr, bitstream *stream, packet_net_mes
 
 static void write_svc_sounds(bitwriter *writer, demo_version_data *version,
                              packet_net_message *message) {
-  writer->error = true;
-  writer->error_message = "Writing not implemented for svc_sounds";
+  struct demogobbler_svc_sounds *ptr = &message->message_svc_sounds;
+  bitwriter_write_bit(writer, ptr->reliable_sound);
+  if (ptr->reliable_sound) {
+    bitwriter_write_uint(writer, ptr->length, 8);
+  } else {
+    bitwriter_write_uint(writer, ptr->sounds, 8);
+    bitwriter_write_uint(writer, ptr->length, 16);
+  }
+
+  bitwriter_write_bitstream(writer, &ptr->data);
 }
 
 static void handle_svc_setview(parser *thisptr, bitstream *stream, packet_net_message *message,
@@ -414,8 +535,8 @@ static void handle_svc_setview(parser *thisptr, bitstream *stream, packet_net_me
 
 static void write_svc_setview(bitwriter *writer, demo_version_data *version,
                               packet_net_message *message) {
-  writer->error = true;
-  writer->error_message = "Writing not implemented for svc_setview";
+  struct demogobbler_svc_setview *ptr = &message->message_svc_setview;
+  bitwriter_write_uint(writer, ptr->entity_index, 11);
 }
 
 static void handle_svc_fixangle(parser *thisptr, bitstream *stream, packet_net_message *message,
@@ -428,8 +549,9 @@ static void handle_svc_fixangle(parser *thisptr, bitstream *stream, packet_net_m
 
 static void write_svc_fixangle(bitwriter *writer, demo_version_data *version,
                                packet_net_message *message) {
-  writer->error = true;
-  writer->error_message = "Writing not implemented for svc_fixangle";
+  struct demogobbler_svc_fixangle *ptr = &message->message_svc_fixangle;
+  bitwriter_write_bit(writer, ptr->relative);
+  bitwriter_write_bitvector(writer, ptr->angle);
 }
 
 static void handle_svc_crosshair_angle(parser *thisptr, bitstream *stream,
@@ -441,8 +563,8 @@ static void handle_svc_crosshair_angle(parser *thisptr, bitstream *stream,
 
 static void write_svc_crosshair_angle(bitwriter *writer, demo_version_data *version,
                                       packet_net_message *message) {
-  writer->error = true;
-  writer->error_message = "Writing not implemented for svc_crosshair_angle";
+  struct demogobbler_svc_crosshair_angle *ptr = &message->message_svc_crosshair_angle;
+  bitwriter_write_bitvector(writer, ptr->angle);
 }
 
 static void handle_svc_bsp_decal(parser *thisptr, bitstream *stream, packet_net_message *message,
@@ -462,8 +584,17 @@ static void handle_svc_bsp_decal(parser *thisptr, bitstream *stream, packet_net_
 
 static void write_svc_bsp_decal(bitwriter *writer, demo_version_data *version,
                                 packet_net_message *message) {
-  writer->error = true;
-  writer->error_message = "Writing not implemented for svc_bsp_decal";
+  struct demogobbler_svc_bsp_decal *ptr = &message->message_svc_bsp_decal;
+  bitwriter_write_coordvector(writer, ptr->pos);
+  bitwriter_write_uint(writer, ptr->decal_texture_index, 9);
+  bitwriter_write_bit(writer, ptr->index_bool);
+
+  if (ptr->index_bool) {
+    bitwriter_write_uint(writer, ptr->entity_index, 11);
+    bitwriter_write_uint(writer, ptr->model_index, version->model_index_bits);
+  }
+
+  bitwriter_write_bit(writer, ptr->lowpriority);
 }
 
 static void handle_svc_user_message(parser *thisptr, bitstream *stream, packet_net_message *message,
@@ -477,8 +608,10 @@ static void handle_svc_user_message(parser *thisptr, bitstream *stream, packet_n
 
 static void write_svc_user_message(bitwriter *writer, demo_version_data *version,
                                    packet_net_message *message) {
-  writer->error = true;
-  writer->error_message = "Writing not implemented for svc_user_message";
+  struct demogobbler_svc_user_message *ptr = &message->message_svc_user_message;
+  bitwriter_write_uint(writer, ptr->msg_type, 8);
+  bitwriter_write_uint(writer, ptr->length, version->svc_user_message_bits);
+  bitwriter_write_bitstream(writer, &ptr->data);
 }
 
 static void handle_svc_entity_message(parser *thisptr, bitstream *stream,
@@ -493,8 +626,11 @@ static void handle_svc_entity_message(parser *thisptr, bitstream *stream,
 
 static void write_svc_entity_message(bitwriter *writer, demo_version_data *version,
                                      packet_net_message *message) {
-  writer->error = true;
-  writer->error_message = "Writing not implemented for svc_entity_message";
+  struct demogobbler_svc_entity_message *ptr = &message->message_svc_entity_message;
+  bitwriter_write_uint(writer, ptr->entity_index, 11);
+  bitwriter_write_uint(writer, ptr->class_id, 9);
+  bitwriter_write_uint(writer, ptr->length, 11);
+  bitwriter_write_bitstream(writer, &ptr->data);
 }
 
 static void handle_svc_game_event(parser *thisptr, bitstream *stream, packet_net_message *message,
@@ -508,8 +644,9 @@ static void handle_svc_game_event(parser *thisptr, bitstream *stream, packet_net
 
 static void write_svc_game_event(bitwriter *writer, demo_version_data *version,
                                  packet_net_message *message) {
-  writer->error = true;
-  writer->error_message = "Writing not implemented for svc_game_event";
+  struct demogobbler_svc_game_event *ptr = &message->message_svc_game_event;
+  bitwriter_write_uint(writer, ptr->length, 11);
+  bitwriter_write_bitstream(writer, &ptr->data);
 }
 
 static void handle_svc_packet_entities(parser *thisptr, bitstream *stream,
@@ -534,8 +671,18 @@ static void handle_svc_packet_entities(parser *thisptr, bitstream *stream,
 
 static void write_svc_packet_entities(bitwriter *writer, demo_version_data *version,
                                       packet_net_message *message) {
-  writer->error = true;
-  writer->error_message = "Writing not implemented for svc_packet_entities";
+  struct demogobbler_svc_packet_entities *ptr = &message->message_svc_packet_entities;
+  bitwriter_write_uint(writer, ptr->max_entries, 11);
+  bitwriter_write_bit(writer, ptr->is_delta);
+  if (ptr->is_delta) {
+    bitwriter_write_sint32(writer, ptr->delta_from);
+  }
+
+  bitwriter_write_bit(writer, ptr->base_line);
+  bitwriter_write_uint(writer, ptr->updated_entries, 11);
+  bitwriter_write_uint(writer, ptr->data_length, 20);
+  bitwriter_write_bit(writer, ptr->update_baseline);
+  bitwriter_write_bitstream(writer, &ptr->data);
 }
 
 static void handle_svc_temp_entities(parser *thisptr, bitstream *stream,
@@ -557,8 +704,17 @@ static void handle_svc_temp_entities(parser *thisptr, bitstream *stream,
 
 static void write_svc_temp_entities(bitwriter *writer, demo_version_data *version,
                                     packet_net_message *message) {
-  writer->error = true;
-  writer->error_message = "Writing not implemented for svc_temp_entities";
+  struct demogobbler_svc_temp_entities *ptr = &message->message_svc_temp_entities;
+  bitwriter_write_uint(writer, ptr->num_entries, 8);
+
+  if (version->game == steampipe) {
+    bitwriter_write_varuint32(writer, ptr->data_length);
+  } else if (version->game == l4d2) {
+    bitwriter_write_uint(writer, ptr->data_length, 18);
+  } else {
+    bitwriter_write_uint(writer, ptr->data_length, 17);
+  }
+  bitwriter_write_bitstream(writer, &ptr->data);
 }
 
 static void handle_svc_prefetch(parser *thisptr, bitstream *stream, packet_net_message *message,
@@ -570,8 +726,8 @@ static void handle_svc_prefetch(parser *thisptr, bitstream *stream, packet_net_m
 
 static void write_svc_prefetch(bitwriter *writer, demo_version_data *version,
                                packet_net_message *message) {
-  writer->error = true;
-  writer->error_message = "Writing not implemented for svc_prefetch";
+  struct demogobbler_svc_prefetch *ptr = &message->message_svc_prefetch;
+  bitwriter_write_uint(writer, ptr->sound_index, version->svc_prefetch_bits);
 }
 
 static void handle_svc_menu(parser *thisptr, bitstream *stream, packet_net_message *message,
@@ -600,8 +756,10 @@ static void handle_svc_game_event_list(parser *thisptr, bitstream *stream,
 
 static void write_svc_game_event_list(bitwriter *writer, demo_version_data *version,
                                       packet_net_message *message) {
-  writer->error = true;
-  writer->error_message = "Writing not implemented for svc_game_event_list";
+  struct demogobbler_svc_game_event_list *ptr = &message->message_svc_game_event_list;
+  bitwriter_write_uint(writer, ptr->events, 9);
+  bitwriter_write_uint(writer, ptr->length, 20);
+  bitwriter_write_bitstream(writer, &ptr->data);
 }
 
 static void handle_svc_get_cvar_value(parser *thisptr, bitstream *stream,
@@ -669,8 +827,9 @@ static void handle_svc_cmd_key_values(parser *thisptr, bitstream *stream,
 
 static void write_svc_cmd_key_values(bitwriter *writer, demo_version_data *version,
                                      packet_net_message *message) {
-  writer->error = true;
-  writer->error_message = "Writing not implemented for svc_cmd_key_values";
+  struct demogobbler_svc_cmd_key_values *ptr = &message->message_svc_cmd_key_values;
+  bitwriter_write_uint32(writer, ptr->data_length);
+  bitwriter_write_bitstream(writer, &ptr->data);
 }
 
 static net_message_type version_get_message_type(parser *thisptr, unsigned int value) {
@@ -686,8 +845,8 @@ static net_message_type version_get_message_type(parser *thisptr, unsigned int v
   }
 }
 
-void demogobbler_write_netmessage(bitwriter *writer, demo_version_data *version,
-                                  packet_net_message *message) {
+void demogobbler_bitwriter_write_netmessage(bitwriter *writer, demo_version_data *version,
+                                            packet_net_message *message) {
   int type_out = -1;
   // Don't use the type index directly, we want to support writing to different protocols than the
   // demo was read

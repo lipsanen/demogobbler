@@ -43,7 +43,7 @@ void demogobbler_bitwriter_write_bit(bitwriter *thisptr, bool value) {
   thisptr->bitoffset += 1;
 }
 
-void demogobbler_bitwriter_write_bits(bitwriter *thisptr, void *_src, unsigned int bits) {
+void demogobbler_bitwriter_write_bits(bitwriter *thisptr, const void *_src, unsigned int bits) {
   CHECK_SIZE();
   unsigned int src_offset = 0;
   while (bits > 0) {
@@ -51,7 +51,7 @@ void demogobbler_bitwriter_write_bits(bitwriter *thisptr, void *_src, unsigned i
     int src_byte_offset = src_offset & 0x7;
     int bits_written = MIN(8 - dest_byte_offset, 8 - src_byte_offset);
     bits_written = MIN(bits, bits_written);
-    uint8_t *src = (uint8_t *)_src + src_offset / 8;
+    const uint8_t *src = (uint8_t *)_src + src_offset / 8;
     uint8_t *dest = thisptr->ptr + thisptr->bitoffset / 8;
 
     // Get rid of the extra bits at the end of the destination value

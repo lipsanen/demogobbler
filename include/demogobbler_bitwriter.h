@@ -22,7 +22,7 @@ void demogobbler_bitwriter_init(bitwriter *thisptr, size_t initial_size_bits);
 int64_t demogobbler_bitwriter_get_available_bits(bitwriter *thisptr);
 void demogobbler_bitwriter_write_bit(bitwriter *thisptr, bool value);
 void demogobbler_bitwriter_write_bitcoord(bitwriter *thisptr, bitcoord value);
-void demogobbler_bitwriter_write_bits(bitwriter *thisptr, void *src, unsigned int bits);
+void demogobbler_bitwriter_write_bits(bitwriter *thisptr, const void *src, unsigned int bits);
 void demogobbler_bitwriter_write_bitstream(bitwriter *thisptr, bitstream *stream);
 void demogobbler_bitwriter_write_bitvector(bitwriter *thisptr, bitangle_vector value);
 void demogobbler_bitwriter_write_coordvector(bitwriter *thisptr, bitcoord_vector value);

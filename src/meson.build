@@ -3,7 +3,7 @@ goblin_lib_files = ['bitstream.c', 'bitwriter.c', 'filereader.c', 'freddie.c', '
  'parser_netmessages.c', 'stackalloc.c', 'streams.c', 'utils.c', 'version_utils.c', 'writer.c']
 
 if current_c_compiler == 'gcc' or current_c_compiler == 'clang'
-  goblin_extra_args = ['-fno-strict-aliasing', '-pedantic-errors', '-ggdb']
+  goblin_extra_args = ['-fno-strict-aliasing', '-fwrapv', '-pedantic-errors', '-ggdb']
 else
   goblin_extra_args = []
 endif

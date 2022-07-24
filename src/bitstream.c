@@ -62,7 +62,9 @@ void demogobbler_bitstream_read_bits(bitstream *thisptr, void *dest, unsigned bi
   memcpy(dest, data, bytes);
 
   if (src_misalignment != 0) {
-    if(bits_left <= 8) {
+    unsigned int total_bytes = thisptr->bitsize / 8 + 1;
+    unsigned int current_byte = thisptr->bitoffset / 8;
+    if(current_byte == total_bytes) {
       // If less than 8 bits left we can just shift the bits into place
       // Accessing the next byte would be illegal
       for (size_t i = 0; i < bytes; ++i) {
@@ -77,8 +79,8 @@ void demogobbler_bitstream_read_bits(bitstream *thisptr, void *dest, unsigned bi
       // everything into correct places
 
       for (size_t i = 0; i < bytes; ++i) {
-        uint8_t *src = data + 1 + i;
-        uint8_t incoming = (*src << (8 - src_misalignment));
+        uint8_t *src2 = data + 1 + i;
+        uint8_t incoming = (*src2 << (8 - src_misalignment));
         uint8_t *current_byte = (uint8_t *)dest + i;
         *current_byte >>= src_misalignment;
         *current_byte = *current_byte | incoming;

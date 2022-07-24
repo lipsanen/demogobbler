@@ -108,8 +108,8 @@ struct demogobbler_net_splitscreen_user {
 
 struct demogobbler_net_tick {
   int32_t tick;
-  float host_frame_time;
-  float host_frame_time_std_dev;
+  uint16_t host_frame_time;
+  uint16_t host_frame_time_std_dev;
 };
 
 struct demogobbler_net_stringcmd {
@@ -350,7 +350,7 @@ typedef struct demogobbler_packet_net_message packet_net_message;
 
 typedef void (*func_demogobbler_handle_packet_net_message)(void* client_state, packet_net_message* message);
 
-void demogobbler_write_netmessage(bitwriter *writer, demo_version_data* version, packet_net_message* message);
+void demogobbler_bitwriter_write_netmessage(bitwriter *writer, demo_version_data* version, packet_net_message* message);
 
 #undef DECLARE_MESSAGE_IN_UNION
 

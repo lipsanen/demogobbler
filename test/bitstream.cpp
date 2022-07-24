@@ -108,13 +108,13 @@ TEST(BitstreamPlusWriter, Bit) {
 
 TEST(BitstreamPlusWriter, Bits) {
   bitwriter writer;
-  const int BITS = 32768;
+  const int BITS = 3276800;
   bitwriter_init(&writer, BITS);
   srand(0);
   int bits = 9;
 
   for (int i = 0;;) {
-    bits = rand() % 64 + 1;
+    bits = rand() % 8 + 1;
     i += bits;
 
     if (i > BITS)
@@ -128,7 +128,7 @@ TEST(BitstreamPlusWriter, Bits) {
   srand(0);
 
   for (int i = 0;;) {
-    bits = rand() % 64 + 1;
+    bits = rand() % 8 + 1;
     i += bits;
 
     if (i > BITS)
@@ -337,4 +337,32 @@ TEST(BitstreamPlusWriter, UInt32) {
   bitstream stream = bitstream_create(writer.ptr, writer.bitsize);
 
   EXPECT_EQ(value, bitstream_read_uint32(&stream));
+}
+
+TEST(BitstreamPlusWriter, Bitstream) {
+  const int SIZE = 1024;
+  uint8_t* data = (uint8_t*)malloc(SIZE);
+
+  for(int i=0; i < SIZE; ++i) {
+    data[i] = i % 256;
+  }
+
+  bitstream stream = bitstream_create(data, SIZE * 8 - 31);
+  bitwriter writer;
+  bitwriter_init(&writer, 1);
+  bitwriter_write_bitstream(&writer, &stream);
+  bitstream stream2;
+  stream2.bitoffset = 0;
+  stream2.bitsize = writer.bitoffset;
+  stream2.data = writer.ptr;
+  stream2.overflow = false;
+
+  stream.bitoffset = 0;
+  stream.overflow = false;
+
+  for(int i=0; demogobbler_bitstream_bits_left(&stream) > 0; ++i) {
+    bool set1 = bitstream_read_bit(&stream);
+    bool set2 = bitstream_read_bit(&stream2);
+    ASSERT_EQ(set1, set2) << "wrong bit at index " << i << " / " << stream.bitsize;
+  }
 }

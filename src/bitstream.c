@@ -126,9 +126,9 @@ uint64_t demogobbler_bitstream_read_uint(bitstream *thisptr, unsigned int bits) 
 }
 
 int64_t demogobbler_bitstream_read_sint(bitstream *thisptr, unsigned int bits) {
-  uint64_t uint = demogobbler_bitstream_read_uint(thisptr, bits);
-
-  return *(int64_t*) &uint;
+  int64_t n_ret = demogobbler_bitstream_read_uint(thisptr, bits);
+	// Sign magic
+	return ( n_ret << ( 64 - bits ) ) >> ( 64 - bits );
 }
 
 float demogobbler_bitstream_read_float(bitstream* thisptr)
@@ -189,49 +189,47 @@ size_t demogobbler_bitstream_read_cstring(bitstream* thisptr, char* dest, size_t
   return i;
 }
 
-vector demogobbler_bitstream_read_bitvector(bitstream* thisptr, unsigned int bits) {
-  vector out;
-  out.x = bitstream_read_uint(thisptr, bits) * (360.0f / (1 << bits));
-  out.y = bitstream_read_uint(thisptr, bits) * (360.0f / (1 << bits));
-  out.z = bitstream_read_uint(thisptr, bits) * (360.0f / (1 << bits));
+bitangle_vector demogobbler_bitstream_read_bitvector(bitstream* thisptr, unsigned int bits) {
+  bitangle_vector out;
+  out.x = bitstream_read_uint(thisptr, bits);
+  out.y = bitstream_read_uint(thisptr, bits);
+  out.z = bitstream_read_uint(thisptr, bits);
+  out.bits = bits;
   return out;
 }
 
-vector demogobbler_bitstream_read_coordvector(bitstream *thisptr) {
-  vector out;
-  memset(&out, 0, sizeof(vector));
-  bool has_x = bitstream_read_uint(thisptr, 1);
-  bool has_y = bitstream_read_uint(thisptr, 1);
-  bool has_z = bitstream_read_uint(thisptr, 1);
+bitcoord_vector demogobbler_bitstream_read_coordvector(bitstream *thisptr) {
+  bitcoord_vector out;
+  memset(&out, 0, sizeof(out));
+  out.x.exists = bitstream_read_uint(thisptr, 1);
+  out.y.exists = bitstream_read_uint(thisptr, 1);
+  out.z.exists = bitstream_read_uint(thisptr, 1);
 
-  if(has_x)
+  if(out.x.exists)
     out.x = demogobbler_bitstream_read_bitcoord(thisptr);
-  if(has_y)
+  if(out.y.exists)
     out.y = demogobbler_bitstream_read_bitcoord(thisptr);
-  if(has_z)
+  if(out.z.exists)
     out.z = demogobbler_bitstream_read_bitcoord(thisptr);
   return out;
 }
 
-float demogobbler_bitstream_read_bitcoord(bitstream* thisptr) { 
-  const int COORD_INT_BITS = 14;
-  const int COORD_FRAC_BITS = 5;
-  const float COORD_RES = 1.0f / (1 << COORD_FRAC_BITS);
-  float val = 0;
-  bool has_int = demogobbler_bitstream_read_uint(thisptr, 1);
-  bool has_frac = demogobbler_bitstream_read_uint(thisptr, 1);
+bitcoord demogobbler_bitstream_read_bitcoord(bitstream* thisptr) {
+  bitcoord out;
+  memset(&out, 0, sizeof(out));
+  out.exists = true;
+  out.has_int = demogobbler_bitstream_read_uint(thisptr, 1);
+  out.has_frac = demogobbler_bitstream_read_uint(thisptr, 1);
 
-  if(has_int | has_frac) {
-    bool sign = demogobbler_bitstream_read_uint(thisptr, 1);
-    if(has_int)
-      val += demogobbler_bitstream_read_uint(thisptr, COORD_INT_BITS) + 1;
-    if(has_frac)
-      val += demogobbler_bitstream_read_uint(thisptr, COORD_FRAC_BITS) * COORD_RES;
-    if(sign)
-      val = -val;
+  if(out.has_int || out.has_frac) {
+    out.sign = demogobbler_bitstream_read_uint(thisptr, 1);
+    if(out.has_int)
+      out.int_value = demogobbler_bitstream_read_uint(thisptr, COORD_INTEGER_BITS);
+    if(out.has_frac)
+      out.frac_value = demogobbler_bitstream_read_uint(thisptr, COORD_FRACTIONAL_BITS);
   }
 
-  return val;
+  return out;
 }
 
 uint32_t demogobbler_bitstream_read_uint32(bitstream *thisptr) {

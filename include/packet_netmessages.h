@@ -6,7 +6,8 @@ extern "C"
 #endif
 
 #include "demogobbler_bitstream.h"
-#include "demogobbler_vector.h"
+#include "demogobbler_bitwriter.h"
+#include "demogobbler_floats.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -204,15 +205,15 @@ struct demogobbler_svc_setview {
 
 struct demogobbler_svc_fixangle {
   bool relative;
-  vector angle;
+  bitangle_vector angle;
 };
 
 struct demogobbler_svc_crosshair_angle {
-  vector angle;
+  bitangle_vector angle;
 };
 
 struct demogobbler_svc_bsp_decal {
-  vector pos;
+  bitcoord_vector pos;
   unsigned int decal_texture_index : 9;
   bool index_bool : 1;
   unsigned int entity_index : 11;
@@ -317,6 +318,8 @@ struct demogobbler_packet_net_message {
 typedef struct demogobbler_packet_net_message packet_net_message;
 
 typedef void (*func_demogobbler_handle_packet_net_message)(void* client_state, packet_net_message* message);
+
+void demogobbler_write_message_to_array(bitwriter *writer, packet_net_message* message);
 
 #undef DECLARE_MESSAGE_IN_UNION
 

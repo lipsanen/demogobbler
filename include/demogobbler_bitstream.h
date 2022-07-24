@@ -4,7 +4,7 @@
 extern "C" {
 #endif
 
-#include "demogobbler_vector.h"
+#include "demogobbler_floats.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -27,9 +27,9 @@ int64_t demogobbler_bitstream_read_sint(bitstream *thisptr, unsigned int bits);
 float demogobbler_bitstream_read_float(bitstream *thisptr);
 void demogobbler_bitstream_read_bits(bitstream *thisptr, void *dest, unsigned bits);
 size_t demogobbler_bitstream_read_cstring(bitstream *thisptr, char *dest, size_t max_bytes);
-vector demogobbler_bitstream_read_bitvector(bitstream *thisptr, unsigned int bits);
-vector demogobbler_bitstream_read_coordvector(bitstream *thisptr);
-float demogobbler_bitstream_read_bitcoord(bitstream* thisptr);
+bitangle_vector demogobbler_bitstream_read_bitvector(bitstream *thisptr, unsigned int bits);
+bitcoord_vector demogobbler_bitstream_read_coordvector(bitstream *thisptr);
+bitcoord demogobbler_bitstream_read_bitcoord(bitstream* thisptr);
 uint32_t demogobbler_bitstream_read_varuint32(bitstream *thisptr);
 uint32_t demogobbler_bitstream_read_uint32(bitstream *thisptr);
 int32_t demogobbler_bitstream_read_sint32(bitstream *thisptr);

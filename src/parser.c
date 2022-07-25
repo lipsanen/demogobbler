@@ -72,7 +72,7 @@ void _parse_header(parser *thisptr) {
   header.ID[7] = header.server_name[259] = header.client_name[259] = header.map_name[259] =
       header.game_directory[259] = '\0';
 
-  thisptr->demo_version = get_demo_version(&header);
+  thisptr->demo_version = demogobbler_get_demo_version(&header);
 
   if (thisptr->m_settings.demo_version_handler) {
     thisptr->m_settings.demo_version_handler(thisptr->parent->client_state, thisptr->demo_version);

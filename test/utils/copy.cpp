@@ -37,7 +37,7 @@ void copy_demo_test(const char* filepath)
 
   demogobbler_writer_init(&w);
   demogobbler_writer_open(&w, &output, {memory_stream_write});
-  if(!w.error_set)
+  if(!w.error)
   {
     demogobbler_parser parser;
     demogobbler_settings settings;

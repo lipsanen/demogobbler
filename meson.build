@@ -4,6 +4,7 @@ current_c_compiler = meson.get_compiler('c', native : false).get_id()
 
 if get_option('buildtype').startswith('debug')
   add_project_arguments('-DDEBUG', language : 'c')
+  add_project_arguments('-DDEBUG', language : 'cpp')
 endif
 
 if get_option('buildtype').startswith('release')
@@ -21,6 +22,7 @@ goblin_all =  include_directories(['include', 'src'])
 subdir('src')
 subdir('test')
 subdir('bench')
+subdir('tools/democonverter')
 subdir('tools/demodump')
 subdir('tools/listgobbler')
 subdir('tools/perftest')

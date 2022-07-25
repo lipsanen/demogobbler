@@ -28,6 +28,7 @@ struct demogobbler_settings {
 typedef struct demogobbler_settings demogobbler_settings;
 
 void demogobbler_settings_init(demogobbler_settings *settings);
+demo_version_data demogobbler_get_demo_version(demogobbler_header *header);
 
 struct demogobbler_parser {
   void *_parser;
@@ -49,7 +50,7 @@ struct demogobbler_writer {
   void *_stream;
   const char *error_message;
   output_interface output_funcs;
-  bool error_set;
+  bool error;
   bool _custom_stream;
   demo_version_data version;
 };

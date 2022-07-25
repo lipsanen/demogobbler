@@ -340,7 +340,12 @@ struct demogobbler_svc_paintmap_data {
 
 struct demogobbler_packet_net_message {
   net_message_type mtype;
-  unsigned int _mtype;
+  unsigned int _mtype : 6;
+  bool last_message : 1;
+#ifdef DEBUG
+  int64_t offset;
+#endif
+
   union {
     DEMOGOBBLER_MACRO_ALL_MESSAGES(DECLARE_MESSAGE_IN_UNION)
   };

@@ -102,6 +102,10 @@ static void netmessage_handler(void *client_state, packet_net_message *message) 
   packet_copy_tester *tester = (packet_copy_tester *)client_state;
   if(!tester->error) {
     demogobbler_bitwriter_write_netmessage(&tester->writer, &tester->version, message);
+
+#ifdef DEBUG
+    EXPECT_EQ(tester->writer.bitoffset, message->offset) << "Error writing message of type " << message->mtype;
+#endif
     
     if(tester->writer.error) {
       EXPECT_EQ(tester->writer.error, false) << tester->writer.error_message;

@@ -13,7 +13,7 @@ void demogobbler_writer_open_file(writer *thisptr, const char *filepath) {
   thisptr->_custom_stream = false;
 
   if (!thisptr->_stream) {
-    thisptr->error_set = true;
+    thisptr->error = true;
     thisptr->error_message = "Unable to open file";
   }
 }

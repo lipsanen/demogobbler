@@ -246,7 +246,7 @@ static version_pair versions[] = {
     {"left4dead2", l4d2},
     {"left4dead", l4d}};
 
-demo_version_data get_demo_version(demogobbler_header *header) {
+demo_version_data demogobbler_get_demo_version(demogobbler_header *header) {
   demo_version_data version;
   version.game = orangebox;
   version.demo_protocol = header->demo_protocol;

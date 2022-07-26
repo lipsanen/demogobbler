@@ -11,7 +11,7 @@ TEST(E2E, copy_demos) {
   }
 }
 
-static void packet_handler(void*, demogobbler_packet*) {
+static void packet_handler(parser_state*, demogobbler_packet*) {
 }
 
 TEST(E2E, buffer_stream_test) {
@@ -35,17 +35,14 @@ TEST(E2E, buffer_stream_test) {
   fread(buffer, 1, length, stream);
   fclose(stream);
 
-  demogobbler_parser parser;
   demogobbler_settings settings;
   demogobbler_settings_init(&settings);
 
   settings.packet_handler = packet_handler;
 
-  demogobbler_parser_init(&parser, &settings);
-  demogobbler_parser_parse_buffer(&parser, buffer, length);
-  demogobbler_parser_free(&parser);
+  auto out = demogobbler_parser_parse_buffer(&settings, buffer, length);
 
-  EXPECT_EQ(parser.error, false) << parser.error_message;
+  EXPECT_EQ(out.error, false) << out.error_message;
 
   free(buffer);
 }

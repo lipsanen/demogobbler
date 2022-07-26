@@ -25,11 +25,10 @@ void _parse_synctick(parser *thisptr);
 void _parse_usercmd(parser *thisptr);
 bool _parse_anymessage(parser *thisptr);
 
-void parser_init(parser *thisptr, demogobbler_parser *parent, demogobbler_settings *settings) {
-  thisptr->parent = parent;
+void parser_init(parser *thisptr, demogobbler_settings *settings) {
+  memset(thisptr, 0, sizeof(*thisptr));
+  thisptr->state.client_state = settings->client_state;
   thisptr->m_settings = *settings;
-  thisptr->error = false;
-  thisptr->error_message = NULL;
   allocator_init(&thisptr->allocator, STACK_SIZE);
 }
 
@@ -47,7 +46,7 @@ void parser_update_l4d2_version(parser* thisptr, int l4d2_version) {
   thisptr->demo_version.l4d2_version_finalized = true;
   version_update_build_info(&thisptr->demo_version);
   if(thisptr->m_settings.demo_version_handler) {
-    thisptr->m_settings.demo_version_handler(thisptr->parent->client_state, thisptr->demo_version);
+    thisptr->m_settings.demo_version_handler(&thisptr->state, thisptr->demo_version);
   }
 }
 
@@ -75,11 +74,11 @@ void _parse_header(parser *thisptr) {
   thisptr->demo_version = demogobbler_get_demo_version(&header);
 
   if (thisptr->m_settings.demo_version_handler) {
-    thisptr->m_settings.demo_version_handler(thisptr->parent->client_state, thisptr->demo_version);
+    thisptr->m_settings.demo_version_handler(&thisptr->state, thisptr->demo_version);
   }
 
   if (thisptr->m_settings.header_handler) {
-    thisptr->m_settings.header_handler(thisptr->parent->client_state, &header);
+    thisptr->m_settings.header_handler(&thisptr->state, &header);
   }
 }
 
@@ -174,7 +173,7 @@ void _parse_consolecmd(parser *thisptr) {
       filereader_readdata(thisreader, block.address, message.size_bytes);
       message.data = block.address;
       message.data[message.size_bytes - 1] = '\0'; // Add null terminator in-case malformed data
-      thisptr->m_settings.consolecmd_handler(thisptr->parent->client_state, &message);
+      thisptr->m_settings.consolecmd_handler(&thisptr->state, &message);
       allocator_dealloc(thisallocator, block);
 
     } else {
@@ -198,7 +197,7 @@ void _parse_customdata(parser *thisptr) {
     blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
     filereader_readdata(thisreader, block.address, message.size_bytes);
     message.data = block.address;
-    thisptr->m_settings.customdata_handler(thisptr->parent->client_state, &message);
+    thisptr->m_settings.customdata_handler(&thisptr->state, &message);
     allocator_dealloc(thisallocator, block);
   } else {
     filereader_skipbytes(thisreader, 4);
@@ -218,7 +217,7 @@ void _parse_datatables(parser *thisptr) {
     blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
     filereader_readdata(thisreader, block.address, message.size_bytes);
     message.data = block.address;
-    thisptr->m_settings.datatables_handler(thisptr->parent->client_state, &message);
+    thisptr->m_settings.datatables_handler(&thisptr->state, &message);
     allocator_dealloc(thisallocator, block);
   } else {
     message.size_bytes = filereader_readint32(thisreader);
@@ -255,7 +254,7 @@ void _parse_packet(parser *thisptr, enum demogobbler_type type) {
     message.data = block.address;
 
     if (thisptr->m_settings.packet_handler) {
-      thisptr->m_settings.packet_handler(thisptr->parent->client_state, &message);
+      thisptr->m_settings.packet_handler(&thisptr->state, &message);
     }
 
     if (thisptr->m_settings.packet_net_message_handler) {
@@ -290,7 +289,7 @@ void _parse_stop(parser *thisptr) {
     message.size_bytes = bytes;
     message.data = block.address;
 
-    thisptr->m_settings.stop_handler(thisptr->parent->client_state, &message);
+    thisptr->m_settings.stop_handler(&thisptr->state, &message);
     allocator_dealloc(thisallocator, block);
   }
 }
@@ -306,7 +305,7 @@ void _parse_stringtables(parser *thisptr, int32_t type) {
     blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
     filereader_readdata(thisreader, block.address, message.size_bytes);
     message.data = block.address;
-    thisptr->m_settings.stringtables_handler(thisptr->parent->client_state, &message);
+    thisptr->m_settings.stringtables_handler(&thisptr->state, &message);
     allocator_dealloc(thisallocator, block);
   } else {
     message.size_bytes = filereader_readint32(thisreader);
@@ -320,7 +319,7 @@ void _parse_synctick(parser *thisptr) {
   PARSE_PREAMBLE();
 
   if (thisptr->m_settings.synctick_handler) {
-    thisptr->m_settings.synctick_handler(thisptr->parent->client_state, &message);
+    thisptr->m_settings.synctick_handler(&thisptr->state, &message);
   }
 }
 
@@ -336,7 +335,7 @@ void _parse_usercmd(parser *thisptr) {
     blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
     filereader_readdata(thisreader, block.address, message.size_bytes);
     message.data = block.address;
-    thisptr->m_settings.usercmd_handler(thisptr->parent->client_state, &message);
+    thisptr->m_settings.usercmd_handler(&thisptr->state, &message);
     allocator_dealloc(thisallocator, block);
   } else {
     filereader_skipbytes(thisreader, 4);

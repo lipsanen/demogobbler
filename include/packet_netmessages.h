@@ -86,8 +86,6 @@ struct demogobbler_demo_version {
 
 typedef struct demogobbler_demo_version demo_version_data;
 
-typedef void (*func_demogobbler_handle_demo_version) (void* client_state, demo_version_data version);
-
 struct demogobbler_net_nop {
   uint8_t _empty;
 };
@@ -352,8 +350,6 @@ struct demogobbler_packet_net_message {
 };
 
 typedef struct demogobbler_packet_net_message packet_net_message;
-
-typedef void (*func_demogobbler_handle_packet_net_message)(void* client_state, packet_net_message* message);
 
 void demogobbler_bitwriter_write_netmessage(bitwriter *writer, demo_version_data* version, packet_net_message* message);
 

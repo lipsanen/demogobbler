@@ -4,8 +4,8 @@
 #include <algorithm>
 #include <cstring>
 
-#define DECLARE_WRITE_FUNC(type) static void type ##_handler(void* w, demogobbler_ ## type *message) {\
-  demogobbler_write_ ## type ((writer*)w, message); \
+#define DECLARE_WRITE_FUNC(type) static void type ##_handler(parser_state* state, demogobbler_ ## type *message) {\
+  demogobbler_write_ ## type ((writer*)state->client_state, message); \
 }
 
 DECLARE_WRITE_FUNC(consolecmd);
@@ -19,12 +19,13 @@ DECLARE_WRITE_FUNC(synctick);
 DECLARE_WRITE_FUNC(usercmd);
 
 
-void handle_version(void* w, demo_version_data version)
+void handle_version(parser_state* state, demo_version_data version)
 {
-  ((writer*)w)->version = version;
+
+  ((writer*)state->client_state)->version = version;
 }
 
-static void packet_net_message_handler(void* client_state, packet_net_message* message) {
+static void packet_net_message_handler(parser_state* state, packet_net_message* message) {
 }
 
 void copy_demo_test(const char* filepath)
@@ -39,7 +40,6 @@ void copy_demo_test(const char* filepath)
   demogobbler_writer_open(&w, &output, {memory_stream_write});
   if(!w.error)
   {
-    demogobbler_parser parser;
     demogobbler_settings settings;
     demogobbler_settings_init(&settings);
 
@@ -54,14 +54,12 @@ void copy_demo_test(const char* filepath)
     settings.usercmd_handler = usercmd_handler;
     settings.demo_version_handler = handle_version;
     settings.packet_net_message_handler = packet_net_message_handler;
+    settings.client_state = &w;
 
     input_interface input_funcs = {memory_stream_read, memory_stream_seek};
 
-    demogobbler_parser_init(&parser, &settings);
-    parser.client_state = &w;
-    demogobbler_parser_parse(&parser, &input, input_funcs );
-    EXPECT_EQ(parser.error, false);
-    demogobbler_parser_free(&parser);
+    auto out = demogobbler_parser_parse(&settings, &input, input_funcs);
+    EXPECT_EQ(out.error, false);
 
     demogobbler_writer_close(&w);
   }

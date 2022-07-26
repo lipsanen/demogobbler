@@ -30,16 +30,12 @@ struct writer_state {
     // written to
     this->current_packet.data = this->message_bitwriter.ptr;
     int32_t size = this->message_bitwriter.bitoffset / 8;
-    int32_t adjusted_size = size;
 
     if ((this->message_bitwriter.bitoffset & 0x7) != 0) {
-      adjusted_size += 1;
+      size += 1;
     }
 
-    if (adjusted_size != this->current_packet.size_bytes) {
-      int i = 0;
-    }
-    this->current_packet.size_bytes = adjusted_size;
+    this->current_packet.size_bytes = size;
 
     demogobbler_write_packet(&this->demo_writer, &this->current_packet);
   }
@@ -51,9 +47,9 @@ struct writer_state {
     exit(1);                                                                                       \
   }
 
-void handle_header(void *client_state, demogobbler_header *header) {
+void handle_header(parser_state *_state, demogobbler_header *header) {
   printf("Enter data for conversion target, empty for default value\n");
-  writer_state *state = (writer_state *)client_state;
+  writer_state *state = (writer_state *)_state->client_state;
   std::string temp;
   printf("Network protocol [%d]: ", header->net_protocol);
   std::getline(std::cin, temp);
@@ -67,57 +63,57 @@ void handle_header(void *client_state, demogobbler_header *header) {
   CHECK_ERROR();
 }
 
-void handle_consolecmd(void *client_state, demogobbler_consolecmd *message) {
-  writer_state *state = (writer_state *)client_state;
+void handle_consolecmd(parser_state *_state, demogobbler_consolecmd *message) {
+  writer_state *state = (writer_state *)_state->client_state;
   demogobbler_write_consolecmd(&state->demo_writer, message);
   CHECK_ERROR();
 }
 
-void handle_customdata(void *client_state, demogobbler_customdata *message) {
-  writer_state *state = (writer_state *)client_state;
+void handle_customdata(parser_state *_state, demogobbler_customdata *message) {
+  writer_state *state = (writer_state *)_state->client_state;
   demogobbler_write_customdata(&state->demo_writer, message);
   CHECK_ERROR();
 }
 
-void handle_datatables(void *client_state, demogobbler_datatables *message) {
-  writer_state *state = (writer_state *)client_state;
+void handle_datatables(parser_state *_state, demogobbler_datatables *message) {
+  writer_state *state = (writer_state *)_state->client_state;
   demogobbler_write_datatables(&state->demo_writer, message);
   CHECK_ERROR();
 }
 
-void handle_packet(void *client_state, demogobbler_packet *message) {
-  writer_state *state = (writer_state *)client_state;
+void handle_packet(parser_state *_state, demogobbler_packet *message) {
+  writer_state *state = (writer_state *)_state->client_state;
   memcpy(&state->current_packet, message, sizeof(state->current_packet));
   state->message_bitwriter.bitoffset = 0;
   //  We finish this later on
 }
 
-void handle_stringtables(void *client_state, demogobbler_stringtables *message) {
-  writer_state *state = (writer_state *)client_state;
+void handle_stringtables(parser_state *_state, demogobbler_stringtables *message) {
+  writer_state *state = (writer_state *)_state->client_state;
   demogobbler_write_stringtables(&state->demo_writer, message);
   CHECK_ERROR();
 }
 
-void handle_stop(void *client_state, demogobbler_stop *message) {
-  writer_state *state = (writer_state *)client_state;
+void handle_stop(parser_state *_state, demogobbler_stop *message) {
+  writer_state *state = (writer_state *)_state->client_state;
   demogobbler_write_stop(&state->demo_writer, message);
   CHECK_ERROR();
 }
 
-void handle_synctick(void *client_state, demogobbler_synctick *message) {
-  writer_state *state = (writer_state *)client_state;
+void handle_synctick(parser_state *_state, demogobbler_synctick *message) {
+  writer_state *state = (writer_state *)_state->client_state;
   demogobbler_write_synctick(&state->demo_writer, message);
   CHECK_ERROR();
 }
 
-void handle_usercmd(void *client_state, demogobbler_usercmd *message) {
-  writer_state *state = (writer_state *)client_state;
+void handle_usercmd(parser_state *_state, demogobbler_usercmd *message) {
+  writer_state *state = (writer_state *)_state->client_state;
   demogobbler_write_usercmd(&state->demo_writer, message);
   CHECK_ERROR();
 }
 
-void netmessage_handler(void *client_state, packet_net_message *message) {
-  writer_state *state = (writer_state *)client_state;
+void netmessage_handler(parser_state *_state, packet_net_message *message) {
+  writer_state *state = (writer_state *)_state->client_state;
 
   if(message->mtype == svc_serverinfo) {
     auto* ptr = &message->message_svc_serverinfo;
@@ -156,7 +152,8 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-  demogobbler_parser parser;
+  writer_state writer(argv[2]);
+
   demogobbler_settings settings;
   demogobbler_settings_init(&settings);
   settings.consolecmd_handler = handle_consolecmd;
@@ -169,13 +166,10 @@ int main(int argc, char **argv) {
   settings.synctick_handler = handle_synctick;
   settings.usercmd_handler = handle_usercmd;
   settings.packet_net_message_handler = netmessage_handler;
+  settings.client_state = &writer;
 
-  demogobbler_parser_init(&parser, &settings);
-  writer_state writer(argv[2]);
-  parser.client_state = &writer;
-  demogobbler_parser_parse_file(&parser, argv[1]);
+  demogobbler_parser_parse_file(&settings, argv[1]);
   demogobbler_writer_close(&writer.demo_writer);
-  demogobbler_parser_free(&parser);
 
   return 0;
 }

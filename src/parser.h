@@ -9,7 +9,7 @@
 typedef struct parser parser;
 
 struct parser {
-  demogobbler_parser *parent;
+  parser_state state;
   demogobbler_settings m_settings;
   filereader m_reader;
   allocator allocator;
@@ -18,7 +18,7 @@ struct parser {
   bool error;
 };
 
-void parser_init(parser *thisptr, demogobbler_parser* parent, demogobbler_settings *settings);
+void parser_init(parser *thisptr, demogobbler_settings *settings);
 void parser_parse(parser *thisptr, void* stream, input_interface input);
 void parser_update_l4d2_version(parser* thisptr, int l4d2_version);
 void parser_free(parser* thisptr);

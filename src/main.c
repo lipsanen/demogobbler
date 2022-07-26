@@ -5,34 +5,23 @@
 #include <stdlib.h>
 #include <string.h>
 
-void demogobbler_parser_init(demogobbler_parser *thisptr, demogobbler_settings *settings) {
-  if (!thisptr)
-    return;
-
-  thisptr->_parser = malloc(sizeof(parser));
-  thisptr->client_state = NULL;
-  parser_init((parser *)thisptr->_parser, thisptr, settings);
-  thisptr->error_message = NULL;
-  thisptr->error = false;
-}
-
-void demogobbler_parser_check_errors(demogobbler_parser* thisptr) {
-  if(((parser *)thisptr->_parser)->error) {
-    thisptr->error = true;
-    thisptr->error_message = ((parser *)thisptr->_parser)->error_message;
-  }
-}
-
-void demogobbler_parser_parse(demogobbler_parser *thisptr, void *stream,
+demogobbler_parse_result demogobbler_parser_parse(demogobbler_settings *settings, void *stream,
                               input_interface input_interface) {
-  parser_parse((parser *)thisptr->_parser, stream, input_interface);
-  demogobbler_parser_check_errors(thisptr);
+  demogobbler_parse_result out;
+  memset(&out, 0, sizeof(out));
+  parser parser;
+  parser_init(&parser, settings);
+  parser_parse(&parser, stream, input_interface);
+  out.error = parser.error;
+  out.error_message = parser.error_message;
+  parser_free(&parser);
+
+  return out;
 }
 
-void demogobbler_parser_parse_file(demogobbler_parser *thisptr, const char *filepath) {
-  if (!thisptr)
-    return;
-
+demogobbler_parse_result demogobbler_parser_parse_file(demogobbler_settings *settings, const char *filepath) {
+  demogobbler_parse_result out;
+  memset(&out, 0, sizeof(out));
   FILE *file = fopen(filepath, "rb");
 
   if (file) {
@@ -40,16 +29,21 @@ void demogobbler_parser_parse_file(demogobbler_parser *thisptr, const char *file
     input.read = fstream_read;
     input.seek = fstream_seek;
 
-    demogobbler_parser_parse(thisptr, file, input);
+    out = demogobbler_parser_parse(settings, file, input);
 
     fclose(file);
   } else {
-    thisptr->error = true;
-    thisptr->error_message = "Unable to open file";
+    out.error = true;
+    out.error_message = "Unable to open file";
   }
+
+  return out;
 }
 
-void demogobbler_parser_parse_buffer(demogobbler_parser *thisptr, void *buffer, size_t size) {
+demogobbler_parse_result demogobbler_parser_parse_buffer(demogobbler_settings *settings, void *buffer, size_t size) {
+  demogobbler_parse_result out;
+  memset(&out, 0, sizeof(out));
+
   if(buffer) {
     input_interface input;
     input.read = buffer_stream_read;
@@ -57,19 +51,13 @@ void demogobbler_parser_parse_buffer(demogobbler_parser *thisptr, void *buffer, 
 
     buffer_stream stream;
     buffer_stream_init(&stream, buffer, size);
-    demogobbler_parser_parse(thisptr, &stream, input);
+    out = demogobbler_parser_parse(settings, &stream, input);
   } else {
-    thisptr->error = true;
-    thisptr->error_message = "Buffer was NULL";
+    out.error = true;
+    out.error_message = "Buffer was NULL";
   }
-}
 
-void demogobbler_parser_free(demogobbler_parser *thisptr) {
-  if (!thisptr)
-    return;
-
-  parser_free((parser*)thisptr->_parser);
-  free(thisptr->_parser);
+  return out;
 }
 
 void demogobbler_settings_init(demogobbler_settings *settings) {

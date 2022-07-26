@@ -78,13 +78,13 @@ struct packet_copy_tester {
   }
 };
 
-static void version_handler(void* client_state, demo_version_data data) {
-  packet_copy_tester *tester = (packet_copy_tester *)client_state;
+static void version_handler(parser_state* state, demo_version_data data) {
+  packet_copy_tester *tester = (packet_copy_tester *)state->client_state;
   tester->version = data;
 }
 
-static void packet_handler(void *client_state, demogobbler_packet *packet) {
-  packet_copy_tester *tester = (packet_copy_tester *)client_state;
+static void packet_handler(parser_state* state, demogobbler_packet *packet) {
+  packet_copy_tester *tester = (packet_copy_tester *)state->client_state;
 
   if(packet->size_bytes > tester->current_data_size) {
     free(tester->current_data);
@@ -97,9 +97,9 @@ static void packet_handler(void *client_state, demogobbler_packet *packet) {
   tester->packet_bits = packet->size_bytes * 8;
 }
 
-static void netmessage_handler(void *client_state, packet_net_message *message) {
+static void netmessage_handler(parser_state* state, packet_net_message *message) {
   //printf("handler %d\n", message->mtype);
-  packet_copy_tester *tester = (packet_copy_tester *)client_state;
+  packet_copy_tester *tester = (packet_copy_tester *)state->client_state;
   if(!tester->error) {
     demogobbler_bitwriter_write_netmessage(&tester->writer, &tester->version, message);
 
@@ -119,22 +119,18 @@ static void netmessage_handler(void *client_state, packet_net_message *message) 
 
 static void packet_write_test(const char *filepath) {
   packet_copy_tester tester;
-  demogobbler_parser parser;
   demogobbler_settings settings;
   demogobbler_settings_init(&settings);
 
   settings.packet_handler = packet_handler;
   settings.packet_net_message_handler = netmessage_handler;
   settings.demo_version_handler = version_handler;
+  settings.client_state = &tester;
 
-  demogobbler_parser_init(&parser, &settings);
-  parser.client_state = &tester;
-
-  demogobbler_parser_parse_file(&parser, filepath);
-  EXPECT_EQ(parser.error, false);
+  auto out = demogobbler_parser_parse_file(&settings, filepath);
+  EXPECT_EQ(out.error, false) << out.error_message;
   tester.verify_last_packet_size();
 
-  demogobbler_parser_free(&parser);
 }
 
 TEST(E2E, packet_copy) {

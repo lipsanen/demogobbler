@@ -15,13 +15,13 @@
   message->last_message =                                                                          \
       (demogobbler_bitstream_bits_left(stream) < thisptr->demo_version.netmessage_type_bits);      \
   if (!stream->overflow && thisptr->m_settings.packet_net_message_handler)                         \
-    thisptr->m_settings.packet_net_message_handler(thisptr->parent->client_state, message);
+    thisptr->m_settings.packet_net_message_handler(&thisptr->state, message);
 #else
 #define SEND_MESSAGE()                                                                             \
   message->last_message =                                                                          \
       (demogobbler_bitstream_bits_left(stream) < thisptr->demo_version.netmessage_type_bits);      \
   if (!stream->overflow && thisptr->m_settings.packet_net_message_handler)                         \
-    thisptr->m_settings.packet_net_message_handler(thisptr->parent->client_state, message);
+    thisptr->m_settings.packet_net_message_handler(&thisptr->state, message);
 #endif
 
 static void handle_net_nop(parser *thisptr, bitstream *stream, packet_net_message *message,

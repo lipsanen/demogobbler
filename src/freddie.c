@@ -20,19 +20,19 @@ static void wip_freddie_init(wip_freddie* thisptr) {
   dynamic_array_init(&thisptr->output._memory_chunk, MIN_ALLOCATION, 1);
 }
 
-static void header_handler(void *clientData, demogobbler_header *header) {
-  wip_freddie* wip = clientData;
+static void header_handler(parser_state* _state, demogobbler_header *header) {
+  wip_freddie* wip = (wip_freddie*)_state->client_state;
   wip->output.header = *header;
 }
 
-static void packet_handler(void *clientData, demogobbler_packet *message) {
-  wip_freddie* wip = clientData;
+static void packet_handler(parser_state* _state, demogobbler_packet *message) {
+  wip_freddie* wip = (wip_freddie*)_state->client_state;
   demogobbler_cmdinfo* insert_point = dynamic_array_add(&wip->cmdinfo_array, 1);
   *insert_point = message->cmdinfo[0];
 }
 
-static void consolecmd_handler(void *clientData, demogobbler_consolecmd *message) {
-  wip_freddie* wip = clientData;
+static void consolecmd_handler(parser_state* _state, demogobbler_consolecmd *message) {
+  wip_freddie* wip = (wip_freddie*)_state->client_state;
   freddie_consolecmd* insert_point = dynamic_array_add(&wip->consolecmd_array, 1);
   insert_point->tick = message->preamble.tick;
   size_t length = message->size_bytes;
@@ -44,21 +44,17 @@ static void consolecmd_handler(void *clientData, demogobbler_consolecmd *message
 }
 
 void demogobbler_freddie_parse_internal(wip_freddie *wip, void *stream, input_interface interface) {
-  demogobbler_parser parser;
   demogobbler_settings settings;
   demogobbler_settings_init(&settings);
   settings.consolecmd_handler = consolecmd_handler;
   settings.packet_handler = packet_handler;
   settings.header_handler = header_handler;
+  settings.client_state = wip;
 
-  demogobbler_parser_init(&parser, &settings);
-  parser.client_state = wip;
+  demogobbler_parse_result out = demogobbler_parser_parse(&settings, stream, interface);
 
-  demogobbler_parser_parse(&parser, stream, interface);
-  demogobbler_parser_free(&parser);
-
-  wip->output.error = parser.error;
-  wip->output.error_message = parser.error_message;
+  wip->output.error = out.error;
+  wip->output.error_message = out.error_message;
 
   // Copy the arrays to the final output
   wip->output.cmdinfo = wip->cmdinfo_array.ptr;

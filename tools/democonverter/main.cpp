@@ -168,7 +168,7 @@ int main(int argc, char **argv) {
   settings.packet_net_message_handler = netmessage_handler;
   settings.client_state = &writer;
 
-  demogobbler_parser_parse_file(&settings, argv[1]);
+  demogobbler_parse_file(&settings, argv[1]);
   demogobbler_writer_close(&writer.demo_writer);
 
   return 0;

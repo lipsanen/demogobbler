@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-demogobbler_parse_result demogobbler_parser_parse(demogobbler_settings *settings, void *stream,
+demogobbler_parse_result demogobbler_parse(demogobbler_settings *settings, void *stream,
                               input_interface input_interface) {
   demogobbler_parse_result out;
   memset(&out, 0, sizeof(out));
@@ -19,7 +19,7 @@ demogobbler_parse_result demogobbler_parser_parse(demogobbler_settings *settings
   return out;
 }
 
-demogobbler_parse_result demogobbler_parser_parse_file(demogobbler_settings *settings, const char *filepath) {
+demogobbler_parse_result demogobbler_parse_file(demogobbler_settings *settings, const char *filepath) {
   demogobbler_parse_result out;
   memset(&out, 0, sizeof(out));
   FILE *file = fopen(filepath, "rb");
@@ -29,7 +29,7 @@ demogobbler_parse_result demogobbler_parser_parse_file(demogobbler_settings *set
     input.read = fstream_read;
     input.seek = fstream_seek;
 
-    out = demogobbler_parser_parse(settings, file, input);
+    out = demogobbler_parse(settings, file, input);
 
     fclose(file);
   } else {
@@ -40,7 +40,7 @@ demogobbler_parse_result demogobbler_parser_parse_file(demogobbler_settings *set
   return out;
 }
 
-demogobbler_parse_result demogobbler_parser_parse_buffer(demogobbler_settings *settings, void *buffer, size_t size) {
+demogobbler_parse_result demogobbler_parse_buffer(demogobbler_settings *settings, void *buffer, size_t size) {
   demogobbler_parse_result out;
   memset(&out, 0, sizeof(out));
 
@@ -51,7 +51,7 @@ demogobbler_parse_result demogobbler_parser_parse_buffer(demogobbler_settings *s
 
     buffer_stream stream;
     buffer_stream_init(&stream, buffer, size);
-    out = demogobbler_parser_parse(settings, &stream, input);
+    out = demogobbler_parse(settings, &stream, input);
   } else {
     out.error = true;
     out.error_message = "Buffer was NULL";

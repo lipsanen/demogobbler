@@ -26,7 +26,7 @@ static void testdemos_packet_only(benchmark::State &state) {
   for (auto _ : state) {
     for(auto& demo : demos)
     {
-      demogobbler_parser_parse_file(&settings, demo.c_str());
+      demogobbler_parse_file(&settings, demo.c_str());
     }
   }
 
@@ -46,7 +46,7 @@ static void testdemos_netmessages(benchmark::State &state) {
   for (auto _ : state) {
     for(auto& demo : demos)
     {
-      demogobbler_parser_parse_file(&settings, demo.c_str());
+      demogobbler_parse_file(&settings, demo.c_str());
     }
   }
 
@@ -57,7 +57,7 @@ static void parse_only(demogobbler_settings* settings, const std::vector<std::st
 {
   for(auto& file : demos)
   {
-    demogobbler_parser_parse_file(settings, file.c_str());
+    demogobbler_parse_file(settings, file.c_str());
   }
 }
 
@@ -95,7 +95,7 @@ static void testdemos_header_only(benchmark::State &state) {
   for (auto _ : state) {
     for(auto& demo : demos)
     {
-      demogobbler_parser_parse_file(&settings, demo.c_str());
+      demogobbler_parse_file(&settings, demo.c_str());
     }
   }
 

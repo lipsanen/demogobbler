@@ -63,7 +63,7 @@ int main(int argc, char **argv) {
     settings.usercmd_handler = print_usercmd;
     settings.packet_net_message_handler = print_netmessages;
 ;
-    demogobbler_parser_parse_file(&settings, argv[1]);
+    demogobbler_parse_file(&settings, argv[1]);
   }
 
   return 0;

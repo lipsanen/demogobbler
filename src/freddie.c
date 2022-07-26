@@ -51,7 +51,7 @@ void demogobbler_freddie_parse_internal(wip_freddie *wip, void *stream, input_in
   settings.header_handler = header_handler;
   settings.client_state = wip;
 
-  demogobbler_parse_result out = demogobbler_parser_parse(&settings, stream, interface);
+  demogobbler_parse_result out = demogobbler_parse(&settings, stream, interface);
 
   wip->output.error = out.error;
   wip->output.error_message = out.error_message;

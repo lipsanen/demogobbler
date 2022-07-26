@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
   demogobbler_settings_init(&settings);
   settings.header_handler = print_header;
 
-  demogobbler_parser_parse_file(&settings, argv[1]);
+  demogobbler_parse_file(&settings, argv[1]);
 
   return 0;
 }

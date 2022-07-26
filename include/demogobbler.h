@@ -64,11 +64,11 @@ struct demogobbler_parse_result {
 
 typedef struct demogobbler_parse_result demogobbler_parse_result;
 
-demogobbler_parse_result demogobbler_parser_parse_file(demogobbler_settings *settings,
+demogobbler_parse_result demogobbler_parse_file(demogobbler_settings *settings,
                                                        const char *filepath);
-demogobbler_parse_result demogobbler_parser_parse_buffer(demogobbler_settings *settings,
+demogobbler_parse_result demogobbler_parse_buffer(demogobbler_settings *settings,
                                                          void *buffer, size_t size);
-demogobbler_parse_result demogobbler_parser_parse(demogobbler_settings *settings, void *stream,
+demogobbler_parse_result demogobbler_parse(demogobbler_settings *settings, void *stream,
                                                   input_interface input_interface);
 
 struct demogobbler_writer {

@@ -78,7 +78,7 @@ int main(int argc, char **argv) {
   settings.synctick_handler = print_synctick;
   settings.usercmd_handler = print_usercmd;
 
-  demogobbler_parser_parse_file(&settings, argv[1]);
+  demogobbler_parse_file(&settings, argv[1]);
 
   return 0;
 }

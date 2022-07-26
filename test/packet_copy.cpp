@@ -86,7 +86,7 @@ static void version_handler(parser_state* state, demo_version_data data) {
 static void packet_handler(parser_state* state, demogobbler_packet *packet) {
   packet_copy_tester *tester = (packet_copy_tester *)state->client_state;
 
-  if(packet->size_bytes > tester->current_data_size) {
+  if(packet->size_bytes > (int32_t)tester->current_data_size) {
     free(tester->current_data);
     tester->current_data = malloc(packet->size_bytes);
     tester->current_data_size = packet->size_bytes;
@@ -127,7 +127,7 @@ static void packet_write_test(const char *filepath) {
   settings.demo_version_handler = version_handler;
   settings.client_state = &tester;
 
-  auto out = demogobbler_parser_parse_file(&settings, filepath);
+  auto out = demogobbler_parse_file(&settings, filepath);
   EXPECT_EQ(out.error, false) << out.error_message;
   tester.verify_last_packet_size();
 

@@ -40,7 +40,7 @@ TEST(E2E, buffer_stream_test) {
 
   settings.packet_handler = packet_handler;
 
-  auto out = demogobbler_parser_parse_buffer(&settings, buffer, length);
+  auto out = demogobbler_parse_buffer(&settings, buffer, length);
 
   EXPECT_EQ(out.error, false) << out.error_message;
 

@@ -58,7 +58,7 @@ void copy_demo_test(const char* filepath)
 
     input_interface input_funcs = {memory_stream_read, memory_stream_seek};
 
-    auto out = demogobbler_parser_parse(&settings, &input, input_funcs);
+    auto out = demogobbler_parse(&settings, &input, input_funcs);
     EXPECT_EQ(out.error, false);
 
     demogobbler_writer_close(&w);

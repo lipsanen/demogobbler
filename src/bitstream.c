@@ -26,10 +26,6 @@ static unsigned int buffered_bits(bitstream* thisptr) {
   } 
 }
 
-static int64_t buffered_bitoffset(bitstream* thisptr) {
-  return 64 - buffered_bits(thisptr);
-}
-
 static void fetch_ubit(bitstream *thisptr) {
   if(thisptr->bitoffset >= thisptr->bitsize) {
     thisptr->buffered = 0;
@@ -77,8 +73,15 @@ void demogobbler_bitstream_advance(bitstream* thisptr, unsigned int bits) {
     thisptr->overflow = true;
   }
   else {
-    thisptr->bitoffset =bits + thisptr->bitoffset;
-    fetch_ubit(thisptr);
+    thisptr->bitoffset = bits + thisptr->bitoffset;
+    if(bits > thisptr->buffered_bits) {
+      thisptr->buffered = 0;
+      thisptr->buffered_bits = 0;
+    }
+    else {
+      thisptr->buffered_bits -= bits;
+      thisptr->buffered >>= bits;
+    }
   }
 }
 

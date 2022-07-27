@@ -13,25 +13,43 @@ static uint64_t get_size_in_bytes(uint64_t bits) {
   }
 }
 
+static unsigned int buffered_bits(bitstream* thisptr) {
+  uint8_t* last_byte = (uint8_t*)thisptr->data + thisptr->bitsize / 8;
+  uint8_t* cur_address = (uint8_t*)thisptr->data + thisptr->bitoffset / 8;
+  uint64_t difference = (cur_address - thisptr->buffered_address);
+
+  if(cur_address < thisptr->buffered_address || difference >= 8) {
+    return 0;
+  }
+  else {
+    return (thisptr->buffered_bytes_read - difference) * 8 - (thisptr->bitoffset & 0x7);
+  } 
+}
+
+static int64_t buffered_bitoffset(bitstream* thisptr) {
+  return 64 - buffered_bits(thisptr);
+}
+
 static void fetch_ubit(bitstream *thisptr) {
   if(thisptr->bitoffset >= thisptr->bitsize) {
     thisptr->buffered = 0;
     thisptr->buffered_bits = 64;
+    thisptr->buffered_address = NULL;
     return;
   }
 
   uint64_t val = 0;
-  uint8_t* src = (uint8_t*)thisptr->data + thisptr->bitoffset / 8;
+  thisptr->buffered_address = (uint8_t*)thisptr->data + thisptr->bitoffset / 8;
   uint64_t end_byte = get_size_in_bytes(thisptr->bitsize);
-  uint64_t bytes_to_read = end_byte - thisptr->bitoffset / 8;
-  bytes_to_read = MIN(bytes_to_read, 8);
-
-  for(int i=0; i < bytes_to_read; ++i) {
-    val |= ((uint64_t)src[i]) << (8 * i);
+  thisptr->buffered_bytes_read = end_byte - thisptr->bitoffset / 8;
+  thisptr->buffered_bytes_read = MIN(thisptr->buffered_bytes_read, 8);
+  
+  for(int i=0; i < thisptr->buffered_bytes_read; ++i) {
+    val |= ((uint64_t)thisptr->buffered_address[i]) << (8 * i);
   }
 
   thisptr->buffered = val;
-  thisptr->buffered_bits = bytes_to_read * 8;
+  thisptr->buffered_bits = thisptr->buffered_bytes_read * 8;
 
   int64_t byte_offset = thisptr->bitoffset & 0x7;
 
@@ -52,51 +70,54 @@ bitstream demogobbler_bitstream_create(void *data, size_t size) {
 }
 
 void demogobbler_bitstream_advance(bitstream* thisptr, unsigned int bits) {
-  unsigned int new_offset = bits + thisptr->bitoffset;
+  int64_t diff = thisptr->bitsize - thisptr->bitoffset;
 
-  if(new_offset > thisptr->bitsize) {
-    new_offset = thisptr->bitsize;
+  if(bits > diff) {
+    thisptr->bitoffset = thisptr->bitsize;
     thisptr->overflow = true;
   }
-
-  thisptr->bitoffset = new_offset;
-  fetch_ubit(thisptr);
+  else {
+    thisptr->bitoffset =bits + thisptr->bitoffset;
+    fetch_ubit(thisptr);
+  }
 }
 
 bitstream demogobbler_bitstream_fork_and_advance(bitstream* stream, unsigned int bits) {
   bitstream output;
 
+  memset(&output, 0, sizeof(output));
   output.bitoffset = stream->bitoffset;
   output.bitsize = stream->bitoffset + bits;
   output.data = stream->data;
   output.overflow = stream->overflow;
-  fetch_ubit(&output);
   demogobbler_bitstream_advance(stream, bits);
 
   return output;
 }
 
 static uint64_t read_ubit(bitstream *thisptr, unsigned requested_bits) {
-  uint64_t rval;
+  if(thisptr->overflow) {
+    return 0;
+  }
 
+  uint64_t rval;
   unsigned int bits_left = requested_bits;
 
-  if(thisptr->buffered_bits == 0) {
+  if(buffered_bits(thisptr) == 0) {
       fetch_ubit(thisptr);
   }
 
-  if(thisptr->buffered_bits >= bits_left) {
+  if(buffered_bits(thisptr) >= bits_left) {
     rval = thisptr->buffered << (64 - bits_left);
     rval >>= (64 - bits_left);
     thisptr->buffered >>= bits_left;
-    thisptr->buffered_bits -= bits_left;
     thisptr->bitoffset += bits_left;
   }
   else {
-    unsigned int first_read = thisptr->buffered_bits;
+    unsigned int first_read = buffered_bits(thisptr);
     rval = thisptr->buffered;
-    thisptr->bitoffset += thisptr->buffered_bits;
-    bits_left -= thisptr->buffered_bits;
+    thisptr->bitoffset += first_read;
+    bits_left -= first_read;
 
     fetch_ubit(thisptr);
 
@@ -107,7 +128,6 @@ static uint64_t read_ubit(bitstream *thisptr, unsigned requested_bits) {
 
     thisptr->bitoffset += bits_left;
     thisptr->buffered >>= bits_left;
-    thisptr->buffered_bits -= bits_left;
   }
   
   if(thisptr->bitoffset > thisptr->bitsize) {
@@ -118,17 +138,20 @@ static uint64_t read_ubit(bitstream *thisptr, unsigned requested_bits) {
   return rval;
 }
 
-void demogobbler_bitstream_read_bits(bitstream *thisptr, void *_dest, unsigned _bits) {
+void demogobbler_bitstream_read_fixed_string(bitstream *thisptr, void *_dest, size_t bytes) {
   uint8_t* dest = (uint8_t*)_dest;
 
-  for(int i=0; _bits > 0; ++i) {
-    unsigned int bits_to_read = MIN(8, _bits);
-    dest[i] = read_ubit(thisptr, bits_to_read);
-    _bits -= bits_to_read;
+  for(size_t i=0; i < bytes; ++i) {
+    dest[i] = read_ubit(thisptr, 8);
   }
 }
 
 bool demogobbler_bitstream_read_bit(bitstream* thisptr) {
+  if(thisptr->overflow || thisptr->bitoffset >= thisptr->bitsize) {
+    thisptr->overflow = true;
+    return false;
+  }
+
   uint8_t MASKS[] = {0x1, 0x2, 0x4, 0x8, 0x10, 0x20, 0x40, 0x80};
 
   uint8_t* ptr = (uint8_t*)thisptr->data + thisptr->bitoffset / 8;
@@ -139,22 +162,7 @@ bool demogobbler_bitstream_read_bit(bitstream* thisptr) {
 }
 
 uint64_t demogobbler_bitstream_read_uint(bitstream *thisptr, unsigned int bits) {
-  //fprintf(stderr, "reading %d : %d, bits %u\n", thisptr->bitoffset, thisptr->bitsize, bits);
-  uint64_t value = 0;
-  // If we have more than 40 bits left, then grab the next 40 bits
-  if(demogobbler_bitstream_bits_left(thisptr) >= 40 && bits <= 32) {
-    uint8_t* ptr = (uint8_t*)thisptr->data + thisptr->bitoffset / 8;
-    value = ((uint64_t)*(ptr + 4)) << 32 | ((uint64_t)*(ptr + 3)) << 24 |
-    ((uint64_t)*(ptr + 2)) << 16 | ((uint64_t)*(ptr + 1)) << 8 | ((uint64_t)*ptr);
-    value >>= thisptr->bitoffset & 0x7;
-    value <<= (64 - bits);
-    value >>= (64 - bits);
-    bitstream_advance(thisptr, bits);
-  }
-  else {
-    demogobbler_bitstream_read_bits(thisptr, &value, bits);
-  }
-  return value;
+  return read_ubit(thisptr, bits);
 }
 
 int64_t demogobbler_bitstream_read_sint(bitstream *thisptr, unsigned int bits) {

@@ -16,6 +16,8 @@ struct demogobbler_bitstream {
   bool overflow;
   uint64_t buffered;
   unsigned int buffered_bits;
+  uint8_t* buffered_address;
+  uint64_t buffered_bytes_read;
 };
 
 typedef struct demogobbler_bitstream bitstream;
@@ -27,7 +29,7 @@ bool demogobbler_bitstream_read_bit(bitstream* thisptr);
 uint64_t demogobbler_bitstream_read_uint(bitstream *thisptr, unsigned int bits);
 int64_t demogobbler_bitstream_read_sint(bitstream *thisptr, unsigned int bits);
 float demogobbler_bitstream_read_float(bitstream *thisptr);
-void demogobbler_bitstream_read_bits(bitstream *thisptr, void *dest, unsigned bits);
+void demogobbler_bitstream_read_fixed_string(bitstream *thisptr, void *dest, size_t max_bytes);
 size_t demogobbler_bitstream_read_cstring(bitstream *thisptr, char *dest, size_t max_bytes);
 bitangle_vector demogobbler_bitstream_read_bitvector(bitstream *thisptr, unsigned int bits);
 bitcoord_vector demogobbler_bitstream_read_coordvector(bitstream *thisptr);
@@ -45,7 +47,7 @@ int32_t demogobbler_bitstream_read_sint32(bitstream *thisptr);
 #define bitstream_read_varuint32 demogobbler_bitstream_read_varuint32
 #define bitstream_read_sint demogobbler_bitstream_read_sint
 #define bitstream_read_sint32 demogobbler_bitstream_read_sint32
-#define bitstream_read_bits demogobbler_bitstream_read_bits
+#define bitstream_read_fixed_string demogobbler_bitstream_read_fixed_string
 #define bitstream_read_cstring demogobbler_bitstream_read_cstring
 #define bitstream_read_float demogobbler_bitstream_read_float
 #define bitstream_read_bitvector demogobbler_bitstream_read_bitvector

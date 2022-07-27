@@ -142,28 +142,6 @@ TEST(BitstreamPlusWriter, Bits) {
   bitwriter_free(&writer);
 }
 
-TEST(BitstreamPlusWriter, MixedReads) {
-  bitwriter writer;
-  bitwriter_init(&writer, 1);
-  bitwriter_write_uint(&writer, 1, 32);
-  bitwriter_write_uint(&writer, 2, 32);
-  bitwriter_write_uint(&writer, 3, 32);
-
-  bitstream stream = bitstream_create(writer.ptr, writer.bitoffset);
-
-  uint32_t dest;
-
-  bitstream_read_bits(&stream, &dest, 32);
-  EXPECT_EQ(1, dest);
-  
-  EXPECT_EQ(2, bitstream_read_uint(&stream, 32));
-
-  bitstream_read_bits(&stream, &dest, 32);
-  EXPECT_EQ(3, dest);
-
-  bitwriter_free(&writer);
-}
-
 TEST(BitstreamPlusWriter, VarUint) {
   bitwriter writer;
   const int NUMBERS = 1000;

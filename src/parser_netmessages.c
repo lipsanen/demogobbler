@@ -18,7 +18,7 @@
   message->offset = stream->bitoffset;                                                             \
   message->last_message =                                                                          \
       (demogobbler_bitstream_bits_left(stream) < thisptr->demo_version.netmessage_type_bits);      \
-  if (!stream->overflow && thisptr->m_settings.packet_net_message_handler)                         \
+  if (!stream->overflow && !thisptr->error && thisptr->m_settings.packet_net_message_handler)      \
     thisptr->m_settings.packet_net_message_handler(&thisptr->state, message);
 #else
 #define SEND_MESSAGE()                                                                             \
@@ -139,7 +139,14 @@ static void handle_net_signonstate(parser *thisptr, bitstream *stream, packet_ne
     ptr->NE_player_network_ids = bitstream_fork_and_advance(stream, length);
     ptr->NE_map_name_length = bitstream_read_uint32(stream);
     ptr->NE_map_name = scrap.address;
-    bitstream_read_bits(stream, scrap.address, ptr->NE_map_name_length * 8);
+
+    if (scrap.size < ptr->NE_map_name_length) {
+      thisptr->error = true;
+      thisptr->error_message = "Map name in net_signonstate has bad length";
+    }
+    else {
+      bitstream_read_fixed_string(stream, scrap.address, ptr->NE_map_name_length);
+    }
   }
   // Uncrafted: GameState.ClientSoundSequence = 1; reset sound sequence number after receiving
   // SignOn sounds
@@ -212,7 +219,7 @@ static void handle_svc_serverinfo(parser *thisptr, bitstream *stream, packet_net
   ptr->max_classes = bitstream_read_uint(stream, 16);
 
   if (thisptr->demo_version.game == steampipe) {
-    bitstream_read_bits(stream, ptr->map_md5, 16 * 8);
+    bitstream_read_fixed_string(stream, ptr->map_md5, 16);
     ptr->map_crc = 0;
   } else {
     memset(ptr->map_md5, 0, sizeof(ptr->map_md5));
@@ -893,7 +900,7 @@ void parse_netmessages(parser *thisptr, void *data, size_t size) {
   unsigned int bits = thisptr->demo_version.netmessage_type_bits;
 
   while (demogobbler_bitstream_bits_left(&stream) >= bits && !thisptr->error && !stream.overflow) {
-    if(scrap_blk.address == NULL) {
+    if (scrap_blk.address == NULL) {
       thisptr->error = true;
       thisptr->error_message = "Unable to allocate scrap block";
       break;
@@ -911,14 +918,12 @@ void parse_netmessages(parser *thisptr, void *data, size_t size) {
     handle_##message_type(thisptr, &stream, &message, scrap_blk);                                  \
     break;
 
-    if (type != svc_invalid) {
-      switch (type) {
-        DEMOGOBBLER_MACRO_ALL_MESSAGES(DECLARE_SWITCH_STATEMENT);
-      default:
-        thisptr->error = true;
-        thisptr->error_message = "No handler for this type of message.";
-        break;
-      }
+    switch (type) {
+      DEMOGOBBLER_MACRO_ALL_MESSAGES(DECLARE_SWITCH_STATEMENT);
+    default:
+      thisptr->error = true;
+      thisptr->error_message = "No handler for this type of message.";
+      break;
     }
   }
 

@@ -50,6 +50,19 @@ void parser_update_l4d2_version(parser* thisptr, int l4d2_version) {
   }
 }
 
+size_t _parser_read_length(parser* thisptr) {
+  int32_t result = filereader_readint32(thisreader);
+  int32_t max_len = 1 << 25;
+  if(result < 0 || result > max_len) {
+    thisptr->error = true;
+    thisptr->error_message = "Length was invalid\n";
+    return 0;
+  }
+  else {
+    return result;
+  }
+}
+
 void parser_free(parser *thisptr) { allocator_free(&thisptr->allocator); }
 
 void _parse_header(parser *thisptr) {
@@ -165,9 +178,9 @@ void _parse_consolecmd(parser *thisptr) {
   demogobbler_consolecmd message;
   message.preamble.type = demogobbler_type_consolecmd;
   PARSE_PREAMBLE();
-  message.size_bytes = filereader_readint32(thisreader);
+  message.size_bytes = _parser_read_length(thisptr);
 
-  if (message.size_bytes >= 0) {
+  if (message.size_bytes > 0) {;
     if (thisptr->m_settings.consolecmd_handler) {
       blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
       filereader_readdata(thisreader, block.address, message.size_bytes);
@@ -190,9 +203,10 @@ void _parse_customdata(parser *thisptr) {
   message.preamble.type = 8;
   PARSE_PREAMBLE();
 
-  if (thisptr->m_settings.customdata_handler) {
-    message.unknown = filereader_readint32(thisreader);
-    message.size_bytes = filereader_readint32(thisreader);
+  message.unknown = filereader_readint32(thisreader);
+  message.size_bytes = _parser_read_length(thisptr);
+
+  if (thisptr->m_settings.customdata_handler && message.size_bytes > 0) {
 
     blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
     filereader_readdata(thisreader, block.address, message.size_bytes);
@@ -200,8 +214,6 @@ void _parse_customdata(parser *thisptr) {
     thisptr->m_settings.customdata_handler(&thisptr->state, &message);
     allocator_dealloc(thisallocator, block);
   } else {
-    filereader_skipbytes(thisreader, 4);
-    message.size_bytes = filereader_readint32(thisreader);
     filereader_skipbytes(thisreader, message.size_bytes);
   }
 }
@@ -211,8 +223,9 @@ void _parse_datatables(parser *thisptr) {
   message.preamble.type = demogobbler_type_datatables;
   PARSE_PREAMBLE();
 
-  if (thisptr->m_settings.datatables_handler) {
-    message.size_bytes = filereader_readint32(thisreader);
+  message.size_bytes = _parser_read_length(thisptr);
+
+  if (thisptr->m_settings.datatables_handler && message.size_bytes > 0) {
 
     blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
     filereader_readdata(thisreader, block.address, message.size_bytes);
@@ -220,7 +233,6 @@ void _parse_datatables(parser *thisptr) {
     thisptr->m_settings.datatables_handler(&thisptr->state, &message);
     allocator_dealloc(thisallocator, block);
   } else {
-    message.size_bytes = filereader_readint32(thisreader);
     filereader_skipbytes(thisreader, message.size_bytes);
   }
 }
@@ -246,9 +258,9 @@ void _parse_packet(parser *thisptr, enum demogobbler_type type) {
 
   message.in_sequence = filereader_readint32(thisreader);
   message.out_sequence = filereader_readint32(thisreader);
-  message.size_bytes = filereader_readint32(thisreader);
+  message.size_bytes = _parser_read_length(thisptr);
 
-  if (thisptr->m_settings.packet_handler || thisptr->m_settings.packet_net_message_handler) {
+  if ((thisptr->m_settings.packet_handler || thisptr->m_settings.packet_net_message_handler) && message.size_bytes > 0) {
     blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
     filereader_readdata(thisreader, block.address, message.size_bytes);
     message.data = block.address;
@@ -298,17 +310,15 @@ void _parse_stringtables(parser *thisptr, int32_t type) {
   demogobbler_stringtables message;
   message.preamble.type = type;
   PARSE_PREAMBLE();
+  message.size_bytes = _parser_read_length(thisptr);
 
-  if (thisptr->m_settings.stringtables_handler) {
-    message.size_bytes = filereader_readint32(thisreader);
-
+  if (thisptr->m_settings.stringtables_handler && message.size_bytes > 0) {
     blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
     filereader_readdata(thisreader, block.address, message.size_bytes);
     message.data = block.address;
     thisptr->m_settings.stringtables_handler(&thisptr->state, &message);
     allocator_dealloc(thisallocator, block);
   } else {
-    message.size_bytes = filereader_readint32(thisreader);
     filereader_skipbytes(thisreader, message.size_bytes);
   }
 }
@@ -328,9 +338,10 @@ void _parse_usercmd(parser *thisptr) {
   message.preamble.type = demogobbler_type_usercmd;
   PARSE_PREAMBLE();
 
-  if (thisptr->m_settings.usercmd_handler) {
-    message.cmd = filereader_readint32(thisreader);
-    message.size_bytes = filereader_readint32(thisreader);
+  message.cmd = filereader_readint32(thisreader);
+  message.size_bytes = filereader_readint32(thisreader);
+
+  if (thisptr->m_settings.usercmd_handler && message.size_bytes > 0) {
 
     blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
     filereader_readdata(thisreader, block.address, message.size_bytes);
@@ -338,8 +349,6 @@ void _parse_usercmd(parser *thisptr) {
     thisptr->m_settings.usercmd_handler(&thisptr->state, &message);
     allocator_dealloc(thisallocator, block);
   } else {
-    filereader_skipbytes(thisreader, 4);
-    int32_t size = filereader_readint32(thisreader);
-    filereader_skipbytes(thisreader, size);
+    filereader_skipbytes(thisreader, message.size_bytes);
   }
 }

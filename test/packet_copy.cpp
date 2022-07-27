@@ -38,6 +38,13 @@ struct packet_copy_tester {
                         << this->writer.bitoffset;
         error = true;
       }
+      else {
+        for(int i=0; i < this->packet_bits / 8 - 1; ++i) {
+          uint8_t dest = *((uint8_t*)this->writer.ptr + i);
+          uint8_t src = *((uint8_t*)this->current_data + i);
+          EXPECT_EQ(dest, src) << "manual mem check failed, bug with bitstreams " << dest << " != " << src;
+        }
+      }
     }
   }
 
@@ -114,6 +121,10 @@ static void netmessage_handler(parser_state* state, packet_net_message *message)
 
     tester->last_message = message->mtype;
     tester->verify_last_iteration();
+
+    if(message->last_message) {
+      tester->verify_last_packet_size();
+    }
   }
 }
 

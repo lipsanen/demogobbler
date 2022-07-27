@@ -78,7 +78,7 @@ TEST(Bitstream, AlignedCString) {
   const char *string = "this is a wonderful string.";
   char buffer[80];
   bitstream stream =
-      demogobbler_bitstream_create(const_cast<void *>((const void *)string), strlen(string) + 1);
+      demogobbler_bitstream_create(const_cast<void *>((const void *)string), (strlen(string) + 1) * 8);
 
   demogobbler_bitstream_read_cstring(&stream, buffer, 80);
 
@@ -104,6 +104,7 @@ TEST(BitstreamPlusWriter, Bit) {
     bool read = bitstream_read_bit(&stream);
     EXPECT_EQ(value, read) << i;
   }
+  bitwriter_free(&writer);
 }
 
 TEST(BitstreamPlusWriter, Bits) {
@@ -137,6 +138,30 @@ TEST(BitstreamPlusWriter, Bits) {
     uint64_t read = bitstream_read_uint(&stream, bits);
     EXPECT_EQ(value, read) << i;
   }
+
+  bitwriter_free(&writer);
+}
+
+TEST(BitstreamPlusWriter, MixedReads) {
+  bitwriter writer;
+  bitwriter_init(&writer, 1);
+  bitwriter_write_uint(&writer, 1, 32);
+  bitwriter_write_uint(&writer, 2, 32);
+  bitwriter_write_uint(&writer, 3, 32);
+
+  bitstream stream = bitstream_create(writer.ptr, writer.bitoffset);
+
+  uint32_t dest;
+
+  bitstream_read_bits(&stream, &dest, 32);
+  EXPECT_EQ(1, dest);
+  
+  EXPECT_EQ(2, bitstream_read_uint(&stream, 32));
+
+  bitstream_read_bits(&stream, &dest, 32);
+  EXPECT_EQ(3, dest);
+
+  bitwriter_free(&writer);
 }
 
 TEST(BitstreamPlusWriter, VarUint) {
@@ -158,6 +183,7 @@ TEST(BitstreamPlusWriter, VarUint) {
     uint32_t read = bitstream_read_varuint32(&stream);
     EXPECT_EQ(read, value) << i;
   }
+  bitwriter_free(&writer);
 }
 
 static void test_bitangle_vectors(bitangle_vector v1, bitangle_vector v2) {
@@ -176,7 +202,7 @@ TEST(BitstreamPlusWriter, BitVector) {
   srand(0);
 
   for (int i = 0;;) {
-    bits = rand() % 32 + 1;
+    bits = rand() % 31 + 1;
     i += bits * 3;
 
     if (i > BITS)
@@ -194,7 +220,7 @@ TEST(BitstreamPlusWriter, BitVector) {
   srand(0);
 
   for (int i = 0;;) {
-    bits = rand() % 32 + 1;
+    bits = rand() % 31 + 1;
     i += bits * 3;
 
     if (i > BITS)
@@ -208,6 +234,8 @@ TEST(BitstreamPlusWriter, BitVector) {
     bitangle_vector read = bitstream_read_bitvector(&stream, bits);
     test_bitangle_vectors(vec, read);
   }
+
+  bitwriter_free(&writer);
 }
 
 static void test_coord(bitcoord coord1, bitcoord coord2) {
@@ -282,6 +310,7 @@ TEST(BitstreamPlusWriter, CoordVector) {
     bitcoord_vector read = bitstream_read_coordvector(&stream);
     test_coord_vectors(vec, read);
   }
+  bitwriter_free(&writer);
 }
 
 TEST(BitstreamPlusWriter, UInt) {
@@ -293,6 +322,7 @@ TEST(BitstreamPlusWriter, UInt) {
   bitstream stream = bitstream_create(writer.ptr, writer.bitsize);
 
   EXPECT_EQ(value, bitstream_read_uint(&stream, bits));
+  bitwriter_free(&writer);
 }
 
 TEST(BitstreamPlusWriter, Int) {
@@ -304,6 +334,7 @@ TEST(BitstreamPlusWriter, Int) {
   bitstream stream = bitstream_create(writer.ptr, writer.bitsize);
 
   EXPECT_EQ(value, bitstream_read_sint(&stream, bits));
+  bitwriter_free(&writer);
 }
 
 TEST(BitstreamPlusWriter, Int32) {
@@ -314,6 +345,7 @@ TEST(BitstreamPlusWriter, Int32) {
   bitstream stream = bitstream_create(writer.ptr, writer.bitsize);
 
   EXPECT_EQ(value, bitstream_read_sint32(&stream));
+  bitwriter_free(&writer);
 }
 
 TEST(BitstreamPlusWriter, CString) {
@@ -327,6 +359,7 @@ TEST(BitstreamPlusWriter, CString) {
   bitstream_read_cstring(&stream, BUFFER, 80);
 
   EXPECT_EQ(strcmp(text, BUFFER), 0);
+  bitwriter_free(&writer);
 }
 
 TEST(BitstreamPlusWriter, UInt32) {
@@ -337,6 +370,7 @@ TEST(BitstreamPlusWriter, UInt32) {
   bitstream stream = bitstream_create(writer.ptr, writer.bitsize);
 
   EXPECT_EQ(value, bitstream_read_uint32(&stream));
+  bitwriter_free(&writer);
 }
 
 TEST(BitstreamPlusWriter, Bitstream) {
@@ -365,4 +399,6 @@ TEST(BitstreamPlusWriter, Bitstream) {
     bool set2 = bitstream_read_bit(&stream2);
     ASSERT_EQ(set1, set2) << "wrong bit at index " << i << " / " << stream.bitsize;
   }
+  bitwriter_free(&writer);
+  free(data);
 }

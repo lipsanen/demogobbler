@@ -25,9 +25,6 @@ void handle_version(parser_state* state, demo_version_data version)
   ((writer*)state->client_state)->version = version;
 }
 
-static void packet_net_message_handler(parser_state* state, packet_net_message* message) {
-}
-
 void copy_demo_test(const char* filepath)
 {
   writer w;
@@ -53,13 +50,12 @@ void copy_demo_test(const char* filepath)
     settings.synctick_handler = synctick_handler;
     settings.usercmd_handler = usercmd_handler;
     settings.demo_version_handler = handle_version;
-    settings.packet_net_message_handler = packet_net_message_handler;
     settings.client_state = &w;
 
     input_interface input_funcs = {memory_stream_read, memory_stream_seek};
 
     auto out = demogobbler_parse(&settings, &input, input_funcs);
-    EXPECT_EQ(out.error, false);
+    EXPECT_EQ(out.error, false) << out.error_message;
 
     demogobbler_writer_close(&w);
   }

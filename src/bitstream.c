@@ -3,12 +3,51 @@
 #include <string.h>
 #include <stdio.h>
 
+// This rounds up
+static uint64_t get_size_in_bytes(uint64_t bits) {
+  if (bits & 0x7) {
+    return bits / 8 + 1;
+  }
+  else {
+    return bits / 8;
+  }
+}
+
+static void fetch_ubit(bitstream *thisptr) {
+  if(thisptr->bitoffset >= thisptr->bitsize) {
+    thisptr->buffered = 0;
+    thisptr->buffered_bits = 64;
+    return;
+  }
+
+  uint64_t val = 0;
+  uint8_t* src = (uint8_t*)thisptr->data + thisptr->bitoffset / 8;
+  uint64_t end_byte = get_size_in_bytes(thisptr->bitsize);
+  uint64_t bytes_to_read = end_byte - thisptr->bitoffset / 8;
+  bytes_to_read = MIN(bytes_to_read, 8);
+
+  for(int i=0; i < bytes_to_read; ++i) {
+    val |= ((uint64_t)src[i]) << (8 * i);
+  }
+
+  thisptr->buffered = val;
+  thisptr->buffered_bits = bytes_to_read * 8;
+
+  int64_t byte_offset = thisptr->bitoffset & 0x7;
+
+  if(byte_offset != 0) {
+    thisptr->buffered >>= byte_offset;
+    thisptr->buffered_bits -= byte_offset;
+  }
+}
+
 bitstream demogobbler_bitstream_create(void *data, size_t size) {
   bitstream stream;
   stream.data = data;
   stream.bitsize = size;
   stream.bitoffset = 0;
   stream.overflow = false;
+  fetch_ubit(&stream);
   return stream;
 }
 
@@ -21,6 +60,7 @@ void demogobbler_bitstream_advance(bitstream* thisptr, unsigned int bits) {
   }
 
   thisptr->bitoffset = new_offset;
+  fetch_ubit(thisptr);
 }
 
 bitstream demogobbler_bitstream_fork_and_advance(bitstream* stream, unsigned int bits) {
@@ -30,72 +70,62 @@ bitstream demogobbler_bitstream_fork_and_advance(bitstream* stream, unsigned int
   output.bitsize = stream->bitoffset + bits;
   output.data = stream->data;
   output.overflow = stream->overflow;
-
+  fetch_ubit(&output);
   demogobbler_bitstream_advance(stream, bits);
 
   return output;
 }
 
-void demogobbler_bitstream_read_bits(bitstream *thisptr, void *dest, unsigned bits) {
-  const uint8_t LOW_MASKS[] = {0x1, 0x3, 0x7, 0xF, 0x1F, 0x3F, 0x7F};
-  uint8_t* data = (uint8_t*)thisptr->data + thisptr->bitoffset / 8;
+static uint64_t read_ubit(bitstream *thisptr, unsigned requested_bits) {
+  uint64_t rval;
 
-  int size_misalignment = bits & 0x7;
-  int src_misalignment = (thisptr->bitoffset & 0x7);
-  int mask_index = size_misalignment - 1; // Not valid if byte aligned
-  unsigned int bytes;
+  unsigned int bits_left = requested_bits;
 
-  unsigned int bits_left = demogobbler_bitstream_bits_left(thisptr);
-
-  if(bits_left < bits) {
-    thisptr->overflow = true;
-    bits = bits_left;
+  if(thisptr->buffered_bits == 0) {
+      fetch_ubit(thisptr);
   }
 
-  if(size_misalignment == 0) {
-    bytes = bits / 8;
+  if(thisptr->buffered_bits >= bits_left) {
+    rval = thisptr->buffered << (64 - bits_left);
+    rval >>= (64 - bits_left);
+    thisptr->buffered >>= bits_left;
+    thisptr->buffered_bits -= bits_left;
+    thisptr->bitoffset += bits_left;
   }
   else {
-    bytes = bits / 8 + 1;
+    unsigned int first_read = thisptr->buffered_bits;
+    rval = thisptr->buffered;
+    thisptr->bitoffset += thisptr->buffered_bits;
+    bits_left -= thisptr->buffered_bits;
+
+    fetch_ubit(thisptr);
+
+    uint64_t temp = thisptr->buffered << (64 - bits_left);
+    temp >>= (64 - bits_left - first_read);
+
+    rval |= temp;
+
+    thisptr->bitoffset += bits_left;
+    thisptr->buffered >>= bits_left;
+    thisptr->buffered_bits -= bits_left;
+  }
+  
+  if(thisptr->bitoffset > thisptr->bitsize) {
+    thisptr->bitoffset = thisptr->bitsize;
+    thisptr->overflow = true;
   }
 
-  memcpy(dest, data, bytes);
+  return rval;
+}
 
-  if (src_misalignment != 0) {
-    unsigned int total_bytes = thisptr->bitsize / 8 + 1;
-    unsigned int current_byte = thisptr->bitoffset / 8;
-    if(current_byte == total_bytes) {
-      // If less than 8 bits left we can just shift the bits into place
-      // Accessing the next byte would be illegal
-      for (size_t i = 0; i < bytes; ++i) {
-        uint8_t *current_byte = (uint8_t *)dest + i;
-        *current_byte >>= src_misalignment;
-      }
-    }
-    else {
-      // We do a little copying
-      // Since memory is unaligned, do it two pieces.
-      // First just copy the first half with memcpy, then on the 2nd pass do bit magic to move
-      // everything into correct places
+void demogobbler_bitstream_read_bits(bitstream *thisptr, void *_dest, unsigned _bits) {
+  uint8_t* dest = (uint8_t*)_dest;
 
-      for (size_t i = 0; i < bytes; ++i) {
-        uint8_t *src2 = data + 1 + i;
-        uint8_t incoming = (*src2 << (8 - src_misalignment));
-        uint8_t *current_byte = (uint8_t *)dest + i;
-        *current_byte >>= src_misalignment;
-        *current_byte = *current_byte | incoming;
-      }
-    }
+  for(int i=0; _bits > 0; ++i) {
+    unsigned int bits_to_read = MIN(8, _bits);
+    dest[i] = read_ubit(thisptr, bits_to_read);
+    _bits -= bits_to_read;
   }
-
-  // mask out the high bits on the last unaligned read
-  if (size_misalignment != 0 && bits > 0) {
-    uint8_t *last_byte = (uint8_t *)dest + bytes - 1;
-    *last_byte =
-        *last_byte & LOW_MASKS[mask_index]; 
-  } 
-
-  thisptr->bitoffset += bits;
 }
 
 bool demogobbler_bitstream_read_bit(bitstream* thisptr) {
@@ -141,52 +171,18 @@ float demogobbler_bitstream_read_float(bitstream* thisptr)
 }
 
 size_t demogobbler_bitstream_read_cstring(bitstream* thisptr, char* dest, size_t max_bytes) {
-  unsigned int bytes_left = demogobbler_bitstream_bits_left(thisptr) / 8;
-  int src_misalignment = (thisptr->bitoffset & 0x7);
-  uint8_t* src = (uint8_t* )thisptr->data + thisptr->bitoffset / 8;
-  size_t i = 0;
-  
-  if(bytes_left > max_bytes) {
-    max_bytes = bytes_left;
-  }
+  size_t i;
+  for(i=0; i < max_bytes; ++i) {
+    uint64_t value = read_ubit(thisptr, 8);
+    char c = *(char*)&value;
+    dest[i] = c;
 
-  if(src_misalignment == 0) {
-    for(; i < max_bytes; ++i) {
-      dest[i] = src[i];
-
-      if(dest[i] == '\0')
-      {
-        ++i;
-        break;
-      }
+    if(value == 0)
+    {
+      ++i;
+      break;
     }
   }
-  else {
-    for (; i < max_bytes; ++i) {
-      uint8_t *src1 = src + i;
-      uint8_t *src2 = src + 1 + i;
-      uint8_t inc1 = (*src1 >> src_misalignment);
-      uint8_t inc2 = (*src2 << (8 - src_misalignment));
-      dest[i] = inc1 | inc2;
-
-      if(dest[i] == '\0')
-      {
-        ++i;
-        break;
-      }
-    }
-  }
-
-  if(i == max_bytes && i != 0) {
-    dest[max_bytes - 1] = '\0';
-    thisptr->overflow = true;
-  }
-  else if (i == 0) {
-    thisptr->overflow = true;
-    dest[0] = '\0';
-  }
-
-  thisptr->bitoffset += i * 8;
 
   return i;
 }

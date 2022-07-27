@@ -5,7 +5,7 @@
 void demogobbler_bitwriter_init(bitwriter *thisptr, size_t initial_size_bits) {
   memset(thisptr, 0, sizeof(*thisptr));
   initial_size_bits += initial_size_bits & 0x7;
-  thisptr->ptr = malloc(initial_size_bits / 8);
+  thisptr->ptr = malloc(initial_size_bits / 8 + 1);
   thisptr->bitoffset = 0;
   thisptr->bitsize = initial_size_bits;
 }
@@ -22,7 +22,7 @@ static void bitwriter_allocate_space_if_needed(bitwriter *thisptr, unsigned int 
   if (demogobbler_bitwriter_get_available_bits(thisptr) < bits_wanted) {
     thisptr->bitsize = MAX(thisptr->bitsize * 2, thisptr->bitsize + bits_wanted);
     thisptr->bitsize += thisptr->bitsize & 0x7;
-    thisptr->ptr = realloc(thisptr->ptr, thisptr->bitsize / 8);
+    thisptr->ptr = realloc(thisptr->ptr, thisptr->bitsize / 8 + 1);
   }
 }
 

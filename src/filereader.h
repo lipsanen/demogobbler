@@ -26,26 +26,6 @@ void filereader_skipbytes(filereader *thisptr, int bytes);
 void filereader_skipto(filereader *thisptr, uint64_t offset);
 int64_t filereader_current_position(filereader *thisptr);
 
-static inline int32_t filereader_readint32(filereader *thisptr)
-{
-  int32_t val;
-  int64_t bytesLeftInBuffer = (thisptr->m_iBytesAvailable - thisptr->m_iBufferOffset);
-  
-  // If enough bytes in buffer, take fast track
-  if(bytesLeftInBuffer >= 4)
-  {
-    int32_t *src = (int32_t*)((uint8_t *)thisptr->m_pBuffer + thisptr->m_iBufferOffset);
-    val = *src;
-    thisptr->m_iBufferOffset += 4;
-  }
-  else
-  {
-    filereader_readdata(thisptr, &val, 4);
-  }
-
-  return val;
-}
-
 static inline uint8_t filereader_readbyte(filereader *thisptr)
 {
   uint8_t val;
@@ -66,22 +46,41 @@ static inline uint8_t filereader_readbyte(filereader *thisptr)
   return val;
 }
 
-static inline float filereader_readfloat(filereader *thisptr) {
-  float val;
+static inline int32_t filereader_readint32(filereader *thisptr)
+{
+  int32_t val = 0;
   int64_t bytesLeftInBuffer = (thisptr->m_iBytesAvailable - thisptr->m_iBufferOffset);
-
+  
   // If enough bytes in buffer, take fast track
   if(bytesLeftInBuffer >= 4)
   {
-    float *src = (float*)((uint8_t *)thisptr->m_pBuffer + thisptr->m_iBufferOffset);
-    val = *src;
+    if((thisptr->m_iBufferOffset & 0x3) == 0) {
+      int32_t *src = (int32_t*)((uint8_t *)thisptr->m_pBuffer + thisptr->m_iBufferOffset);
+      val = *src;
+    }
+    else {
+      uint32_t byte1 = *((uint8_t *)thisptr->m_pBuffer + thisptr->m_iBufferOffset);
+      uint32_t byte2 = *((uint8_t *)thisptr->m_pBuffer + thisptr->m_iBufferOffset + 1);
+      uint32_t byte3 = *((uint8_t *)thisptr->m_pBuffer + thisptr->m_iBufferOffset + 2);
+      uint32_t byte4 = *((uint8_t *)thisptr->m_pBuffer + thisptr->m_iBufferOffset + 3);
+      val = (byte4 << 24) | (byte3 << 16) | (byte2 << 8) | byte1;
+    }
+
     thisptr->m_iBufferOffset += 4;
+
   }
   else
   {
     filereader_readdata(thisptr, &val, 4);
   }
+
   return val;
+}
+
+static inline float filereader_readfloat(filereader *thisptr) {
+  int32_t intval = filereader_readint32(thisptr);
+
+  return *(float*)&intval;
 }
 
 static inline vector filereader_readvector(filereader *thisptr)

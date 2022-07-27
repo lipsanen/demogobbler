@@ -14,6 +14,8 @@ struct demogobbler_bitstream {
   int64_t bitsize;
   int64_t bitoffset;
   bool overflow;
+  uint64_t buffered;
+  unsigned int buffered_bits;
 };
 
 typedef struct demogobbler_bitstream bitstream;

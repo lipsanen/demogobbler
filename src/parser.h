@@ -21,4 +21,3 @@ struct parser {
 void parser_init(parser *thisptr, demogobbler_settings *settings);
 void parser_parse(parser *thisptr, void* stream, input_interface input);
 void parser_update_l4d2_version(parser* thisptr, int l4d2_version);
-void parser_free(parser* thisptr);

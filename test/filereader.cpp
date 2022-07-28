@@ -33,9 +33,10 @@ void write_data_ints(int count, const char *filepath) {
 void read_data_filereader(void *ptr, std::size_t size, const char *filepath) {
   FILE *input = fopen(filepath, "rb");
   filereader reader;
-  filereader_init(&reader, input, (input_interface){fstream_read, fstream_seek});
+  char buffer[256];
+  filereader_init(&reader, buffer, sizeof(buffer), input, (input_interface){fstream_read, fstream_seek});
   filereader_readdata(&reader, ptr, size);
-  filereader_free(&reader);
+  fclose(input);
 }
 
 TEST_F(FileReaderTest, readdata_works) {
@@ -55,14 +56,15 @@ TEST_F(FileReaderTest, readint32_works) {
 
   FILE *input = fopen(filepath, "rb");
   filereader reader;
-  filereader_init(&reader, input, (input_interface){fstream_read, fstream_seek});
+  char buffer[256];
+  filereader_init(&reader, buffer, sizeof(buffer), input, (input_interface){fstream_read, fstream_seek});
 
   for (int i = 0; i < count; ++i) {
     int value = filereader_readint32(&reader);
     EXPECT_EQ(value, i);
   }
 
-  filereader_free(&reader);
+  fclose(input);
 }
 
 TEST_F(FileReaderTest, skipbytes_works) {
@@ -72,7 +74,8 @@ TEST_F(FileReaderTest, skipbytes_works) {
 
   FILE *input = fopen(filepath, "rb");
   filereader reader;
-  filereader_init(&reader, input, (input_interface){fstream_read, fstream_seek});
+  char buffer[256];
+  filereader_init(&reader, buffer, sizeof(buffer), input, (input_interface){fstream_read, fstream_seek});
   filereader_skipbytes(&reader, sizeof(int) * 256);
 
   for (int i = 256; i < count; ++i) {
@@ -80,7 +83,7 @@ TEST_F(FileReaderTest, skipbytes_works) {
     EXPECT_EQ(value, i);
   }
 
-  filereader_free(&reader);
+  fclose(input);
 }
 
 TEST_F(FileReaderTest, skipto_works) {
@@ -90,7 +93,8 @@ TEST_F(FileReaderTest, skipto_works) {
 
   FILE *input = fopen(filepath, "rb");
   filereader reader;
-  filereader_init(&reader, input, (input_interface){fstream_read, fstream_seek});
+  char buffer[256];
+  filereader_init(&reader, buffer, sizeof(buffer), input, (input_interface){fstream_read, fstream_seek});
 
   for (int i = 0; i < 256; ++i) {
     int value = filereader_readint32(&reader);
@@ -100,6 +104,5 @@ TEST_F(FileReaderTest, skipto_works) {
   filereader_skipto(&reader, sizeof(int) * 9999);
   int value = filereader_readint32(&reader);
   EXPECT_EQ(value, 9999);
-
-  filereader_free(&reader);
+  fclose(input);
 }

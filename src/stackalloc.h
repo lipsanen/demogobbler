@@ -23,8 +23,7 @@ typedef struct demogobbler_blk blk;
 blk stackallocator_alloc(allocator* thisptr, size_t bytes);
 void stackallocator_dealloc(allocator* thisptr, blk block);
 void stackallocator_dealloc_all(allocator* thisptr);
-void stackallocator_init(allocator* thisptr, size_t bytes);
-void stackallocator_free(allocator* thisptr);
+void stackallocator_init(allocator* thisptr, void* buffer, size_t bytes);
 bool stackallocator_space_on_stack(allocator* thisptr, size_t bytes);
 bool stackallocator_onstack(allocator* thisptr, blk block);
 blk stackallocator_realloc(allocator* thisptr, blk block, size_t bytes);
@@ -35,5 +34,4 @@ blk stackallocator_realloc(allocator* thisptr, blk block, size_t bytes);
 #define allocator_init stackallocator_init
 #define allocator_dealloc stackallocator_dealloc
 #define allocator_dealloc_all stackallocator_dealloc_all
-#define allocator_free stackallocator_free
 #define allocator_realloc stackallocator_realloc

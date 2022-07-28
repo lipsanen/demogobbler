@@ -8,8 +8,6 @@
 #include <stddef.h>
 #include <string.h>
 
-const int STACK_SIZE = 1 << 13;
-
 #define thisreader &thisptr->m_reader
 #define thisallocator &thisptr->allocator
 
@@ -29,15 +27,15 @@ void parser_init(parser *thisptr, demogobbler_settings *settings) {
   memset(thisptr, 0, sizeof(*thisptr));
   thisptr->state.client_state = settings->client_state;
   thisptr->m_settings = *settings;
-  allocator_init(&thisptr->allocator, STACK_SIZE);
 }
 
 void parser_parse(parser *thisptr, void *stream, input_interface input) {
   if (stream) {
-    filereader_init(thisreader, stream, input);
+    const int FILE_BUFFER_SIZE = 1 << 13;
+    uint64_t buffer[FILE_BUFFER_SIZE / sizeof(uint64_t)];
+    filereader_init(thisreader, buffer, sizeof(buffer), stream, input);
     _parse_header(thisptr);
     _parser_mainloop(thisptr);
-    filereader_free(thisreader);
   }
 }
 
@@ -62,7 +60,6 @@ size_t _parser_read_length(parser *thisptr) {
   }
 }
 
-void parser_free(parser *thisptr) { allocator_free(&thisptr->allocator); }
 
 void _parse_header(parser *thisptr) {
   demogobbler_header header;
@@ -168,6 +165,10 @@ void _parser_mainloop(parser *thisptr) {
 
   if (!should_parse)
     return;
+
+  const int STACK_SIZE = 1 << 13;
+  uint64_t buffer[STACK_SIZE / sizeof(uint64_t)];
+  allocator_init(&thisptr->allocator, buffer, sizeof(buffer));
 
   while (_parse_anymessage(thisptr))
     ;

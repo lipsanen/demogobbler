@@ -14,7 +14,6 @@ demogobbler_parse_result demogobbler_parse(demogobbler_settings *settings, void 
   parser_parse(&parser, stream, input_interface);
   out.error = parser.error;
   out.error_message = parser.error_message;
-  parser_free(&parser);
 
   return out;
 }

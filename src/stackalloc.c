@@ -14,12 +14,6 @@ blk stackallocator_alloc(allocator* thisptr, size_t bytes)
     bytes = bytes + 8 - (bytes & 0x7);
   }
 
-  // Stack only allocated when memory requested
-  if(!thisptr->stack)
-  {
-    thisptr->stack = malloc(thisptr->size);
-  }
-
   if(bytes <= (thisptr->size - thisptr->allocated))
   {
     // Allocate from the stack, we have enough bytes
@@ -37,9 +31,9 @@ blk stackallocator_alloc(allocator* thisptr, size_t bytes)
   return output;
 }
 
-void stackallocator_init(allocator* thisptr, size_t size)
+void stackallocator_init(allocator* thisptr, void* buffer, size_t size)
 {
-  thisptr->stack = NULL;
+  thisptr->stack = buffer;
   thisptr->size = size;
   thisptr->allocated = 0;
 }

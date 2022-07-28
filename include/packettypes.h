@@ -5,6 +5,8 @@ extern "C" {
 #endif
 
 #include "demogobbler_vector.h"
+#include <assert.h>
+#include <stdalign.h>
 #include <stdint.h>
 
 enum demogobbler_type {
@@ -27,6 +29,10 @@ struct demogobbler_message_preamble {
 
 typedef struct demogobbler_message_preamble demogobbler_message_preamble;
 
+struct demogobbler_cmdinfo_raw {
+  int32_t data[19];
+};
+
 struct demogobbler_cmdinfo {
   int32_t interp_flags;
   vector view_origin;
@@ -39,9 +45,18 @@ struct demogobbler_cmdinfo {
 
 typedef struct demogobbler_cmdinfo demogobbler_cmdinfo;
 
+// Optimization, read the cmdinfo bit as a uin32_t array instead of picking the individual words out
+// Should be fine I think, but I'll check that the size and alignment match here just in case
+static_assert(sizeof(struct demogobbler_cmdinfo_raw) == sizeof(demogobbler_cmdinfo), "Bad length in cmdinfo_raw");
+static_assert(alignof(struct demogobbler_cmdinfo_raw) == 4, "Bad alignment in cmdinfo_raw");
+static_assert(alignof(struct demogobbler_cmdinfo_raw) == alignof(demogobbler_cmdinfo), "Bad alignment in cmdinfo_raw");
+
 struct demogobbler_packet {
   demogobbler_message_preamble preamble;
-  demogobbler_cmdinfo cmdinfo[4]; // allocates memory enough for all games
+  union {
+    struct demogobbler_cmdinfo_raw cmdinfo_raw[4];
+    demogobbler_cmdinfo cmdinfo[4]; // allocates memory enough for all games
+  };
   int32_t in_sequence;
   int32_t out_sequence;
   int32_t size_bytes;

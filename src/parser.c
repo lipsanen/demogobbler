@@ -31,7 +31,7 @@ void parser_init(parser *thisptr, demogobbler_settings *settings) {
 
 void parser_parse(parser *thisptr, void *stream, input_interface input) {
   if (stream) {
-    const int FILE_BUFFER_SIZE = 1 << 13;
+    const int FILE_BUFFER_SIZE = 1 << 15;
     uint64_t buffer[FILE_BUFFER_SIZE / sizeof(uint64_t)];
     filereader_init(thisreader, buffer, sizeof(buffer), stream, input);
     _parse_header(thisptr);
@@ -251,14 +251,13 @@ void _parse_datatables(parser *thisptr) {
   }
 }
 
-void _parse_cmdinfo(parser *thisptr, demogobbler_cmdinfo *cmdinfo) {
-  cmdinfo->interp_flags = filereader_readint32(thisreader);
-  cmdinfo->view_origin = filereader_readvector(thisreader);
-  cmdinfo->view_angles = filereader_readvector(thisreader);
-  cmdinfo->local_viewangles = filereader_readvector(thisreader);
-  cmdinfo->view_origin2 = filereader_readvector(thisreader);
-  cmdinfo->view_angles2 = filereader_readvector(thisreader);
-  cmdinfo->local_viewangles2 = filereader_readvector(thisreader);
+static void _parse_cmdinfo(parser *thisptr, demogobbler_packet *packet, size_t i) {
+  if(thisptr->m_settings.packet_handler) {
+    filereader_readdata(thisreader, packet->cmdinfo_raw[i].data, sizeof(packet->cmdinfo_raw[i].data));
+  }
+  else {
+    filereader_skipbytes(thisreader, sizeof(struct demogobbler_cmdinfo_raw));
+  }
 }
 
 void _parse_packet(parser *thisptr, enum demogobbler_type type) {
@@ -267,7 +266,7 @@ void _parse_packet(parser *thisptr, enum demogobbler_type type) {
   PARSE_PREAMBLE();
 
   for (int i = 0; i < thisptr->demo_version.cmdinfo_size; ++i) {
-    _parse_cmdinfo(thisptr, &message.cmdinfo[i]);
+    _parse_cmdinfo(thisptr, &message, i);
   }
 
   message.in_sequence = filereader_readint32(thisreader);

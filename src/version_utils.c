@@ -211,7 +211,7 @@ static void get_svc_prefetch_bits(demo_version_data* version) {
   if(version->game == l4d2 && version->l4d2_version >= 2091) {
     version->svc_prefetch_bits = 15;
   }
-  else if(version->game == l4d2) {
+  else if(version->game == l4d2 || version->game == steampipe) {
     version->svc_prefetch_bits = 14;
   }
   else {

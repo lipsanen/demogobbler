@@ -92,7 +92,7 @@ void handle_usercmd(parser_state *ptr, demogobbler_usercmd *message) {
   demogobbler_write_usercmd(&state->writer, message);
 }
 
-freddie_result demogobbler_freddie_splice_demos(const char *output_path, const char **demo_paths,
+freddie_result freddie_splice_demos(const char *output_path, const char **demo_paths,
                                                 size_t demo_count) {
   freddie_result result;
   splicer_state state;

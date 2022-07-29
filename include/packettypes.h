@@ -57,6 +57,7 @@ struct demogobbler_packet {
     struct demogobbler_cmdinfo_raw cmdinfo_raw[4];
     demogobbler_cmdinfo cmdinfo[4]; // allocates memory enough for all games
   };
+  size_t cmdinfo_size;
   int32_t in_sequence;
   int32_t out_sequence;
   int32_t size_bytes;

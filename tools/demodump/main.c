@@ -40,9 +40,9 @@ void print_datatables(parser_state *a, demogobbler_datatables *message) {
 void print_packet(parser_state *a, demogobbler_packet *message) {
   dump_state *state = a->client_state;
   if (message->preamble.type == demogobbler_type_signon) {
-    printf("Signon, Tick %d, Slot %d\n", message->preamble.type, message->preamble.tick, message->preamble.slot);
+    printf("Signon, Tick %d, Slot %d\n", message->preamble.tick, message->preamble.slot);
   } else {
-    printf("Packet, Tick %d, Slot %d\n", message->preamble.type, message->preamble.tick, message->preamble.tick, message->preamble.slot);
+    printf("Packet, Tick %d, Slot %d\n", message->preamble.tick, message->preamble.slot);
   }
 
   for (int i = 0; i < state->version_data.cmdinfo_size; ++i) {

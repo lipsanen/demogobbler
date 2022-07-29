@@ -264,8 +264,9 @@ void _parse_packet(parser *thisptr, enum demogobbler_type type) {
   demogobbler_packet message;
   message.preamble.type = type;
   PARSE_PREAMBLE();
+  message.cmdinfo_size = thisptr->demo_version.cmdinfo_size;
 
-  for (int i = 0; i < thisptr->demo_version.cmdinfo_size; ++i) {
+  for (int i = 0; i < message.cmdinfo_size; ++i) {
     _parse_cmdinfo(thisptr, &message, i);
   }
 

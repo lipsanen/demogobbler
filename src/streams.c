@@ -16,7 +16,8 @@ int fstream_seek(void* stream, long int offset)
 
 size_t fstream_write(void* stream, const void* src, size_t bytes)
 {
-  return fwrite(src, 1, bytes, stream);
+  size_t out = fwrite(src, 1, bytes, stream);
+  return out;
 }
 
 void buffer_stream_init(buffer_stream* thisptr, void* buffer, size_t size)

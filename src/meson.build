@@ -1,5 +1,5 @@
 goblin_includes = include_directories(['../include', '.'])
-goblin_lib_files = ['bitstream.c', 'bitwriter.c', 'filereader.c', 'freddie.c', 'main.c', 'parser.c',
+goblin_lib_files = ['bitstream.c', 'bitwriter.c', 'filereader.c', 'freddie_demosplicer.c', 'main.c', 'parser.c',
  'parser_netmessages.c', 'stackalloc.c', 'streams.c', 'utils.c', 'version_utils.c', 'writer.c']
 
 if current_c_compiler == 'gcc' or current_c_compiler == 'clang'

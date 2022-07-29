@@ -3,6 +3,6 @@ gtest_dep = gtest_proj.get_variable('gtest_dep')
 
 subdir('utils')
 
-unittest_files = ['arena.cpp', 'bitstream.cpp', 'e2e.cpp', 'l4d2_version.cpp', 'main.cpp', 'filereader.cpp', 'packet_copy.cpp']
+unittest_files = ['arena.cpp', 'bitstream.cpp', 'e2e.cpp', 'freddie.cpp', 'l4d2_version.cpp', 'main.cpp', 'filereader.cpp', 'packet_copy.cpp']
 unittests = executable('unittests', unittest_files, link_with : [goblin, test_utils], include_directories : [goblin_all, test_utils_includes], dependencies : [gtest_dep])
-test('Unit tests', unittests, workdir : meson.source_root())
+test('Unit tests', unittests, workdir : meson.source_root(), timeout: 0)

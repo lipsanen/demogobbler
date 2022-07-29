@@ -186,7 +186,7 @@ void _parser_mainloop(parser *thisptr) {
 
 void _parse_consolecmd(parser *thisptr) {
   demogobbler_consolecmd message;
-  message.preamble.type = demogobbler_type_consolecmd;
+  message.preamble.type = message.preamble.converted_type = demogobbler_type_consolecmd;
   PARSE_PREAMBLE();
   message.size_bytes = _parser_read_length(thisptr);
 
@@ -214,7 +214,7 @@ void _parse_consolecmd(parser *thisptr) {
 
 void _parse_customdata(parser *thisptr) {
   demogobbler_customdata message;
-  message.preamble.type = 8;
+  message.preamble.type = message.preamble.converted_type = demogobbler_type_customdata;
   PARSE_PREAMBLE();
 
   message.unknown = filereader_readint32(thisreader);
@@ -234,7 +234,7 @@ void _parse_customdata(parser *thisptr) {
 
 void _parse_datatables(parser *thisptr) {
   demogobbler_datatables message;
-  message.preamble.type = demogobbler_type_datatables;
+  message.preamble.type = message.preamble.converted_type = demogobbler_type_datatables;
   PARSE_PREAMBLE();
 
   message.size_bytes = _parser_read_length(thisptr);
@@ -262,7 +262,7 @@ static void _parse_cmdinfo(parser *thisptr, demogobbler_packet *packet, size_t i
 
 void _parse_packet(parser *thisptr, enum demogobbler_type type) {
   demogobbler_packet message;
-  message.preamble.type = type;
+  message.preamble.type = message.preamble.converted_type = type;
   PARSE_PREAMBLE();
   message.cmdinfo_size = thisptr->demo_version.cmdinfo_size;
 
@@ -325,6 +325,7 @@ void _parse_stop(parser *thisptr) {
 void _parse_stringtables(parser *thisptr, int32_t type) {
   demogobbler_stringtables message;
   message.preamble.type = type;
+  message.preamble.converted_type = demogobbler_type_stringtables;
   PARSE_PREAMBLE();
   message.size_bytes = _parser_read_length(thisptr);
 
@@ -342,7 +343,7 @@ void _parse_stringtables(parser *thisptr, int32_t type) {
 
 void _parse_synctick(parser *thisptr) {
   demogobbler_synctick message;
-  message.preamble.type = demogobbler_type_synctick;
+  message.preamble.type = message.preamble.converted_type = demogobbler_type_synctick;
   PARSE_PREAMBLE();
 
   if (thisptr->m_settings.synctick_handler) {
@@ -352,7 +353,7 @@ void _parse_synctick(parser *thisptr) {
 
 void _parse_usercmd(parser *thisptr) {
   demogobbler_usercmd message;
-  message.preamble.type = demogobbler_type_usercmd;
+  message.preamble.type = message.preamble.converted_type = demogobbler_type_usercmd;
   PARSE_PREAMBLE();
 
   message.cmd = filereader_readint32(thisreader);

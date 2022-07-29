@@ -4,11 +4,15 @@
 #include <cstdint>
 
 using test_type = std::uint32_t;
+const int COUNT = 100000;
+
+static void set_bytes(benchmark::State& state) {
+  state.SetBytesProcessed(COUNT * sizeof(test_type) * state.iterations());
+}
 
 static void bench_pointers_arena(benchmark::State& state) {
   for(auto _ : state) {
     arena a = demogobbler_arena_create(4096);
-    const int COUNT = 100000;
     test_type* pointers[COUNT];
 
     for(int i=0; i < COUNT; ++i) {
@@ -19,12 +23,13 @@ static void bench_pointers_arena(benchmark::State& state) {
 
     demogobbler_arena_free(&a);
   }
+
+  set_bytes(state);
 }
 
 
 static void bench_locality_arena(benchmark::State& state) {
   arena a = demogobbler_arena_create(4096);
-  const int COUNT = 100000;
   test_type* pointers[COUNT];
 
   for(int i=0; i < COUNT; ++i) {
@@ -39,10 +44,10 @@ static void bench_locality_arena(benchmark::State& state) {
   }
 
   demogobbler_arena_free(&a);
+  set_bytes(state);
 }
 
 static void bench_locality_malloc(benchmark::State& state) {
-  const int COUNT = 100000;
   test_type* pointers[COUNT];
 
   for(int i=0; i < COUNT; ++i) {
@@ -61,11 +66,11 @@ static void bench_locality_malloc(benchmark::State& state) {
   for(int i=0; i < COUNT; ++i) {
     free(pointers[i]);
   }
+  set_bytes(state);
 }
 
 static void bench_pointers_malloc(benchmark::State& state) {
   for(auto _ : state) {
-    const int COUNT = 100000;
     test_type* pointers[COUNT];
 
     for(int i=0; i < COUNT; ++i) {
@@ -78,6 +83,7 @@ static void bench_pointers_malloc(benchmark::State& state) {
       free(pointers[i]);
     }
   }
+  set_bytes(state);
 }
 
 BENCHMARK(bench_locality_arena);

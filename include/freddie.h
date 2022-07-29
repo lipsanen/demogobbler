@@ -8,17 +8,12 @@ extern "C" {
 #endif
 
 #include "demogobbler.h"
+#include "demogobbler_arena.h"
 #include "packet_netmessages.h"
 #include "packettypes.h"
 #include <stddef.h>
 
-struct freddie_result {
-  bool error;
-  const char* error_message;
-};
-
-typedef struct freddie_result freddie_result;
-freddie_result freddie_splice_demos(const char *output_path, const char** demo_paths, size_t demo_count);
+demogobbler_parse_result freddie_splice_demos(const char *output_path, const char** demo_paths, size_t demo_count);
 
 typedef void(*freddie_consume_string_func)(const char* str);
 void freddie_consolecmd_tostring(demogobbler_consolecmd* message, freddie_consume_string_func func);
@@ -59,11 +54,12 @@ struct freddie_demo {
   demogobbler_header header;
   freddie_demo_message* messages;
   size_t message_count;
+  arena memory_arena;
 };
 
 typedef struct freddie_demo freddie_demo;
 
-freddie_result freddie_parse_file(const char* filepath, freddie_demo* output);
+demogobbler_parse_result freddie_parse_file(const char* filepath, freddie_demo* output);
 void freddie_free_demo(freddie_demo* demo);
 
 #ifdef __cplusplus

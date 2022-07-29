@@ -9,7 +9,7 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-  freddie_result result = freddie_splice_demos(argv[1], (const char**)argv + 2, argc - 2);
+  demogobbler_parse_result result = freddie_splice_demos(argv[1], (const char**)argv + 2, argc - 2);
 
   if(result.error) {
     printf("Error splicing demos: %s\n", result.error_message);

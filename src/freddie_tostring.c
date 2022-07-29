@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <threads.h>
 
-static const char* send_string(freddie_consume_string_func func, const char* fmt, ...) {
+static void send_string(freddie_consume_string_func func, const char* fmt, ...) {
   static thread_local char BUFFER[1024];
   va_list args;
   va_start (args, fmt);

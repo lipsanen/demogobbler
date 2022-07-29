@@ -1,5 +1,6 @@
 #include "benchmark/benchmark.h"
 #include "demogobbler.h"
+#include "freddie.h"
 #include "test_demos.hpp"
 #include <iostream>
 #include <filesystem>
@@ -13,6 +14,16 @@ static void stringtables_handler(parser_state*, demogobbler_stringtables *messag
 static void stop_handler(parser_state*, demogobbler_stop *message) {}
 static void synctick_handler(parser_state*, demogobbler_synctick *message) {}
 static void usercmd_handler(parser_state*, demogobbler_usercmd *message) {}
+
+static void get_bytes(benchmark::State &state) {
+  size_t bytes = 0;
+
+  for(auto& demo : get_test_demos()) {
+    bytes += std::filesystem::file_size(demo);
+  }
+
+  state.SetBytesProcessed(bytes * state.iterations());
+}
 
 static void testdemos_packet_only(benchmark::State &state) {
   // Benchmarks only the parsing portion
@@ -30,7 +41,7 @@ static void testdemos_packet_only(benchmark::State &state) {
     }
   }
 
-  state.SetItemsProcessed(state.iterations() * demos.size());
+  get_bytes(state);
 }
 
 static void packet_netmessage_handler(parser_state*, demogobbler_packet_net_message* message) {}
@@ -50,7 +61,7 @@ static void testdemos_netmessages(benchmark::State &state) {
     }
   }
 
-  state.SetItemsProcessed(state.iterations() * demos.size());
+  get_bytes(state);
 }
 
 static void parse_only(demogobbler_settings* settings, const std::vector<std::string>& demos)
@@ -81,8 +92,7 @@ static void testdemos_parse_only(benchmark::State &state) {
     parse_only(&settings, demos);
   }
 
-  state.SetItemsProcessed(state.iterations() * demos.size());
-
+  get_bytes(state);
 }
 
 static void testdemos_header_only(benchmark::State &state) {
@@ -99,10 +109,31 @@ static void testdemos_header_only(benchmark::State &state) {
     }
   }
 
-  state.SetItemsProcessed(state.iterations() * demos.size());
+  get_bytes(state);
+}
+
+static void testdemos_freddie(benchmark::State &state) {
+  // Benchmarks only the parsing portion
+  demogobbler_settings settings;
+  demogobbler_settings_init(&settings);
+
+  settings.packet_handler = packet_handler;
+
+  auto demos = get_test_demos();
+
+  for (auto _ : state) {
+    for(auto& demo : demos)
+    {
+      freddie_demo d;
+      freddie_parse_file(demo.c_str(), &d);
+    }
+  }
+
+  get_bytes(state);
 }
 
 BENCHMARK(testdemos_parse_only);
 BENCHMARK(testdemos_packet_only);
 BENCHMARK(testdemos_header_only);
 BENCHMARK(testdemos_netmessages);
+BENCHMARK(testdemos_freddie);

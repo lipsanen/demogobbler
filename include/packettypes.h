@@ -16,15 +16,18 @@ enum demogobbler_type {
   demogobbler_type_consolecmd = 4,
   demogobbler_type_usercmd = 5,
   demogobbler_type_datatables = 6,
-  demogobbler_type_stop = 7
-  // Customdata is 8
-  // Stringtables is either 8 or 9 depending on version
+  demogobbler_type_stop = 7,
+  demogobbler_type_customdata = 8,
+  demogobbler_type_stringtables = 9
+  // These arent necessarily 1 : 1 with the number in the demo
+  // Customdata is 8 and Stringtables is either 8 or 9 depending on version
 };
 
 struct demogobbler_message_preamble {
   uint8_t type;
   int32_t tick;
   uint8_t slot;
+  enum demogobbler_type converted_type;
 };
 
 typedef struct demogobbler_message_preamble demogobbler_message_preamble;

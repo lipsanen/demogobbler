@@ -8,10 +8,10 @@
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
 #define CLAMP(min, value, max) MIN(MAX(min, value), max)
 
-static const int COORD_INTEGER_BITS = 14;
-static const int COORD_FRACTIONAL_BITS = 5;
-static const int COORD_DENOMINATOR = (1<<(COORD_FRACTIONAL_BITS));
-static const float COORD_RESOLUTION = 1.0f / (1 << COORD_FRACTIONAL_BITS);
+#define COORD_INTEGER_BITS 14
+#define COORD_FRACTIONAL_BITS 5
+#define COORD_DENOMINATOR (1<<(COORD_FRACTIONAL_BITS))
+#define COORD_RESOLUTION 1.0f / (1 << COORD_FRACTIONAL_BITS)
 
 #define ARRAYSIZE(a) \
   ((sizeof(a) / sizeof(*(a))) / \

@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <cstring>
 #include <iostream>
+#include <string>
 
 struct writer_state {
   demogobbler_writer demo_writer;

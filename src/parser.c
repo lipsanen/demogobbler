@@ -31,7 +31,7 @@ void parser_init(parser *thisptr, demogobbler_settings *settings) {
 
 void parser_parse(parser *thisptr, void *stream, input_interface input) {
   if (stream) {
-    const int FILE_BUFFER_SIZE = 1 << 15;
+    enum { FILE_BUFFER_SIZE = 1 << 15 };
     uint64_t buffer[FILE_BUFFER_SIZE / sizeof(uint64_t)];
     filereader_init(thisreader, buffer, sizeof(buffer), stream, input);
     _parse_header(thisptr);
@@ -166,7 +166,7 @@ void _parser_mainloop(parser *thisptr) {
   if (!should_parse)
     return;
 
-  const int STACK_SIZE = 1 << 13;
+  enum { STACK_SIZE = 1 << 13 };
   uint64_t buffer[STACK_SIZE / sizeof(uint64_t)];
   allocator_init(&thisptr->allocator, buffer, sizeof(buffer));
 

@@ -7,7 +7,7 @@
 
 void* memory_stream::get_ptr()
 {
-  u_int8_t* ptr = (u_int8_t*)this->buffer;
+  std::uint8_t* ptr = (std::uint8_t*)this->buffer;
   return ptr + this->offset;
 }
 

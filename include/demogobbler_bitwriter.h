@@ -8,12 +8,20 @@ extern "C" {
 #include "demogobbler_vector.h"
 #include <stdint.h>
 
+#ifdef DEBUG
+#define GROUND_TRUTH_CHECK 1
+#endif
+
 struct demogobbler_bitwriter {
   uint8_t *ptr;
   int64_t bitsize;
   int64_t bitoffset;
   bool error;
   char* error_message;
+#ifdef GROUND_TRUTH_CHECK
+  void* truth_data;
+  size_t truth_size_bits;
+#endif
 };
 
 typedef struct demogobbler_bitwriter bitwriter;

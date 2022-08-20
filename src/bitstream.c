@@ -23,7 +23,7 @@ static unsigned int buffered_bits(bitstream *thisptr) {
   }
 }
 
-static void fetch_ubit(bitstream *thisptr) {
+static void __attribute__((no_sanitize("address"))) fetch_ubit(bitstream *thisptr) {
   if (thisptr->bitoffset >= thisptr->bitsize) {
     thisptr->buffered = 0;
     thisptr->buffered_bits = 64;
@@ -93,7 +93,7 @@ bitstream demogobbler_bitstream_fork_and_advance(bitstream *stream, unsigned int
   return output;
 }
 
-static uint64_t read_ubit(bitstream *thisptr, unsigned requested_bits) {
+static uint64_t __attribute__((no_sanitize("address"))) read_ubit(bitstream *thisptr, unsigned requested_bits) {
   if (thisptr->overflow) {
     return 0;
   }
@@ -143,7 +143,7 @@ void demogobbler_bitstream_read_fixed_string(bitstream *thisptr, void *_dest, si
   }
 }
 
-bool demogobbler_bitstream_read_bit(bitstream *thisptr) {
+bool __attribute__((no_sanitize("address"))) demogobbler_bitstream_read_bit(bitstream *thisptr) {
   if (thisptr->overflow || thisptr->bitoffset >= thisptr->bitsize) {
     thisptr->overflow = true;
     return false;

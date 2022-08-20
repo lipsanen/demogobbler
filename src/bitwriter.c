@@ -10,6 +10,51 @@ void demogobbler_bitwriter_init(bitwriter *thisptr, size_t initial_size_bits) {
   thisptr->bitsize = initial_size_bits;
 }
 
+#ifdef GROUND_TRUTH_CHECK
+typedef struct {
+  bitstream truth;
+  bitstream written;
+  bool has_truth;
+} truth_state;
+
+static truth_state get_truth_state(bitwriter* writer, unsigned int bits) {
+  truth_state out;
+  memset(&out, 0, sizeof(truth_state));
+  if(writer->truth_data) {
+    out.has_truth = true;
+    out.truth = bitstream_create(writer->truth_data, writer->truth_size_bits);
+    out.written = bitstream_create(writer->ptr, writer->bitsize);
+    bitstream_advance(&out.truth, writer->bitoffset - bits);
+    bitstream_advance(&out.written, writer->bitoffset - bits);
+    out.truth.bitsize = out.truth.bitoffset + bits;
+    out.written.bitsize = out.written.bitoffset + bits;
+  }
+
+  return out;
+}
+
+static void ground_truth_check(bitwriter *thisptr, unsigned int bits) {
+  truth_state state = get_truth_state(thisptr, bits);
+  if(state.has_truth) {
+    unsigned int bits_left = demogobbler_bitstream_bits_left(&state.truth);
+    while(bits_left > 0) {
+      unsigned int bits = MIN(bits_left, 64);
+
+      uint64_t truth_value = bitstream_read_uint(&state.truth, bits);
+      uint64_t write_value = bitstream_read_uint(&state.written, bits);
+
+      if(truth_value != write_value) {
+        thisptr->error = true;
+        thisptr->error_message = "Did not match with ground truth.";
+        break;
+      }
+
+      bits_left = demogobbler_bitstream_bits_left(&state.truth);
+    }
+  }
+}
+#endif
+
 int64_t demogobbler_bitwriter_get_available_bits(bitwriter *thisptr) {
   if (thisptr->bitoffset > thisptr->bitsize) {
     return 0;
@@ -28,7 +73,7 @@ static void bitwriter_allocate_space_if_needed(bitwriter *thisptr, unsigned int 
 
 #define CHECK_SIZE() bitwriter_allocate_space_if_needed(thisptr, bits)
 
-void demogobbler_bitwriter_write_bit(bitwriter *thisptr, bool value) {
+void __attribute__((no_sanitize("address"))) demogobbler_bitwriter_write_bit(bitwriter *thisptr, bool value) {
   bitwriter_allocate_space_if_needed(thisptr, 1);
   uint8_t MASKS[] = {0x1, 0x2, 0x4, 0x8, 0x10, 0x20, 0x40, 0x80};
   int index = thisptr->bitoffset & 0x7;
@@ -41,9 +86,12 @@ void demogobbler_bitwriter_write_bit(bitwriter *thisptr, bool value) {
   }
 
   thisptr->bitoffset += 1;
+#ifdef GROUND_TRUTH_CHECK
+  ground_truth_check(thisptr, 1);
+#endif
 }
 
-void demogobbler_bitwriter_write_bits(bitwriter *thisptr, const void *_src, unsigned int bits) {
+void __attribute__((no_sanitize("address"))) demogobbler_bitwriter_write_bits(bitwriter *thisptr, const void *_src, unsigned int bits) {
   CHECK_SIZE();
   unsigned int src_offset = 0;
   while (bits > 0) {
@@ -70,6 +118,10 @@ void demogobbler_bitwriter_write_bits(bitwriter *thisptr, const void *_src, unsi
     src_offset += bits_written;
     thisptr->bitoffset += bits_written;
   }
+
+#ifdef GROUND_TRUTH_CHECK
+  ground_truth_check(thisptr, bits);
+#endif
 }
 
 void demogobbler_bitwriter_write_bitcoord(bitwriter *thisptr, bitcoord coord) {

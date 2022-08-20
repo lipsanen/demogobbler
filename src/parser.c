@@ -2,6 +2,7 @@
 #include "demogobbler.h"
 #include "filereader.h"
 #include "packettypes.h"
+#include "parser_datatables.h"
 #include "parser_netmessages.h"
 #include "utils.h"
 #include "version_utils.h"
@@ -51,7 +52,7 @@ void parser_update_l4d2_version(parser *thisptr, int l4d2_version) {
 size_t _parser_read_length(parser *thisptr) {
   int32_t result = filereader_readint32(thisreader);
   int32_t max_len = 1 << 25; // more than 32 megabytes is probably an error
-  if(result < 0 || result > max_len) {
+  if (result < 0 || result > max_len) {
     thisptr->error = true;
     thisptr->error_message = "Length was invalid\n";
     return 0;
@@ -59,7 +60,6 @@ size_t _parser_read_length(parser *thisptr) {
     return result;
   }
 }
-
 
 void _parse_header(parser *thisptr) {
   demogobbler_header header;
@@ -155,6 +155,7 @@ void _parser_mainloop(parser *thisptr) {
   NULL_CHECK(consolecmd);
   NULL_CHECK(customdata);
   NULL_CHECK(datatables);
+  NULL_CHECK(datatables_parsed);
   NULL_CHECK(packet);
   NULL_CHECK(synctick);
   NULL_CHECK(stop);
@@ -196,7 +197,7 @@ void _parse_consolecmd(parser *thisptr) {
       blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
       READ_MESSAGE_DATA();
 
-      if(!thisptr->error) {
+      if (!thisptr->error) {
         message.data[message.size_bytes - 1] = '\0'; // Add null terminator in-case malformed data
         thisptr->m_settings.consolecmd_handler(&thisptr->state, &message);
       }
@@ -223,7 +224,7 @@ void _parse_customdata(parser *thisptr) {
   if (thisptr->m_settings.customdata_handler && message.size_bytes > 0) {
     blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
     READ_MESSAGE_DATA();
-    if(!thisptr->error) {
+    if (!thisptr->error) {
       thisptr->m_settings.customdata_handler(&thisptr->state, &message);
     }
     allocator_dealloc(thisallocator, block);
@@ -239,11 +240,19 @@ void _parse_datatables(parser *thisptr) {
 
   message.size_bytes = _parser_read_length(thisptr);
 
-  if (thisptr->m_settings.datatables_handler && message.size_bytes > 0) {
+  bool has_datatable_handler =
+      thisptr->m_settings.datatables_handler || thisptr->m_settings.datatables_parsed_handler;
+
+  if (has_datatable_handler && message.size_bytes > 0) {
     blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
     READ_MESSAGE_DATA();
-    if(!thisptr->error) {
-      thisptr->m_settings.datatables_handler(&thisptr->state, &message);
+    if (!thisptr->error) {
+
+      if(thisptr->m_settings.datatables_handler)
+        thisptr->m_settings.datatables_handler(&thisptr->state, &message);
+
+      if(thisptr->m_settings.datatables_parsed_handler)
+        parse_datatables(thisptr, &message);
     }
     allocator_dealloc(thisallocator, block);
   } else {
@@ -252,10 +261,10 @@ void _parse_datatables(parser *thisptr) {
 }
 
 static void _parse_cmdinfo(parser *thisptr, demogobbler_packet *packet, size_t i) {
-  if(thisptr->m_settings.packet_handler) {
-    filereader_readdata(thisreader, packet->cmdinfo_raw[i].data, sizeof(packet->cmdinfo_raw[i].data));
-  }
-  else {
+  if (thisptr->m_settings.packet_handler) {
+    filereader_readdata(thisreader, packet->cmdinfo_raw[i].data,
+                        sizeof(packet->cmdinfo_raw[i].data));
+  } else {
     filereader_skipbytes(thisreader, sizeof(struct demogobbler_cmdinfo_raw));
   }
 }
@@ -278,7 +287,7 @@ void _parse_packet(parser *thisptr, enum demogobbler_type type) {
       message.size_bytes > 0) {
     blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
     READ_MESSAGE_DATA();
-    if(!thisptr->error) {
+    if (!thisptr->error) {
 
       if (thisptr->m_settings.packet_handler) {
         thisptr->m_settings.packet_handler(&thisptr->state, &message);
@@ -332,7 +341,7 @@ void _parse_stringtables(parser *thisptr, int32_t type) {
   if (thisptr->m_settings.stringtables_handler && message.size_bytes > 0) {
     blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
     READ_MESSAGE_DATA();
-    if(!thisptr->error) {
+    if (!thisptr->error) {
       thisptr->m_settings.stringtables_handler(&thisptr->state, &message);
     }
     allocator_dealloc(thisallocator, block);
@@ -363,7 +372,7 @@ void _parse_usercmd(parser *thisptr) {
 
     blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
     READ_MESSAGE_DATA();
-    if(!thisptr->error) {
+    if (!thisptr->error) {
       thisptr->m_settings.usercmd_handler(&thisptr->state, &message);
     }
     allocator_dealloc(thisallocator, block);

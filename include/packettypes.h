@@ -54,7 +54,7 @@ static_assert(sizeof(struct demogobbler_cmdinfo_raw) == sizeof(demogobbler_cmdin
 static_assert(alignof(struct demogobbler_cmdinfo_raw) == 4, "Bad alignment in cmdinfo_raw");
 static_assert(alignof(struct demogobbler_cmdinfo_raw) == alignof(demogobbler_cmdinfo), "Bad alignment in cmdinfo_raw");
 
-struct demogobbler_packet {
+typedef struct {
   demogobbler_message_preamble preamble;
   union {
     struct demogobbler_cmdinfo_raw cmdinfo_raw[4];
@@ -65,9 +65,7 @@ struct demogobbler_packet {
   int32_t out_sequence;
   int32_t size_bytes;
   void *data;
-};
-
-typedef struct demogobbler_packet demogobbler_packet;
+} demogobbler_packet;
 
 struct demogobbler_consolecmd {
   demogobbler_message_preamble preamble;

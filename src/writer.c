@@ -47,6 +47,14 @@ void demogobbler_writer_close(writer *thisptr) {
   WRITE_INT32(size_bytes);                                                                         \
   thisptr->output_funcs.write(thisptr->_stream, message->data, message->size_bytes)
 
+void demogobbler_write_preamble(writer* thisptr, demogobbler_message_preamble preamble) {
+  thisptr->output_funcs.write(thisptr->_stream, &preamble.type, 1);
+  thisptr->output_funcs.write(thisptr->_stream, &preamble.tick, 4);
+  if(thisptr->version.has_slot_in_preamble) {
+    thisptr->output_funcs.write(thisptr->_stream, &preamble.slot, 1);
+  }
+}
+
 void demogobbler_write_consolecmd(writer *thisptr, demogobbler_consolecmd *message) {
   WRITE_PREAMBLE();
   WRITE_DATA();

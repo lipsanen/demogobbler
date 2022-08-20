@@ -75,9 +75,12 @@ struct demogobbler_demo_version {
   unsigned int svc_user_message_bits : 4;
   unsigned int svc_prefetch_bits : 4;
   unsigned int model_index_bits : 4;
-  bool has_slot_in_preamble : 1;
-  bool has_nettick_times : 1;
-  bool l4d2_version_finalized : 1;
+  unsigned int datatable_propcount_bits : 4;
+  unsigned int sendprop_flag_bits : 5;
+  unsigned int sendprop_numbits_for_numbits : 4;
+  unsigned int has_slot_in_preamble : 1;
+  unsigned int has_nettick_times : 1;
+  unsigned int l4d2_version_finalized : 1;
   net_message_type* netmessage_array;
   unsigned int netmessage_count;
   unsigned int network_protocol;

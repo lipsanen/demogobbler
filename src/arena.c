@@ -22,7 +22,7 @@ static size_t alignment_loss(struct demogobbler_arena_block* block, uint32_t ali
     return 0;
   }
   else {
-    return 4 - offset;
+    return alignment - offset;
   }
 }
 

@@ -10,7 +10,7 @@
 
 DECLARE_WRITE_FUNC(consolecmd);
 DECLARE_WRITE_FUNC(customdata);
-DECLARE_WRITE_FUNC(datatables);
+//DECLARE_WRITE_FUNC(datatables);
 DECLARE_WRITE_FUNC(header);
 DECLARE_WRITE_FUNC(packet);
 DECLARE_WRITE_FUNC(stringtables);
@@ -19,9 +19,12 @@ DECLARE_WRITE_FUNC(synctick);
 DECLARE_WRITE_FUNC(usercmd);
 
 
+void handle_datatables_parsed(parser_state* state, demogobbler_datatables_parsed* datatables) {
+  demogobbler_write_datatables_parsed((writer*)state->client_state, datatables);
+}
+
 void handle_version(parser_state* state, demo_version_data version)
 {
-
   ((writer*)state->client_state)->version = version;
 }
 
@@ -42,7 +45,8 @@ void copy_demo_test(const char* filepath)
 
     settings.consolecmd_handler = consolecmd_handler;
     settings.customdata_handler = customdata_handler;
-    settings.datatables_handler = datatables_handler;
+    //settings.datatables_handler = datatables_handler;
+    settings.datatables_parsed_handler = handle_datatables_parsed;
     settings.header_handler = header_handler;
     settings.packet_handler = packet_handler;
     settings.stop_handler = stop_handler;
@@ -56,6 +60,7 @@ void copy_demo_test(const char* filepath)
 
     auto out = demogobbler_parse(&settings, &input, input_funcs);
     EXPECT_EQ(out.error, false) << out.error_message;
+    EXPECT_EQ(w.error, false) << w.error_message;
 
     demogobbler_writer_close(&w);
   }

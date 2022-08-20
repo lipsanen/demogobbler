@@ -22,7 +22,8 @@ struct dump_state {
 
 typedef struct dump_state dump_state;
 
-#define PRINT_MESSAGE_PREAMBLE(name) printf(#name ", Tick %d, Slot %d\n", message->preamble.tick, message->preamble.slot);
+#define PRINT_MESSAGE_PREAMBLE(name)                                                               \
+  printf(#name ", Tick %d, Slot %d\n", message->preamble.tick, message->preamble.slot);
 
 void print_consolecmd(parser_state *a, demogobbler_consolecmd *message) {
   PRINT_MESSAGE_PREAMBLE(consolecmd);
@@ -31,10 +32,6 @@ void print_consolecmd(parser_state *a, demogobbler_consolecmd *message) {
 
 void print_customdata(parser_state *a, demogobbler_customdata *message) {
   PRINT_MESSAGE_PREAMBLE(customdata);
-}
-
-void print_datatables(parser_state *a, demogobbler_datatables *message) {
-  PRINT_MESSAGE_PREAMBLE(datatables);
 }
 
 void print_packet(parser_state *a, demogobbler_packet *message) {
@@ -80,8 +77,66 @@ void print_usercmd(parser_state *a, demogobbler_usercmd *message) {
   PRINT_MESSAGE_PREAMBLE(usercmd);
 }
 
-void print_netmessage(parser_state *a, packet_net_message *message) {
-  
+void print_netmessage(parser_state *a, packet_net_message *message) {}
+
+static const char *message_type_name(demogobbler_sendproptype proptype) {
+
+  switch (proptype) {
+  case sendproptype_array:
+    return "array";
+  case sendproptype_datatable:
+    return "datatable";
+  case sendproptype_float:
+    return "float";
+  case sendproptype_int:
+    return "int";
+  case sendproptype_invalid:
+    return "invalid";
+  case sendproptype_string:
+    return "string";
+  case sendproptype_vector2:
+    return "vector2";
+  case sendproptype_vector3:
+    return "vector3";
+  default:
+    break;
+  }
+
+  return "";
+}
+
+void print_datatables_parsed(parser_state *a, demogobbler_datatables_parsed *message) {
+  PRINT_MESSAGE_PREAMBLE(datatables);
+
+  for (size_t i = 0; i < message->sendtable_count; ++i) {
+    demogobbler_sendtable *table = message->sendtables + i;
+    printf("Sendtable: %s, decoder: %d\n", table->name, table->needs_decoder);
+    for (size_t u = 0; u < table->prop_count; ++u) {
+      demogobbler_sendprop *prop = table->props + u;
+      if (prop->flag_exclude) {
+        printf("\t%s %s : %s\n", message_type_name(prop->proptype), prop->name,
+               prop->exclude_dtname);
+      } else if (prop->proptype == sendproptype_datatable) {
+        printf("\t%s %s : %s\n", message_type_name(prop->proptype), prop->name,
+               prop->exclude_dtname);
+      } else if (prop->proptype == sendproptype_array) {
+        printf("\t%s %s - %u elements\n", message_type_name(prop->proptype), prop->name,
+               prop->array_num_elements);
+      } else {
+        printf("\t%s %s - %u bit, low %f, high %f\n", message_type_name(prop->proptype), prop->name,
+               prop->prop_numbits, prop->prop_.low_value,
+               prop->prop_.high_value);
+      }
+      // TODO: Add flags
+    }
+  }
+
+  printf("Server class -> Datatable mappings\n");
+
+  for (size_t i=0; i < message->serverclass_count; ++i) {
+    demogobbler_serverclass* pclass = message->serverclasses + i;
+    printf("\tID: %u, %s -> %s\n", pclass->serverclass_id, pclass->serverclass_name, pclass->datatable_name);
+  }
 }
 
 void handle_version(parser_state *a, demo_version_data message) {
@@ -101,7 +156,7 @@ int main(int argc, char **argv) {
   demogobbler_settings_init(&settings);
   settings.consolecmd_handler = print_consolecmd;
   settings.customdata_handler = print_customdata;
-  settings.datatables_handler = print_datatables;
+  settings.datatables_parsed_handler = print_datatables_parsed;
   settings.header_handler = print_header;
   settings.packet_handler = print_packet;
   settings.stop_handler = print_stop;
@@ -109,6 +164,7 @@ int main(int argc, char **argv) {
   settings.synctick_handler = print_synctick;
   settings.usercmd_handler = print_usercmd;
   settings.packet_net_message_handler = print_netmessage;
+  settings.client_state = &dump;
 
   demogobbler_parse_file(&settings, argv[1]);
 

@@ -277,17 +277,16 @@ void demogobbler_write_datatables_parsed(writer* thisptr, demogobbler_datatables
 
   if(bit_in_byte_offset != 0) {
     bytes += 1;
-
+#ifdef GROUND_TRUTH_CHECK
     if(datatables->_raw_buffer && bytes == datatables->_raw_buffer_bytes) {
       // If we are exactly at the same number of bytes, copy the last bits out of the buffer to ensure bit for bit equality
-      // This is for testing purposes, maybe disable for release builds
-      uint8_t* ptr = (uint8_t*)datatables->_raw_buffer;
       bitstream stream = bitstream_create(datatables->_raw_buffer, datatables->_raw_buffer_bytes * 8);
       bitstream_advance(&stream, writer.bitoffset);
       unsigned int bits_left = stream.bitsize - stream.bitoffset;
       unsigned int value = bitstream_read_uint(&stream, bits_left);
       bitwriter_write_uint(&writer, value, bits_left);
     }
+#endif
   }
 
   if(writer.error && !thisptr->error) {

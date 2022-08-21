@@ -20,6 +20,8 @@ typedef struct {
 typedef struct {
   flattened_props* class_props;
   size_t classes_count;
+  demogobbler_sendtable* sendtables;
+  size_t sendtables_count;
 } estate;
 
 struct demogobbler_parser_state {

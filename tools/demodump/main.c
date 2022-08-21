@@ -105,6 +105,18 @@ static const char *message_type_name(demogobbler_sendproptype proptype) {
   return "";
 }
 
+static const char* get_prop_name(demogobbler_sendprop* prop) {
+  static char BUFFER[1024];
+
+  if(prop->proptype != sendproptype_datatable && prop->baseclass) {
+    snprintf(BUFFER, sizeof(BUFFER), "%s.%s", prop->baseclass->name, prop->name);
+    return BUFFER;
+  }
+  else {
+    return prop->name;
+  }
+}
+
 void print_prop(demogobbler_sendprop* prop) {
   char* flags = "()";
 
@@ -112,17 +124,19 @@ void print_prop(demogobbler_sendprop* prop) {
     flags = "(ChangesOften)";
   }
 
+  const char* prop_name = get_prop_name(prop);
+
   if (prop->flag_exclude) {
-    printf("\t%s %s (%x) : %s : flags %s\n", message_type_name(prop->proptype), prop->name, prop->priority,
+    printf("\t%s %s (%x) : %s : flags %s\n", message_type_name(prop->proptype), prop_name, prop->priority,
             prop->exclude_name, flags);
   } else if (prop->proptype == sendproptype_datatable) {
-    printf("\t%s %s (%x) : %s : flags %s\n", message_type_name(prop->proptype), prop->name, prop->priority,
+    printf("\t%s %s (%x) : %s : flags %s\n", message_type_name(prop->proptype), prop_name, prop->priority,
             prop->dtname, flags);
   } else if (prop->proptype == sendproptype_array) {
-    printf("\t%s %s (%x) - %u elements : flags %s\n", message_type_name(prop->proptype), prop->name, prop->priority,
+    printf("\t%s %s (%x) - %u elements : flags %s\n", message_type_name(prop->proptype), prop_name, prop->priority,
             prop->array_num_elements, flags);
   } else {
-    printf("\t%s %s (%x) - %u bit, low %f, high %f : flags %s\n", message_type_name(prop->proptype), prop->name, prop->priority,
+    printf("\t%s %s (%x) - %u bit, low %f, high %f : flags %s\n", message_type_name(prop->proptype), prop_name, prop->priority,
             prop->prop_numbits, prop->prop_.low_value,
             prop->prop_.high_value, flags);
   }
@@ -150,7 +164,7 @@ void print_datatables_parsed(parser_state *a, demogobbler_datatables_parsed *mes
 
 void print_flattened_props(parser_state* state) {
   for (size_t i=0; i < state->entity_state.classes_count; ++i) {
-    printf("Class %lu\n", i);
+    printf("Sendtable %s, flattened\n", state->entity_state.sendtables[i].name);
     flattened_props class_data = state->entity_state.class_props[i];
     
     for(size_t u=0; u < class_data.prop_count; ++u) {

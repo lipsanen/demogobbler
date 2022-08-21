@@ -46,12 +46,21 @@ static void testdemos_packet_only(benchmark::State &state) {
 
 static void packet_netmessage_handler(parser_state*, demogobbler_packet_net_message* message) {}
 
-static void testdemos_netmessages(benchmark::State &state) {
-  // Benchmarks only the parsing portion
+static void testdemos_parse_everything(benchmark::State &state) {
   demogobbler_settings settings;
   demogobbler_settings_init(&settings);
 
+  settings.consolecmd_handler = consolecmd_handler;
+  settings.customdata_handler = customdata_handler;
+  settings.datatables_handler = datatables_handler;
+  settings.header_handler = header_handler;
+  settings.packet_handler = packet_handler;
+  settings.stop_handler = stop_handler;
+  settings.stringtables_handler = stringtables_handler;
+  settings.synctick_handler = synctick_handler;
+  settings.usercmd_handler = usercmd_handler;
   settings.packet_net_message_handler = packet_netmessage_handler;
+  settings.store_ents = true;
   auto demos = get_test_demos();
 
   for (auto _ : state) {
@@ -135,5 +144,5 @@ static void testdemos_freddie(benchmark::State &state) {
 BENCHMARK(testdemos_parse_only);
 BENCHMARK(testdemos_packet_only);
 BENCHMARK(testdemos_header_only);
-BENCHMARK(testdemos_netmessages);
+BENCHMARK(testdemos_parse_everything);
 BENCHMARK(testdemos_freddie);

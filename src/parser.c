@@ -186,6 +186,7 @@ void _parser_mainloop(parser *thisptr) {
   while (_parse_anymessage(thisptr))
     ;
   demogobbler_arena_free(&thisptr->memory_arena);
+  free(thisptr->state.entity_state.sendtables);
 }
 
 #define READ_MESSAGE_DATA()                                                                        \

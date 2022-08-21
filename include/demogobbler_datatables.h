@@ -28,6 +28,8 @@ typedef struct {
 // Forward declaration for the array pointer
 struct demogobbler_sendprop;
 typedef struct demogobbler_sendprop demogobbler_sendprop;
+struct demogobbler_sendtable;
+typedef struct demogobbler_sendtable demogobbler_sendtable;
 
 struct demogobbler_sendprop {
   const char *name;
@@ -37,7 +39,11 @@ struct demogobbler_sendprop {
     const char* dtname; // Datatable or exclude flag is set
     demogobbler_sendprop* array_prop;
   };
-  
+
+  // For sendproptype_datatable this is a pointer to the baseclass
+  // For flattened props that are from a derived class this points to the class (sendtable) where they came from
+  struct demogobbler_sendtable* baseclass; 
+
   unsigned priority : 8;
   unsigned prop_numbits : 7;
   demogobbler_sendproptype proptype : 4;
@@ -64,14 +70,13 @@ struct demogobbler_sendprop {
 
 };
 
-typedef struct {
+struct demogobbler_sendtable {
 
   const char *name;
   demogobbler_sendprop *props;
   size_t prop_count;
   bool needs_decoder;
-
-} demogobbler_sendtable;
+};
 
 typedef struct {
   uint16_t serverclass_id;

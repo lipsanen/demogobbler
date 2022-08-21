@@ -7,7 +7,7 @@
 
 typedef demogobbler_datatables_parsed datatables;
 
-static_assert(sizeof(demogobbler_sendprop) <= 24,
+static_assert(sizeof(demogobbler_sendprop) <= 32,
               "Sendprops are larger than they should be, weird bitfield behavior?");
 
 static const demogobbler_sendproptype old_props[] = {sendproptype_int,     sendproptype_float,
@@ -345,6 +345,11 @@ void parse_datatables(parser *thisptr, demogobbler_datatables* input) {
     ++output.sendtable_count;
   }
 
+  if(thisptr->m_settings.store_ents) {
+    thisptr->state.entity_state.sendtables = output.sendtables;
+    thisptr->state.entity_state.sendtables_count = output.sendtable_count;
+  }
+
   output.serverclass_count = bitstream_read_uint(&stream, 16);
   output.serverclasses = malloc(output.serverclass_count * sizeof(demogobbler_serverclass));
 
@@ -363,8 +368,9 @@ void parse_datatables(parser *thisptr, demogobbler_datatables* input) {
     fprintf(stderr, "Had more than one byte left in bitstream after parsing datatables\n");
   }
 
-  if(!thisptr->m_settings.store_ents)
+  if(!thisptr->m_settings.store_ents) {
     demogobbler_arena_free(memory_arena);
-  free(output.sendtables);
+    free(output.sendtables);
+  }
   free(output.serverclasses);
 }

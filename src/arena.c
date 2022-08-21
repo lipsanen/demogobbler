@@ -85,6 +85,10 @@ static void* allocate(struct demogobbler_arena_block* block, uint32_t size, uint
 }
 
 void* demogobbler_arena_allocate(arena* a, uint32_t size, uint32_t alignment) {
+  if(size == 0) {
+    return NULL;
+  }
+
   struct demogobbler_arena_block* ptr = get_last_block(a);
   size_t bytes_left = block_bytes_left(ptr, size, alignment);
   if(bytes_left < size) {

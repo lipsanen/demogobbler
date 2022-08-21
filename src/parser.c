@@ -30,6 +30,13 @@ void parser_init(parser *thisptr, demogobbler_settings *settings) {
   thisptr->m_settings = *settings;
 }
 
+void demogobbler_parser_arena_check_init(parser *thisptr) {
+  if(thisptr->memory_arena.blocks == NULL) {
+    const size_t initial_size = 1 << 15;
+    thisptr->memory_arena = demogobbler_arena_create(initial_size);
+  }
+}
+
 void parser_parse(parser *thisptr, void *stream, input_interface input) {
   if (stream) {
     enum { FILE_BUFFER_SIZE = 1 << 15 };
@@ -162,6 +169,11 @@ void _parser_mainloop(parser *thisptr) {
   NULL_CHECK(stringtables);
   NULL_CHECK(usercmd);
 
+  if (settings->entity_state_init_handler || settings->store_ents) {
+    settings->store_ents = true; // Entity state init handler => we should store ents
+    should_parse = true;
+  }
+
 #undef NULL_CHECK
 
   if (!should_parse)
@@ -173,6 +185,7 @@ void _parser_mainloop(parser *thisptr) {
 
   while (_parse_anymessage(thisptr))
     ;
+  demogobbler_arena_free(&thisptr->memory_arena);
 }
 
 #define READ_MESSAGE_DATA()                                                                        \
@@ -240,18 +253,19 @@ void _parse_datatables(parser *thisptr) {
 
   message.size_bytes = _parser_read_length(thisptr);
 
-  bool has_datatable_handler =
-      thisptr->m_settings.datatables_handler || thisptr->m_settings.datatables_parsed_handler;
+  bool has_datatable_handler = thisptr->m_settings.datatables_handler ||
+                               thisptr->m_settings.datatables_parsed_handler ||
+                               thisptr->m_settings.store_ents;
 
   if (has_datatable_handler && message.size_bytes > 0) {
     blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
     READ_MESSAGE_DATA();
     if (!thisptr->error) {
 
-      if(thisptr->m_settings.datatables_handler)
+      if (thisptr->m_settings.datatables_handler)
         thisptr->m_settings.datatables_handler(&thisptr->state, &message);
 
-      if(thisptr->m_settings.datatables_parsed_handler)
+      if (thisptr->m_settings.datatables_parsed_handler || thisptr->m_settings.store_ents)
         parse_datatables(thisptr, &message);
     }
     allocator_dealloc(thisallocator, block);

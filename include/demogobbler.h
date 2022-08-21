@@ -12,8 +12,19 @@ extern "C" {
 #include <stdbool.h>
 #include <stdio.h>
 
+typedef struct {
+  demogobbler_sendprop *props;
+  size_t prop_count;
+} flattened_props;
+
+typedef struct {
+  flattened_props* class_props;
+  size_t classes_count;
+} estate;
+
 struct demogobbler_parser_state {
   void *client_state;
+  estate entity_state;
   const char *error_message;
   bool error;
 };
@@ -39,6 +50,7 @@ typedef void (*func_demogobbler_handle_packet_net_message)(parser_state *state,
                                                            packet_net_message *message);
 typedef void (*func_demogobbler_handle_datatables_parsed)(parser_state *state,
                                                            demogobbler_datatables_parsed *message);
+typedef void (*func_demogobbler_handle_entity_state_init)(parser_state *state);
 
 struct demogobbler_settings {
   func_demogobbler_handle_consolecmd consolecmd_handler;
@@ -46,6 +58,7 @@ struct demogobbler_settings {
   func_demogobbler_handle_datatables datatables_handler;
   func_demogobbler_handle_datatables_parsed datatables_parsed_handler;
   func_demogobbler_handle_demo_version demo_version_handler;
+  func_demogobbler_handle_entity_state_init entity_state_init_handler; // Called after parsing prop flattening stuff
   func_demogobbler_handle_header header_handler;
   func_demogobbler_handle_packet packet_handler;
   func_demogobbler_handle_synctick synctick_handler;
@@ -53,6 +66,7 @@ struct demogobbler_settings {
   func_demogobbler_handle_stringtables stringtables_handler;
   func_demogobbler_handle_usercmd usercmd_handler;
   func_demogobbler_handle_packet_net_message packet_net_message_handler;
+  bool store_ents;
   void *client_state;
 };
 

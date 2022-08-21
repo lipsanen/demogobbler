@@ -54,6 +54,7 @@ void copy_demo_test(const char* filepath)
     settings.synctick_handler = synctick_handler;
     settings.usercmd_handler = usercmd_handler;
     settings.demo_version_handler = handle_version;
+    settings.store_ents = true;
     settings.client_state = &w;
 
     input_interface input_funcs = {memory_stream_read, memory_stream_seek};

@@ -3,9 +3,7 @@
 
 TEST(Arena, Int32Works) {
   arena a = demogobbler_arena_create(4);
-  ASSERT_EQ(a.block_count, 1);
-  ASSERT_EQ(a.blocks[0].bytes_allocated, 0);
-  ASSERT_EQ(a.blocks[0].total_bytes, 4);
+  ASSERT_EQ(a.block_count, 0);
   uint32_t* ptr = (uint32_t*)demogobbler_arena_allocate(&a, 4, 4);
   ASSERT_NE(ptr, nullptr);
   *ptr = 1;

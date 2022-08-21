@@ -6,11 +6,7 @@
 arena demogobbler_arena_create(uint32_t first_block_size) {
   arena out;
   memset(&out, 0, sizeof(arena));
-  out.blocks = malloc(sizeof(struct demogobbler_arena_block));
-  out.block_count = 1;
-  out.blocks[0].bytes_allocated = 0;
-  out.blocks[0].total_bytes = first_block_size;
-  out.blocks[0].data = malloc(first_block_size);
+  out.first_block_size = first_block_size;
 
   return out;
 }
@@ -27,17 +23,33 @@ static size_t alignment_loss(struct demogobbler_arena_block* block, uint32_t ali
 }
 
 static size_t block_bytes_left(struct demogobbler_arena_block* block, uint32_t size, uint32_t alignment) {
-  size_t inc = alignment_loss(block, alignment);
-  return block->total_bytes - (block->bytes_allocated + inc);
+  if(block == NULL) {
+    return 0;
+  }
+  else {
+    size_t inc = alignment_loss(block, alignment);
+    return block->total_bytes - (block->bytes_allocated + inc);
+  }
 }
 
 static struct demogobbler_arena_block* get_last_block(arena* a) {
-  return &a->blocks[a->block_count - 1];
+  if(a->block_count == 0) {
+    return NULL;
+  }
+  else {
+    return &a->blocks[a->block_count - 1];
+  }
 }
 
 static void allocate_new_block(arena* a, uint32_t requested_size) {
-  struct demogobbler_arena_block* ptr = get_last_block(a);
-  size_t allocated_size = ptr->total_bytes * 2; // Double the size for the next block
+  size_t allocated_size;
+  if(a->block_count == 0) {
+    allocated_size = a->first_block_size;
+  }
+  else {
+    struct demogobbler_arena_block* ptr = get_last_block(a);
+    allocated_size = ptr->total_bytes * 2; // Double the size for the next block
+  }
 
   // This shouldnt usually happen since allocations are supposed to be a fraction of the total size of the block
   // But make sure that we have enough space for the next allocation
@@ -52,7 +64,7 @@ static void allocate_new_block(arena* a, uint32_t requested_size) {
 
   ++a->block_count;
   a->blocks = realloc(a->blocks, sizeof(struct demogobbler_arena_block) * a->block_count);
-  ptr = get_last_block(a);
+  struct demogobbler_arena_block* ptr = get_last_block(a);
   ptr->data = malloc(allocated_size);
   ptr->bytes_allocated = 0;
   ptr->total_bytes = allocated_size;
@@ -88,4 +100,5 @@ void demogobbler_arena_free(arena* a) {
     free(a->blocks[i].data);
   }
   free(a->blocks);
+  memset(a, 0, sizeof(arena));
 }

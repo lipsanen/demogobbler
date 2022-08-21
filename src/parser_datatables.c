@@ -1,4 +1,5 @@
 #include "parser_datatables.h"
+#include "parser_entity_state.h"
 #include "demogobbler_arena.h"
 #include "demogobbler_datatables.h"
 #include "utils.h"
@@ -166,8 +167,10 @@ static void write_sendprop(writer *thisptr, bitwriter *writer, demogobbler_sendp
     bitwriter_write_uint(writer, prop->priority, 8);
   }
 
-  if (prop->proptype == sendproptype_datatable || prop->flag_exclude) {
-    bitwriter_write_cstring(writer, prop->exclude_dtname);
+  if (prop->proptype == sendproptype_datatable) {
+    bitwriter_write_cstring(writer, prop->dtname);
+  } else if(prop->flag_exclude) {
+    bitwriter_write_cstring(writer, prop->exclude_name);
   } else if (prop->proptype == sendproptype_array) {
     bitwriter_write_uint(writer, prop->array_num_elements, 10);
   } else {
@@ -197,10 +200,13 @@ static void parse_sendprop(parser *thisptr, arena *a, bitstream *stream,
     prop->priority = bitstream_read_uint(stream, 8);
   }
 
-  if (prop->proptype == sendproptype_datatable || prop->flag_exclude) {
-    prop->exclude_dtname = parse_cstring(a, stream);
+  if (prop->proptype == sendproptype_datatable) {
+    prop->dtname = parse_cstring(a, stream);
+  } else if (prop->flag_exclude) {
+    prop->exclude_name = parse_cstring(a, stream);
   } else if (prop->proptype == sendproptype_array) {
     prop->array_num_elements = bitstream_read_uint(stream, 10);
+    prop->array_prop = (prop - 1); // The insidearray prop should be in the previous element
   } else {
     prop->prop_.low_value = bitstream_read_float(stream);
     prop->prop_.high_value = bitstream_read_float(stream);
@@ -313,7 +319,18 @@ void parse_datatables(parser *thisptr, demogobbler_datatables* input) {
   output._raw_buffer = input->data;
   output._raw_buffer_bytes = input->size_bytes;
 
-  arena a = demogobbler_arena_create(input->size_bytes * 2);
+  arena* memory_arena;
+  arena temp_arena;
+
+  if(thisptr->m_settings.store_ents) {
+    demogobbler_parser_arena_check_init(thisptr);
+    memory_arena = &thisptr->memory_arena;
+  }
+  else {
+    temp_arena = demogobbler_arena_create(input->size_bytes * 2);
+    memory_arena = &temp_arena;
+  }
+
   bitstream stream = bitstream_create(input->data, input->size_bytes * 8);
 
   size_t array_size = 1024; // a guess at what the array size could be
@@ -324,27 +341,30 @@ void parse_datatables(parser *thisptr, demogobbler_datatables* input) {
       array_size <<= 1;
       output.sendtables = realloc(output.sendtables, array_size * sizeof(demogobbler_sendtable));
     }
-    parse_sendtable(thisptr, &a, &stream, output.sendtables + output.sendtable_count);
+    parse_sendtable(thisptr, memory_arena, &stream, output.sendtables + output.sendtable_count);
     ++output.sendtable_count;
   }
 
   output.serverclass_count = bitstream_read_uint(&stream, 16);
-  output.serverclasses =
-      demogobbler_arena_allocate(&a, output.serverclass_count * sizeof(demogobbler_serverclass),
-                                 alignof(demogobbler_serverclass));
+  output.serverclasses = malloc(output.serverclass_count * sizeof(demogobbler_serverclass));
 
   for (size_t i = 0; i < output.serverclass_count && !ERROR_SET; ++i) {
-    parse_serverclass(thisptr, &a, &stream, output.serverclasses + i);
+    parse_serverclass(thisptr, memory_arena, &stream, output.serverclasses + i);
   }
 
   if (!ERROR_SET) {
-    thisptr->m_settings.datatables_parsed_handler(&thisptr->state, &output);
+    if(thisptr->m_settings.datatables_parsed_handler)
+      thisptr->m_settings.datatables_parsed_handler(&thisptr->state, &output);
+    if(thisptr->m_settings.store_ents)
+      demogobbler_parser_init_estate(thisptr, &output);
   }
 
   if(stream.bitsize - stream.bitoffset >= 8) {
     fprintf(stderr, "Had more than one byte left in bitstream after parsing datatables\n");
   }
 
-  demogobbler_arena_free(&a);
+  if(!thisptr->m_settings.store_ents)
+    demogobbler_arena_free(memory_arena);
   free(output.sendtables);
+  free(output.serverclasses);
 }

@@ -25,12 +25,17 @@ typedef struct {
   float high_value;
 } prop_values;
 
-typedef struct {
+// Forward declaration for the array pointer
+struct demogobbler_sendprop;
+typedef struct demogobbler_sendprop demogobbler_sendprop;
+
+struct demogobbler_sendprop {
   const char *name;
   union {
     prop_values prop_;
-    unsigned int array_num_elements; // Array
-    const char* exclude_dtname; // Datatable or exclude flag is set
+    const char* exclude_name;
+    const char* dtname; // Datatable or exclude flag is set
+    demogobbler_sendprop* array_prop;
   };
   
   unsigned priority : 8;
@@ -55,8 +60,9 @@ typedef struct {
   unsigned flag_cellcoord : 1;
   unsigned flag_cellcoordlp : 1;
   unsigned flag_cellcoordint : 1;
+  unsigned array_num_elements : 10;
 
-} demogobbler_sendprop;
+};
 
 typedef struct {
 

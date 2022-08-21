@@ -20,6 +20,7 @@ struct demogobbler_arena_block {
 struct demogobbler_arena {
   struct demogobbler_arena_block* blocks;
   size_t block_count;
+  size_t first_block_size;
 };
 
 typedef struct demogobbler_arena arena;

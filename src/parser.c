@@ -28,13 +28,10 @@ void parser_init(parser *thisptr, demogobbler_settings *settings) {
   memset(thisptr, 0, sizeof(*thisptr));
   thisptr->state.client_state = settings->client_state;
   thisptr->m_settings = *settings;
-}
 
-void demogobbler_parser_arena_check_init(parser *thisptr) {
-  if(thisptr->memory_arena.blocks == NULL) {
-    const size_t initial_size = 1 << 15;
-    thisptr->memory_arena = demogobbler_arena_create(initial_size);
-  }
+  const size_t INITIAL_SIZE = 1 << 15;
+  // Does lazy allocation, only allocates stuff if requested
+  thisptr->memory_arena = demogobbler_arena_create(INITIAL_SIZE); 
 }
 
 void parser_parse(parser *thisptr, void *stream, input_interface input) {

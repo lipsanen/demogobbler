@@ -323,7 +323,6 @@ void parse_datatables(parser *thisptr, demogobbler_datatables* input) {
   arena temp_arena;
 
   if(thisptr->m_settings.store_ents) {
-    demogobbler_parser_arena_check_init(thisptr);
     memory_arena = &thisptr->memory_arena;
   }
   else {

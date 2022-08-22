@@ -16,6 +16,7 @@
 enum { COORD_INT_BITS_MP = 11 };
 enum { FRAC_BITS_LP = 3 };
 enum { FRAC_BITS = 5 };
+enum { MAX_EDICTS = 4095 };
 
 #define ARRAYSIZE(a) \
   ((sizeof(a) / sizeof(*(a))) / \

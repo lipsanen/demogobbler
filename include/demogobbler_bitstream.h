@@ -40,6 +40,7 @@ uint32_t demogobbler_bitstream_read_uint32(bitstream *thisptr);
 uint32_t demogobbler_bitstream_read_ubitvar(bitstream* thisptr);
 int32_t demogobbler_bitstream_read_sint32(bitstream *thisptr);
 uint32_t demogobbler_bitstream_read_ubitint(bitstream* thisptr);
+uint32_t demogobbler_bitstream_read_ubitvar(bitstream* thisptr);
 demogobbler_bitcellcoord demogobbler_bitstream_read_bitcellcoord(bitstream* thisptr, bool is_int, bool lp, unsigned bits);
 demogobbler_bitcoordmp demogobbler_bitstream_read_bitcoordmp(bitstream* thisptr, bool is_int, bool lp);
 demogobbler_bitnormal demogobbler_bitstream_read_bitnormal(bitstream* thisptr);
@@ -51,6 +52,7 @@ int32_t demogobbler_bitstream_read_field_index(bitstream* thisptr, int32_t last_
 #define bitstream_read_bit demogobbler_bitstream_read_bit
 #define bitstream_read_uint demogobbler_bitstream_read_uint
 #define bitstream_read_ubitint demogobbler_bitstream_read_ubitint
+#define bitstream_read_ubitvar demogobbler_bitstream_read_ubitvar
 #define bitstream_read_uint32 demogobbler_bitstream_read_uint32
 #define bitstream_read_varuint32 demogobbler_bitstream_read_varuint32
 #define bitstream_read_sint demogobbler_bitstream_read_sint
@@ -58,6 +60,7 @@ int32_t demogobbler_bitstream_read_field_index(bitstream* thisptr, int32_t last_
 #define bitstream_read_fixed_string demogobbler_bitstream_read_fixed_string
 #define bitstream_read_cstring demogobbler_bitstream_read_cstring
 #define bitstream_read_float demogobbler_bitstream_read_float
+#define bitstream_read_field_index demogobbler_bitstream_read_field_index
 #define bitstream_read_bitvector demogobbler_bitstream_read_bitvector
 #define bitstream_read_coordvector demogobbler_bitstream_read_coordvector
 

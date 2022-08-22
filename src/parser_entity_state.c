@@ -82,7 +82,7 @@ static void gather_propdata(parser *thisptr, propdata *data,
     if (prop->proptype == sendproptype_datatable) {
       size_t baseclass_index = get_baseclass(thisptr, data, datatables, prop);
 
-      if(thisptr->error)
+      if (thisptr->error)
         return;
 
       gather_propdata(thisptr, data, datatables, baseclass_index);
@@ -156,7 +156,7 @@ static void gather_props(parser *thisptr, propdata *data, demogobbler_datatables
     if (prop->proptype == sendproptype_datatable) {
       size_t baseclass_index = get_baseclass(thisptr, data, datatables, prop);
 
-      if(thisptr->error)
+      if (thisptr->error)
         return;
 
       gather_props(thisptr, data, datatables, baseclass_index);
@@ -169,7 +169,7 @@ static void gather_props(parser *thisptr, propdata *data, demogobbler_datatables
             entstate_ptr->class_props[data->datatable_write_index].props + flattenedprop_index;
         memcpy(dest, prop, sizeof(demogobbler_sendprop));
 
-        if(datatable_index != data->datatable_write_index) {
+        if (datatable_index != data->datatable_write_index) {
           dest->baseclass = table; // specify the baseclasses in the flattened props
         }
         ++entstate_ptr->class_props[data->datatable_write_index].prop_count;
@@ -180,7 +180,9 @@ static void gather_props(parser *thisptr, propdata *data, demogobbler_datatables
 
 void demogobbler_parser_init_estate(parser *thisptr, demogobbler_datatables_parsed *datatables) {
   estate *entstate_ptr = &thisptr->state.entity_state;
-  demogobbler_parser_arena_check_init(thisptr);
+  entstate_ptr->edicts = demogobbler_arena_allocate(&thisptr->memory_arena,
+                                                    sizeof(edict) * MAX_EDICTS, alignof(edict));
+  memset(entstate_ptr->edicts, 0, sizeof(edict) * MAX_EDICTS);
 
   propdata data;
   memset(&data, 0, sizeof(propdata));
@@ -194,7 +196,6 @@ void demogobbler_parser_init_estate(parser *thisptr, demogobbler_datatables_pars
   entstate_ptr->class_props =
       demogobbler_arena_allocate(&thisptr->memory_arena, array_size, alignof(flattened_props));
   memset(entstate_ptr->class_props, 0, array_size);
-  entstate_ptr->classes_count = datatables->sendtable_count;
 
   for (size_t i = 0; i < datatables->sendtable_count; ++i) {
     data.datatable_write_index = i;

@@ -163,7 +163,7 @@ void print_datatables_parsed(parser_state *a, demogobbler_datatables_parsed *mes
 }
 
 void print_flattened_props(parser_state* state) {
-  for (size_t i=0; i < state->entity_state.classes_count; ++i) {
+  for (size_t i=0; i < state->entity_state.sendtables_count; ++i) {
     printf("Sendtable %s, flattened\n", state->entity_state.sendtables[i].name);
     flattened_props class_data = state->entity_state.class_props[i];
     

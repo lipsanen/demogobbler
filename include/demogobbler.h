@@ -6,30 +6,12 @@ extern "C" {
 
 #include "demogobbler_io.h"
 #include "demogobbler_datatables.h"
+#include "demogobbler_entity_types.h"
 #include "header.h"
 #include "packet_netmessages.h"
 #include "packettypes.h"
 #include <stdbool.h>
 #include <stdio.h>
-
-typedef struct {
-  demogobbler_sendprop *props;
-  size_t prop_count;
-} flattened_props;
-
-typedef struct {
-  flattened_props* class_props;
-  size_t classes_count;
-  demogobbler_sendtable* sendtables;
-  size_t sendtables_count;
-} estate;
-
-struct demogobbler_parser_state {
-  void *client_state;
-  estate entity_state;
-  const char *error_message;
-  bool error;
-};
 
 typedef struct demogobbler_parser_state parser_state;
 

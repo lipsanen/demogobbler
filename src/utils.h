@@ -16,6 +16,7 @@
 enum { COORD_INT_BITS_MP = 11 };
 enum { FRAC_BITS_LP = 3 };
 enum { FRAC_BITS = 5 };
+enum { MAX_EDICTS = 4095 };
 
 #define ARRAYSIZE(a) \
   ((sizeof(a) / sizeof(*(a))) / \
@@ -29,6 +30,21 @@ void* demogobbler_dynamic_array_get(dynamic_array* thisptr, int64_t offset); // 
 
 static inline int64_t demogobbler_dynamic_array_offset(dynamic_array* thisptr, void* ptr) {
   return (uint8_t*)ptr - (uint8_t*)thisptr->ptr;
+}
+
+static inline size_t alignment_loss(size_t bytes_allocated, size_t alignment) {
+  if(alignment > bytes_allocated) {
+    return bytes_allocated;
+  }
+
+  size_t offset = bytes_allocated & (alignment - 1);
+
+  if(offset == 0) {
+    return 0;
+  }
+  else {
+    return alignment - offset;
+  }
 }
 
 #define dynamic_array_add demogobbler_dynamic_array_add

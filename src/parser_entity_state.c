@@ -4,41 +4,43 @@
 #include "utils.h"
 #include <string.h>
 
-static uint32_t get_prop_value(uint16_t datatable_index, uint16_t prop_index) {
-  uint32_t value = ((uint32_t)prop_index << 16) | datatable_index;
-  return value;
-}
-
-static void set_add_prop(dynamic_array *set, uint16_t datatable_index, uint16_t prop_index) {
-  uint32_t value = get_prop_value(datatable_index, prop_index);
-  uint32_t *ptr = dynamic_array_add(set, 1);
-  *ptr = value;
-}
-
-static bool has_prop(dynamic_array *set, uint16_t datatable_index, uint16_t prop_index) {
-  if (set->count == 0)
-    return false;
-
-  uint32_t value = get_prop_value(datatable_index, prop_index);
-  uint32_t *arr = set->ptr;
-
-  for (size_t i = 0; i < set->count; ++i) {
-    if (arr[i] == value)
-      return true;
-  }
-
-  return false;
-}
-
-static void set_clear(dynamic_array *set) { set->count = 0; }
-
 typedef struct {
   size_t max_props;
-  dynamic_array exclude_props;
+  hashtable exclude_props_hashtable;
   hashtable dt_hashtable;
   size_t datatable_write_index;
   size_t flattenedprop_index;
+  size_t baseclass_array[1024];
+  size_t baseclass_count;
+  size_t baseclass_index;
 } propdata;
+
+static void add_baseclass(propdata *data, size_t dt_index) {
+  // TODO: Add bounds checking
+  memmove(data->baseclass_array + data->baseclass_index + 1,
+          data->baseclass_array + data->baseclass_index,
+          sizeof(size_t) * data->baseclass_count - data->baseclass_index);
+  data->baseclass_array[data->baseclass_index] = dt_index;
+  ++data->baseclass_count;
+}
+
+static size_t get_baseclass_from_array(propdata *data, size_t index) {
+  return data->baseclass_array[index];
+}
+
+static bool set_add_prop(propdata *data, demogobbler_sendprop *prop) {
+  hashtable_entry entry;
+  entry.str = prop->name;
+  entry.value = 0;
+
+  return demogobbler_hashtable_insert(&data->exclude_props_hashtable, entry);
+}
+
+static bool is_prop_excluded(propdata *data, demogobbler_sendprop *prop) {
+  hashtable_entry entry = demogobbler_hashtable_get(&data->exclude_props_hashtable, prop->name);
+
+  return entry.str != NULL;
+}
 
 static void create_dt_hashtable(parser *thisptr, propdata *data,
                                 demogobbler_datatables_parsed *datatables) {
@@ -73,22 +75,51 @@ static size_t get_baseclass(parser *thisptr, propdata *data,
   return prop->baseclass - datatables->sendtables;
 }
 
+static void gather_excludes(parser* thisptr, propdata *data,
+                            demogobbler_datatables_parsed *datatables, size_t datatable_index) {
+  demogobbler_sendtable *table = datatables->sendtables + datatable_index;
+
+  for (size_t prop_index = 0; prop_index < table->prop_count; ++prop_index) {
+    demogobbler_sendprop *prop = table->props + prop_index;
+
+    if (prop->proptype == sendproptype_datatable) {
+      size_t baseclass_index = get_baseclass(thisptr, data, datatables, prop);
+
+      if (thisptr->error)
+        return;
+
+      gather_excludes(thisptr, data, datatables, baseclass_index);
+    } else if (prop->flag_exclude) {
+      set_add_prop(data, prop);
+    }
+  }
+}
+
+
 static void gather_propdata(parser *thisptr, propdata *data,
                             demogobbler_datatables_parsed *datatables, size_t datatable_index) {
   demogobbler_sendtable *table = datatables->sendtables + datatable_index;
 
   for (size_t prop_index = 0; prop_index < table->prop_count; ++prop_index) {
     demogobbler_sendprop *prop = table->props + prop_index;
+    bool prop_excluded = is_prop_excluded(data, prop);
+    if(prop_excluded)
+      continue;
+
     if (prop->proptype == sendproptype_datatable) {
       size_t baseclass_index = get_baseclass(thisptr, data, datatables, prop);
 
-      if(thisptr->error)
+      if (thisptr->error)
         return;
 
-      gather_propdata(thisptr, data, datatables, baseclass_index);
-    } else if (prop->flag_exclude) {
-      set_add_prop(&data->exclude_props, datatable_index, prop_index);
-    } else if (!prop->flag_insidearray) {
+      if (!prop->flag_collapsible) {
+        add_baseclass(data, baseclass_index);
+        gather_propdata(thisptr, data, datatables, baseclass_index);
+        ++data->baseclass_index;
+      } else {
+        gather_propdata(thisptr, data, datatables, baseclass_index);
+      }
+    } else if (!prop->flag_insidearray && !prop->flag_exclude) {
       ++data->max_props;
     }
   }
@@ -146,41 +177,44 @@ static void sort_props(parser *thisptr, flattened_props *class_data) {
   }
 }
 
-static void gather_props(parser *thisptr, propdata *data, demogobbler_datatables_parsed *datatables,
-                         size_t datatable_index) {
+static void iterate_props(parser *thisptr, propdata *data,
+                          demogobbler_datatables_parsed *datatables, demogobbler_sendtable *table) {
   estate *entstate_ptr = &thisptr->state.entity_state;
-  demogobbler_sendtable *table = datatables->sendtables + datatable_index;
-
   for (size_t prop_index = 0; prop_index < table->prop_count; ++prop_index) {
     demogobbler_sendprop *prop = table->props + prop_index;
     if (prop->proptype == sendproptype_datatable) {
-      size_t baseclass_index = get_baseclass(thisptr, data, datatables, prop);
-
-      if(thisptr->error)
-        return;
-
-      gather_props(thisptr, data, datatables, baseclass_index);
+      if (prop->flag_collapsible)
+        iterate_props(thisptr, data, datatables, prop->baseclass);
     } else if (!prop->flag_exclude && !prop->flag_insidearray) {
-      bool prop_excluded = has_prop(&data->exclude_props, datatable_index, prop_index);
+      bool prop_excluded = is_prop_excluded(data, prop);
       if (!prop_excluded) {
         size_t flattenedprop_index =
             entstate_ptr->class_props[data->datatable_write_index].prop_count;
         demogobbler_sendprop *dest =
             entstate_ptr->class_props[data->datatable_write_index].props + flattenedprop_index;
         memcpy(dest, prop, sizeof(demogobbler_sendprop));
-
-        if(datatable_index != data->datatable_write_index) {
-          dest->baseclass = table; // specify the baseclasses in the flattened props
-        }
         ++entstate_ptr->class_props[data->datatable_write_index].prop_count;
       }
     }
   }
 }
 
+static void gather_props(parser *thisptr, propdata *data,
+                         demogobbler_datatables_parsed *datatables) {
+  for (size_t i = 0; i < data->baseclass_count; ++i) {
+    size_t index = get_baseclass_from_array(data, i);
+    demogobbler_sendtable *table = datatables->sendtables + index;
+    iterate_props(thisptr, data, datatables, table);
+  }
+
+  iterate_props(thisptr, data, datatables, datatables->sendtables + data->datatable_write_index);
+}
+
 void demogobbler_parser_init_estate(parser *thisptr, demogobbler_datatables_parsed *datatables) {
   estate *entstate_ptr = &thisptr->state.entity_state;
-  demogobbler_parser_arena_check_init(thisptr);
+  entstate_ptr->edicts = demogobbler_arena_allocate(&thisptr->memory_arena,
+                                                    sizeof(edict) * MAX_EDICTS, alignof(edict));
+  memset(entstate_ptr->edicts, 0, sizeof(edict) * MAX_EDICTS);
 
   propdata data;
   memset(&data, 0, sizeof(propdata));
@@ -189,18 +223,20 @@ void demogobbler_parser_init_estate(parser *thisptr, demogobbler_datatables_pars
   if (thisptr->error)
     goto end;
 
-  dynamic_array_init(&data.exclude_props, 32, sizeof(uint32_t));
+  data.exclude_props_hashtable = demogobbler_hashtable_create(256);
   size_t array_size = sizeof(flattened_props) * datatables->sendtable_count;
   entstate_ptr->class_props =
       demogobbler_arena_allocate(&thisptr->memory_arena, array_size, alignof(flattened_props));
   memset(entstate_ptr->class_props, 0, array_size);
-  entstate_ptr->classes_count = datatables->sendtable_count;
 
   for (size_t i = 0; i < datatables->sendtable_count; ++i) {
     data.datatable_write_index = i;
     data.flattenedprop_index = 0;
     data.max_props = 0;
-    set_clear(&data.exclude_props);
+    data.baseclass_count = data.baseclass_index = 0;
+    memset(data.exclude_props_hashtable.arr, 0,
+           data.exclude_props_hashtable.max_items * sizeof(hashtable_entry));
+    gather_excludes(thisptr, &data, datatables, i);
     gather_propdata(thisptr, &data, datatables, i);
 
     entstate_ptr->class_props[i].props = demogobbler_arena_allocate(
@@ -208,7 +244,7 @@ void demogobbler_parser_init_estate(parser *thisptr, demogobbler_datatables_pars
         alignof(demogobbler_sendprop));
     entstate_ptr->class_props[i].prop_count = 0;
 
-    gather_props(thisptr, &data, datatables, i);
+    gather_props(thisptr, &data, datatables);
     sort_props(thisptr, entstate_ptr->class_props + i);
 
     if (thisptr->error)
@@ -219,6 +255,6 @@ void demogobbler_parser_init_estate(parser *thisptr, demogobbler_datatables_pars
     thisptr->m_settings.entity_state_init_handler(&thisptr->state);
 
 end:
-  dynamic_array_free(&data.exclude_props);
+  demogobbler_hashtable_free(&data.exclude_props_hashtable);
   demogobbler_hashtable_free(&data.dt_hashtable);
 }

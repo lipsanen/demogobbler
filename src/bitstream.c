@@ -140,7 +140,9 @@ void demogobbler_bitstream_read_fixed_string(bitstream *thisptr, void *_dest, si
   uint8_t *dest = (uint8_t *)_dest;
 
   for (size_t i = 0; i < bytes; ++i) {
-    dest[i] = read_ubit(thisptr, 8);
+    uint8_t val = read_ubit(thisptr, 8);
+    if(dest)
+      dest[i] = val;
   }
 }
 
@@ -273,6 +275,21 @@ uint32_t demogobbler_bitstream_read_ubitint(bitstream *thisptr) {
   }
 
   return ret | (add << 4);
+}
+
+uint32_t demogobbler_bitstream_read_ubitvar(bitstream* thisptr) {
+  uint32_t sel = bitstream_read_uint(thisptr, 2);
+
+  switch(sel) {
+    case 0:
+      return bitstream_read_uint(thisptr, 4);
+    case 1:
+      return bitstream_read_uint(thisptr, 8);
+    case 2:
+      return bitstream_read_uint(thisptr, 12);
+    default:
+      return bitstream_read_uint(thisptr, 32);
+  }
 }
 
 demogobbler_bitcellcoord demogobbler_bitstream_read_bitcellcoord(bitstream *thisptr, bool is_int,

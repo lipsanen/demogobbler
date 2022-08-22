@@ -21,12 +21,12 @@ struct demogobbler_bitangle_vector {
 typedef struct demogobbler_bitangle_vector bitangle_vector;
 
 struct demogobbler_bitcoord {
-  bool exists : 1; // Used by vector
-  bool has_int : 1;
-  bool has_frac : 1;
-  bool sign : 1;
-  unsigned int int_value : 14; // 14 bits
-  unsigned int frac_value : 5; // 5 bits
+  unsigned exists : 1; // Used by vector
+  unsigned has_int : 1;
+  unsigned has_frac : 1;
+  unsigned sign : 1;
+  unsigned int_value : 14;
+  unsigned frac_value : 5;
 };
 
 typedef struct demogobbler_bitcoord bitcoord;
@@ -38,6 +38,24 @@ struct demogobbler_bitcoord_vector {
 };
 
 typedef struct demogobbler_bitcoord_vector bitcoord_vector;
+
+typedef struct {
+  unsigned frac;
+  bool sign;
+} demogobbler_bitnormal;
+
+typedef struct {
+  unsigned int_val;
+  unsigned fract_val;
+} demogobbler_bitcellcoord;
+
+typedef struct {
+  unsigned int_val;
+  unsigned frac_val;
+  bool inbounds;
+  bool int_has_val;
+  bool sign;
+} demogobbler_bitcoordmp;
 
 #ifdef __cplusplus
 }

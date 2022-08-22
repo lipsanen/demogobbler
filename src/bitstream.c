@@ -93,7 +93,8 @@ bitstream demogobbler_bitstream_fork_and_advance(bitstream *stream, unsigned int
   return output;
 }
 
-static uint64_t __attribute__((no_sanitize("address"))) read_ubit(bitstream *thisptr, unsigned requested_bits) {
+static uint64_t __attribute__((no_sanitize("address")))
+read_ubit(bitstream *thisptr, unsigned requested_bits) {
   if (thisptr->overflow) {
     return 0;
   }
@@ -250,4 +251,123 @@ uint32_t demogobbler_bitstream_read_varuint32(bitstream *thisptr) {
 
 int32_t demogobbler_bitstream_read_sint32(bitstream *thisptr) {
   return demogobbler_bitstream_read_sint(thisptr, 32);
+}
+
+uint32_t demogobbler_bitstream_read_ubitint(bitstream *thisptr) {
+  uint32_t ret = bitstream_read_uint(thisptr, 4);
+  uint32_t num = bitstream_read_uint(thisptr, 2);
+  uint32_t add = 0;
+
+  switch (num) {
+  case 1:
+    add = bitstream_read_uint(thisptr, 4);
+    break;
+  case 2:
+    add = bitstream_read_uint(thisptr, 8);
+    break;
+  case 3:
+    add = bitstream_read_uint(thisptr, 28);
+    break;
+  default:
+    break;
+  }
+
+  return ret | (add << 4);
+}
+
+demogobbler_bitcellcoord demogobbler_bitstream_read_bitcellcoord(bitstream *thisptr, bool is_int,
+                                                                bool lp, unsigned bits) {
+  demogobbler_bitcellcoord output;
+  memset(&output, 0, sizeof(output));
+  output.int_val = bitstream_read_uint(thisptr, bits);
+
+  if(!is_int) {
+    if(lp) {
+      output.fract_val = bitstream_read_uint(thisptr, FRAC_BITS_LP);
+    } else {
+      output.fract_val = bitstream_read_uint(thisptr, FRAC_BITS);
+    }
+  }
+
+  return output;
+}
+
+demogobbler_bitcoordmp demogobbler_bitstream_read_bitcoordmp(bitstream *thisptr, bool is_int,
+                                                             bool lp) {
+  demogobbler_bitcoordmp output;
+  memset(&output, 0, sizeof(output));
+  output.inbounds = bitstream_read_bit(thisptr);
+  if (is_int) {
+    output.int_has_val = bitstream_read_bit(thisptr);
+    if (output.int_has_val) {
+      output.sign = bitstream_read_bit(thisptr);
+
+      if (output.inbounds) {
+        output.int_val = bitstream_read_uint(thisptr, COORD_INT_BITS_MP);
+      } else {
+        output.int_val = bitstream_read_uint(thisptr, COORD_INTEGER_BITS);
+      }
+    }
+  } else {
+    output.int_has_val = bitstream_read_bit(thisptr);
+    output.sign = bitstream_read_bit(thisptr);
+
+    if (output.int_has_val) {
+      if (output.inbounds) {
+        output.int_val = bitstream_read_uint(thisptr, COORD_INT_BITS_MP);
+      } else {
+        output.int_val = bitstream_read_uint(thisptr, COORD_INTEGER_BITS);
+      }
+    }
+
+    if(lp) {
+      output.frac_val = bitstream_read_uint(thisptr, FRAC_BITS_LP);
+    } else {
+      output.frac_val = bitstream_read_uint(thisptr, FRAC_BITS);
+    }
+  }
+
+  return output;
+}
+
+demogobbler_bitnormal demogobbler_bitstream_read_bitnormal(bitstream *thisptr) {
+  demogobbler_bitnormal output;
+  const size_t frac_bits = 11;
+  output.sign = bitstream_read_bit(thisptr);
+  output.frac = bitstream_read_uint(thisptr, frac_bits);
+
+  return output;
+}
+
+int32_t demogobbler_bitstream_read_field_index(bitstream *thisptr, int32_t last_index, bool new_way) {
+  if(new_way && bitstream_read_bit(thisptr))
+    return last_index + 1;
+  
+  int32_t ret;
+
+  if(new_way && bitstream_read_bit(thisptr)) {
+    ret = bitstream_read_uint(thisptr, 3);
+  } else {
+    ret = bitstream_read_uint(thisptr, 5);
+    uint32_t sw = bitstream_read_uint(thisptr, 2);
+
+    switch(sw) {
+      case 1:
+        ret |= bitstream_read_uint(thisptr, 2) << 5;
+        break;
+      case 2:
+        ret |= bitstream_read_uint(thisptr, 4) << 5;
+        break;
+      case 3:
+        ret |= bitstream_read_uint(thisptr, 7) << 5;
+        break;
+      default:
+        break;
+    }
+  }
+
+  if(ret == 0xFFF)
+    return -1;
+  
+  return last_index + 1 + ret;
 }

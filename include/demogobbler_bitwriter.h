@@ -41,6 +41,11 @@ void demogobbler_bitwriter_write_sint32(bitwriter *thisptr, int32_t value);
 void demogobbler_bitwriter_write_uint(bitwriter *thisptr, uint64_t value, unsigned int bits);
 void demogobbler_bitwriter_write_uint32(bitwriter *thisptr, uint32_t value);
 void demogobbler_bitwriter_write_varuint32(bitwriter *thisptr, uint32_t value);
+void demogobbler_bitwriter_write_bitcellcoord(bitwriter* thisptr, demogobbler_bitcellcoord value, bool is_int, bool lp, unsigned bits);
+void demogobbler_bitwriter_write_bitcoordmp(bitwriter* thisptr, demogobbler_bitcoordmp value, bool is_int, bool lp);
+void demogobbler_bitwriter_write_bitnormal(bitwriter* thisptr, demogobbler_bitnormal value);
+void demogobbler_bitwriter_write_field_index(bitwriter* thisptr, int32_t new_index, int32_t last_index, bool new_way);
+void demogobbler_bitwriter_write_ubitint(bitwriter *thisptr, uint32_t value);
 void demogobbler_bitwriter_free(bitwriter *thisptr);
 
 #define bitwriter_init demogobbler_bitwriter_init

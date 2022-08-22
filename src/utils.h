@@ -13,6 +13,10 @@
 #define COORD_DENOMINATOR (1<<(COORD_FRACTIONAL_BITS))
 #define COORD_RESOLUTION 1.0f / (1 << COORD_FRACTIONAL_BITS)
 
+enum { COORD_INT_BITS_MP = 11 };
+enum { FRAC_BITS_LP = 3 };
+enum { FRAC_BITS = 5 };
+
 #define ARRAYSIZE(a) \
   ((sizeof(a) / sizeof(*(a))) / \
   (size_t)(!(sizeof(a) % sizeof(*(a)))))

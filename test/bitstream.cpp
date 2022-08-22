@@ -4,6 +4,10 @@
 #include <cmath>
 #include <cstdint>
 
+extern "C" {
+#include "utils.h"
+}
+
 template <typename T> bool test_num(T num, T &got, unsigned int bits, unsigned int bitOffset) {
   T orig = num;
   num <<= bitOffset;
@@ -77,8 +81,8 @@ TEST(Bitstream, Unsigned64Works) {
 TEST(Bitstream, AlignedCString) {
   const char *string = "this is a wonderful string.";
   char buffer[80];
-  bitstream stream =
-      demogobbler_bitstream_create(const_cast<void *>((const void *)string), (strlen(string) + 1) * 8);
+  bitstream stream = demogobbler_bitstream_create(const_cast<void *>((const void *)string),
+                                                  (strlen(string) + 1) * 8);
 
   demogobbler_bitstream_read_cstring(&stream, buffer, 80);
 
@@ -353,9 +357,9 @@ TEST(BitstreamPlusWriter, UInt32) {
 
 TEST(BitstreamPlusWriter, Bitstream) {
   const int SIZE = 1024;
-  uint8_t* data = (uint8_t*)malloc(SIZE);
+  uint8_t *data = (uint8_t *)malloc(SIZE);
 
-  for(int i=0; i < SIZE; ++i) {
+  for (int i = 0; i < SIZE; ++i) {
     data[i] = i % 256;
   }
 
@@ -372,11 +376,215 @@ TEST(BitstreamPlusWriter, Bitstream) {
   stream.bitoffset = 0;
   stream.overflow = false;
 
-  for(int i=0; demogobbler_bitstream_bits_left(&stream) > 0; ++i) {
+  for (int i = 0; demogobbler_bitstream_bits_left(&stream) > 0; ++i) {
     bool set1 = bitstream_read_bit(&stream);
     bool set2 = bitstream_read_bit(&stream2);
     ASSERT_EQ(set1, set2) << "wrong bit at index " << i << " / " << stream.bitsize;
   }
   bitwriter_free(&writer);
   free(data);
+}
+
+TEST(BitstreamPlusWriter, IndexDiff) {
+  for (uint32_t old_index = -1; old_index < 0xFFE; ++old_index) {
+    for (uint32_t new_index = old_index + 1; new_index < 0xFFF; ++new_index) {
+      bitwriter writer;
+      bitwriter_init(&writer, 1);
+      demogobbler_bitwriter_write_field_index(&writer, new_index, old_index, true);
+
+      bitstream stream = bitstream_create(writer.ptr, writer.bitsize);
+      EXPECT_EQ(new_index, demogobbler_bitstream_read_field_index(&stream, old_index, true));
+      EXPECT_EQ(stream.bitoffset, writer.bitoffset);
+      bitwriter_free(&writer);
+    }
+  }
+
+  for (uint32_t old_index = -1; old_index < 0xFFE; ++old_index) {
+    for (uint32_t new_index = old_index + 1; new_index < 0xFFF; ++new_index) {
+      bitwriter writer;
+      bitwriter_init(&writer, 1);
+      demogobbler_bitwriter_write_field_index(&writer, new_index, old_index, false);
+
+      bitstream stream = bitstream_create(writer.ptr, writer.bitsize);
+      EXPECT_EQ(new_index, demogobbler_bitstream_read_field_index(&stream, old_index, false));
+      EXPECT_EQ(stream.bitoffset, writer.bitoffset);
+      bitwriter_free(&writer);
+    }
+  }
+
+  bitwriter writer;
+  bitwriter_init(&writer, 1);
+  demogobbler_bitwriter_write_field_index(&writer, -1, 1, false);
+  demogobbler_bitwriter_write_field_index(&writer, -1, 1, true);
+  bitstream stream = bitstream_create(writer.ptr, writer.bitsize);
+  EXPECT_EQ(-1, demogobbler_bitstream_read_field_index(&stream, 1, false));
+  EXPECT_EQ(-1, demogobbler_bitstream_read_field_index(&stream, 1, true));
+  EXPECT_EQ(stream.bitoffset, writer.bitoffset);
+  bitwriter_free(&writer);
+}
+
+TEST(BitstreamPlusWriter, BitNormal) {
+  const size_t max_frac = (1 << 11) - 1;
+
+  for (size_t sign = 0; sign <= 1; ++sign) {
+    for (size_t frac = 0; frac <= max_frac; ++frac) {
+      demogobbler_bitnormal normal;
+      memset(&normal, 0, sizeof(normal));
+      normal.sign = sign;
+      normal.frac = frac;
+      bitwriter writer;
+      bitwriter_init(&writer, 1);
+      demogobbler_bitwriter_write_bitnormal(&writer, normal);
+
+      bitstream stream = bitstream_create(writer.ptr, writer.bitsize);
+      demogobbler_bitnormal output = demogobbler_bitstream_read_bitnormal(&stream);
+      EXPECT_EQ(memcmp(&normal, &output, sizeof(output)), 0);
+      EXPECT_EQ(stream.bitoffset, writer.bitoffset);
+      bitwriter_free(&writer);
+    }
+  }
+}
+
+TEST(BitstreamPlusWriter, UBitInt) {
+  const size_t max = 10000;
+  srand(0);
+  bitwriter writer;
+  bitwriter_init(&writer, 1);
+  for (size_t i = 0; i < max; ++i) {
+    demogobbler_bitwriter_write_ubitint(&writer, rand());
+  }
+
+  bitstream stream = bitstream_create(writer.ptr, writer.bitsize);
+  srand(0);
+
+  for (size_t i = 0; i < max; ++i) {
+    EXPECT_EQ(rand(), demogobbler_bitstream_read_ubitint(&stream));
+  }
+
+  bitwriter_free(&writer);
+}
+
+struct rng_bitcellcoord {
+  bool is_int;
+  bool lp;
+  unsigned bits;
+  demogobbler_bitcellcoord value;
+};
+
+rng_bitcellcoord get_random_bitcellcoord() {
+  rng_bitcellcoord output;
+  memset(&output, 0, sizeof(output));
+  output.is_int = rand() % 2;
+  output.lp = rand() % 2;
+  output.bits = rand() % 32 + 1;
+  output.value.int_val = rand() % (1 << output.bits);
+
+  if (!output.is_int) {
+    if (output.lp) {
+      output.value.fract_val = rand() % (1 << FRAC_BITS_LP);
+    } else {
+      output.value.fract_val = rand() % (1 << FRAC_BITS);
+    }
+  }
+
+  return output;
+}
+
+struct rng_bitcoordmp {
+  bool is_int;
+  bool lp;
+  demogobbler_bitcoordmp value;
+};
+
+rng_bitcoordmp get_random_bitcoordmp() {
+  rng_bitcoordmp output;
+  memset(&output, 0, sizeof(output));
+  output.is_int = rand() % 2;
+  output.lp = rand() % 2;
+  output.value.inbounds = rand() % 2;
+
+  if (output.is_int) {
+    output.value.int_has_val = rand() % 2;
+
+    if(output.value.int_has_val) {
+      output.value.sign = rand() % 2;
+      if(output.value.inbounds) {
+        output.value.int_val = rand () % (1 << COORD_INT_BITS_MP);
+      }
+      else {
+        output.value.int_val = rand () % (1 << 14);
+      }
+    }
+  }
+  else {
+    output.value.int_has_val = rand() % 2;
+    output.value.sign = rand() % 2;
+
+    if(output.value.int_has_val) {
+      if(output.value.inbounds) {
+        output.value.int_val = rand () % (1 << COORD_INT_BITS_MP);
+      }
+      else {
+        output.value.int_val = rand () % (1 << 14);
+      }
+    }
+
+    if(output.lp) {
+      output.value.frac_val = rand () % (1 << FRAC_BITS_LP);
+    } else {
+      output.value.frac_val = rand () % (1 << FRAC_BITS);
+    }
+  }
+
+  return output;
+}
+
+
+TEST(BitstreamPlusWriter, BitCellCoord) {
+  const size_t max = 10000;
+  srand(0);
+  bitwriter writer;
+  bitwriter_init(&writer, 1);
+  for (size_t i = 0; i < max; ++i) {
+    rng_bitcellcoord value = get_random_bitcellcoord();
+    demogobbler_bitwriter_write_bitcellcoord(&writer, value.value, value.is_int, value.lp,
+                                             value.bits);
+  }
+
+  bitstream stream = bitstream_create(writer.ptr, writer.bitsize);
+  srand(0);
+
+  for (size_t i = 0; i < max; ++i) {
+    rng_bitcellcoord value = get_random_bitcellcoord();
+    demogobbler_bitcellcoord value2 =
+        demogobbler_bitstream_read_bitcellcoord(&stream, value.is_int, value.lp, value.bits);
+    EXPECT_EQ(memcmp(&value.value, &value2, sizeof(demogobbler_bitcellcoord)), 0);
+  }
+
+  EXPECT_EQ(stream.bitoffset, writer.bitoffset);
+  bitwriter_free(&writer);
+}
+
+TEST(BitstreamPlusWriter, BitCoordMp) {
+  const size_t max = 10000;
+  srand(0);
+  bitwriter writer;
+  bitwriter_init(&writer, 1);
+  for (size_t i = 0; i < max; ++i) {
+    rng_bitcoordmp value = get_random_bitcoordmp();
+    demogobbler_bitwriter_write_bitcoordmp(&writer, value.value, value.is_int, value.lp);
+  }
+
+  bitstream stream = bitstream_create(writer.ptr, writer.bitsize);
+  srand(0);
+
+  for (size_t i = 0; i < max; ++i) {
+    rng_bitcoordmp value = get_random_bitcoordmp();
+    demogobbler_bitcoordmp value2 =
+        demogobbler_bitstream_read_bitcoordmp(&stream, value.is_int, value.lp);
+    EXPECT_EQ(memcmp(&value.value, &value2, sizeof(demogobbler_bitcoordmp)), 0) << "Error on iteration " << i;
+  }
+
+  EXPECT_EQ(stream.bitoffset, writer.bitoffset);
+  bitwriter_free(&writer);
 }

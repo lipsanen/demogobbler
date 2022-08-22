@@ -223,6 +223,150 @@ void demogobbler_bitwriter_write_varuint32(bitwriter *thisptr, uint32_t value) {
   }
 }
 
+void demogobbler_bitwriter_write_bitcellcoord(bitwriter* thisptr, demogobbler_bitcellcoord value, bool is_int, bool lp, unsigned bits) {
+  bitwriter_write_uint(thisptr, value.int_val, bits);
+
+  if(!is_int) {
+    if(lp) {
+      bitwriter_write_uint(thisptr, value.fract_val, FRAC_BITS_LP);
+    }
+    else {
+      bitwriter_write_uint(thisptr, value.fract_val, FRAC_BITS);
+    }
+  }
+}
+
+void demogobbler_bitwriter_write_bitcoordmp(bitwriter* thisptr, demogobbler_bitcoordmp value, bool is_int, bool lp) {
+  bitwriter_write_bit(thisptr, value.inbounds);
+
+  if(is_int) {
+    bitwriter_write_bit(thisptr, value.int_has_val);
+    if(value.int_has_val) {
+      bitwriter_write_bit(thisptr, value.sign);
+
+      if (value.inbounds) {
+        bitwriter_write_uint(thisptr, value.int_val, COORD_INT_BITS_MP);
+      }
+      else {
+        bitwriter_write_uint(thisptr, value.int_val, COORD_INTEGER_BITS);
+      }
+    }
+  } else {
+    bitwriter_write_bit(thisptr, value.int_has_val);
+    bitwriter_write_bit(thisptr, value.sign);
+
+    if (value.int_has_val) {
+      if (value.inbounds) {
+        bitwriter_write_uint(thisptr, value.int_val, COORD_INT_BITS_MP);
+      }
+      else {
+        bitwriter_write_uint(thisptr, value.int_val, COORD_INTEGER_BITS);
+      }
+    }
+
+    if (lp) {
+      bitwriter_write_uint(thisptr, value.frac_val, FRAC_BITS_LP);
+    }
+    else {
+      bitwriter_write_uint(thisptr, value.frac_val, FRAC_BITS);
+    }
+
+  }
+}
+
+void demogobbler_bitwriter_write_bitnormal(bitwriter* thisptr, demogobbler_bitnormal value) {
+  const size_t frac_bits = 11;
+  bitwriter_write_bit(thisptr, value.sign);
+  bitwriter_write_uint(thisptr, value.frac, frac_bits);
+}
+
+void demogobbler_bitwriter_write_field_index(bitwriter* thisptr, int32_t new_index, int32_t last_index, bool new_way) {
+  int32_t diff;
+
+  if (new_index == -1) {
+    diff = 0xFFF;
+  }
+  else {
+    diff = new_index - last_index - 1;
+  }
+
+  if(new_way) {
+    if(diff == 0) {
+      bitwriter_write_bit(thisptr, true);
+    }
+    else {
+      bitwriter_write_bit(thisptr, false);
+    }
+  }
+
+  if(new_way && diff < 8) {
+    bitwriter_write_bit(thisptr, true);
+    bitwriter_write_uint(thisptr, diff, 3);
+  } else {
+    if(new_way) {
+      bitwriter_write_bit(thisptr, false);
+    }
+
+    const size_t case_0_max = (1 << 5) - 1;
+    const size_t case_1_max = (1 << 7) - 1;
+    const size_t case_2_max = (1 << 9) - 1;
+
+    bitwriter_write_uint(thisptr, diff & case_0_max, 5);
+    size_t bits_to_write;
+
+    if(diff <= case_0_max) {
+      bits_to_write = 0;
+      bitwriter_write_uint(thisptr, 0, 2);
+    } else if (diff <= case_1_max) {
+      bits_to_write = 2;
+      bitwriter_write_uint(thisptr, 1, 2);
+    } else if (diff <= case_2_max) {
+      bits_to_write = 4;
+      bitwriter_write_uint(thisptr, 2, 2);
+    } else {
+      bits_to_write = 7;
+      bitwriter_write_uint(thisptr, 3, 2);
+    }
+
+    if(bits_to_write > 0) {
+      diff >>= 5;
+      bitwriter_write_uint(thisptr, diff, bits_to_write);
+    }
+  }
+}
+
+void demogobbler_bitwriter_write_ubitint(bitwriter *thisptr, uint32_t value) {
+  const uint32_t case_0_max = (1 << 4) - 1;
+  const uint32_t case_1_max = (1 << 8) - 1;
+  const uint32_t case_2_max = (1 << 12) - 1;
+
+  size_t bits_to_write;
+  uint32_t val1 = value & case_0_max;
+  bitwriter_write_uint(thisptr, val1, 4);
+  uint32_t sel;
+
+  if(value <= case_0_max) {
+    bits_to_write = 0;
+    sel = 0;
+  } else if(value <= case_1_max) {
+    bits_to_write = 4;
+    sel = 1;
+  } else if(value <= case_2_max) {
+    bits_to_write = 8;
+    sel = 2;
+  } else {
+    bits_to_write = 28;
+    sel = 3;
+  }
+
+  bitwriter_write_uint(thisptr, sel, 2);
+
+  if(bits_to_write > 0) {
+    value >>= 4;
+    bitwriter_write_uint(thisptr, value, bits_to_write);
+  }
+}
+
 void demogobbler_bitwriter_free(bitwriter *thisptr) {
   free(thisptr->ptr);
   memset(thisptr, 0, sizeof(bitwriter));

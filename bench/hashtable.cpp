@@ -2,6 +2,8 @@
 
 extern "C" {
   #include "demogobbler_hashtable.h"
+  #define XXH_INLINE_ALL
+  #include "xxhash.h"
 }
 #include <map>
 #include <unordered_map>
@@ -267,19 +269,7 @@ static void hashmap_custom(benchmark::State &state) {
 
 struct keyhash {
   std::size_t operator()(const char* str) const {
-    size_t hash = 0;
-
-    for(; *str; ++str)
-    {
-        hash += *str;
-        hash += (hash << 10);
-        hash ^= (hash >> 6);
-    }
-
-    hash += (hash << 3);
-    hash ^= (hash >> 11);
-    hash += (hash << 15);
-
+    XXH64_hash_t hash = XXH64(str, strlen(str), 0);
     return hash;
   }
 };

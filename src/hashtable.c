@@ -1,30 +1,25 @@
 #include "demogobbler_hashtable.h"
+#define XXH_INLINE_ALL
+#include "xxhash.h"
 #include <stdlib.h>
 #include <string.h>
 
-static size_t get_hash_index(hashtable* thisptr, const char* str) {
-  size_t hash = 0;
-
-  for(; *str; ++str)
-  {
-      hash += *str;
-      hash += (hash << 10);
-      hash ^= (hash >> 6);
-  }
-
-  hash += (hash << 3);
-  hash ^= (hash >> 11);
-  hash += (hash << 15);
-
-  return hash % thisptr->array_size;
+static uint32_t get_hash(const char* str) {
+  // The length here is computed unnecessarily, could grab it when we parse the string
+  XXH64_hash_t hash = XXH64(str, strlen(str), 0);
+  return hash;
 }
 
-hashtable demogobbler_hashtable_create(size_t array_size) {
+hashtable demogobbler_hashtable_create(size_t max_items) {
   hashtable table;
   memset(&table, 0, sizeof(table));
-  table.array_size = array_size;
 
-  const size_t array_size_bytes = array_size * sizeof(hashtable_entry);
+  table.max_items = 1; // User power of two sizes;
+  
+  while(table.max_items - 1 < max_items)
+    table.max_items <<= 1;
+
+  const size_t array_size_bytes = table.max_items * sizeof(hashtable_entry);
   table.arr = malloc(array_size_bytes);
   memset(table.arr, 0, array_size_bytes);
 
@@ -32,14 +27,14 @@ hashtable demogobbler_hashtable_create(size_t array_size) {
 }
 
 hashtable_entry demogobbler_hashtable_get(hashtable* thisptr, const char* str) {
-  size_t initial_index = get_hash_index(thisptr, str);
-  size_t i=initial_index;
+  uint32_t hash = get_hash(str);
+  size_t i= hash & (thisptr->max_items - 1);
   while(thisptr->arr[i].str) {
     if(strcmp(thisptr->arr[i].str, str) == 0) {
       return thisptr->arr[i];
     }
     i += 1;
-    if(i == thisptr->array_size)
+    if(i == thisptr->max_items)
       i = 0;
   }
 
@@ -49,19 +44,20 @@ hashtable_entry demogobbler_hashtable_get(hashtable* thisptr, const char* str) {
 }
 
 bool demogobbler_hashtable_insert(hashtable* thisptr, hashtable_entry entry) {
-  if(thisptr->item_count == thisptr->array_size - 1) {
+  if(thisptr->item_count == thisptr->max_items - 1) {
     return false; // Hash table is not resizable
   }
 
   ++thisptr->item_count;
-  size_t initial_index = get_hash_index(thisptr, entry.str);
+  uint32_t hash = get_hash(entry.str);
+  size_t initial_index = hash & (thisptr->max_items - 1);
   size_t i=initial_index;
   while(thisptr->arr[i].str) {
     if(strcmp(thisptr->arr[i].str, entry.str) == 0) {
       return false;
     }
     i += 1;
-    if(i == thisptr->array_size)
+    if(i == thisptr->max_items)
       i = 0;
   }
 

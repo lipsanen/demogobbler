@@ -1,16 +1,17 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <stddef.h>
 
 typedef struct {
   const char* str;
-  size_t value;
+  uint32_t value;
 } hashtable_entry;
 
 typedef struct {
   hashtable_entry* arr;
-  size_t array_size;
+  size_t max_items;
   size_t item_count;
 } hashtable;
 

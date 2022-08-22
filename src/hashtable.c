@@ -6,8 +6,7 @@
 
 static uint32_t get_hash(const char* str) {
   // The length here is computed unnecessarily, could grab it when we parse the string
-  XXH64_hash_t hash = XXH64(str, strlen(str), 0);
-  return hash;
+  return XXH32(str, strlen(str), 0);
 }
 
 hashtable demogobbler_hashtable_create(size_t max_items) {

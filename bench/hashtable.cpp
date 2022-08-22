@@ -10,7 +10,7 @@ extern "C" {
 #include <stdlib.h>
 #include <string.h>
 
-const char *TEST_STRINGS[] = {
+static const char *TEST_STRINGS[] = {
     "DT_AR2Explosion",
     "DT_AI_BaseNPC",
     "DT_AlyxEmpEffect",
@@ -269,8 +269,7 @@ static void hashmap_custom(benchmark::State &state) {
 
 struct keyhash {
   std::size_t operator()(const char* str) const {
-    XXH64_hash_t hash = XXH64(str, strlen(str), 0);
-    return hash;
+    return XXH32(str, strlen(str), 0);
   }
 };
 

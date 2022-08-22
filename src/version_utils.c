@@ -165,7 +165,7 @@ static void get_net_file_bits(demo_version_data *version) {
 }
 
 static void get_has_nettick_times(demo_version_data *version) {
-  if (version->network_protocol < 14) {
+  if (version->network_protocol < 11) {
     version->has_nettick_times = false;
   } else {
     version->has_nettick_times = true;
@@ -249,6 +249,15 @@ static void get_sendprop_numbits_for_numbits(demo_version_data* version) {
   }
 }
 
+static void get_svc_update_stringtable_table_id_bits(demo_version_data* version) {
+  if(version->network_protocol < 11) {
+    version->svc_update_stringtable_table_id_bits = 4;
+  }
+  else {
+    version->svc_update_stringtable_table_id_bits = 5;
+  }
+}
+
 struct version_pair {
   const char *game_directory;
   enum demogobbler_game version;
@@ -319,6 +328,7 @@ void version_update_build_info(demo_version_data *version) {
   get_datatable_propcount_bits(version);
   get_sendprop_flag_bits(version);
   get_sendprop_numbits_for_numbits(version);
+  get_svc_update_stringtable_table_id_bits(version);
 }
 
 bool get_l4d2_build(const char *str, int *out) {

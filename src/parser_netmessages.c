@@ -45,8 +45,8 @@ static void handle_net_disconnect(parser *thisptr, bitstream *stream, packet_net
 
 static void write_net_disconnect(bitwriter *writer, demo_version_data *version,
                                  packet_net_message *message) {
-  writer->error = true;
-  writer->error_message = "Writing not implemented for net_disconnect";
+  struct demogobbler_net_disconnect *ptr = &message->message_net_disconnect;
+  bitwriter_write_cstring(writer, ptr->text);
 }
 
 static void handle_net_file(parser *thisptr, bitstream *stream, packet_net_message *message,
@@ -424,7 +424,7 @@ static void write_svc_create_stringtable(bitwriter *writer, demo_version_data *v
 static void handle_svc_update_stringtable(parser *thisptr, bitstream *stream,
                                           packet_net_message *message, blk scrap) {
   struct demogobbler_svc_update_stringtable *ptr = &message->message_svc_update_stringtable;
-  ptr->table_id = bitstream_read_uint(stream, 5);
+  ptr->table_id = bitstream_read_uint(stream, thisptr->demo_version.svc_update_stringtable_table_id_bits);
   ptr->exists = bitstream_read_bit(stream);
   if (ptr->exists) {
     ptr->changed_entries = bitstream_read_uint(stream, 16);
@@ -444,7 +444,7 @@ static void handle_svc_update_stringtable(parser *thisptr, bitstream *stream,
 static void write_svc_update_stringtable(bitwriter *writer, demo_version_data *version,
                                          packet_net_message *message) {
   struct demogobbler_svc_update_stringtable *ptr = &message->message_svc_update_stringtable;
-  bitwriter_write_uint(writer, ptr->table_id, 5);
+  bitwriter_write_uint(writer, ptr->table_id, version->svc_update_stringtable_table_id_bits);
   bitwriter_write_bit(writer, ptr->exists);
 
   if (ptr->exists) {
@@ -786,8 +786,9 @@ static void handle_svc_get_cvar_value(parser *thisptr, bitstream *stream,
 
 static void write_svc_get_cvar_value(bitwriter *writer, demo_version_data *version,
                                      packet_net_message *message) {
-  writer->error = true;
-  writer->error_message = "Writing not implemented for svc_get_cvar_value";
+  struct demogobbler_svc_get_cvar_value *ptr = &message->message_svc_get_cvar_value;
+  bitwriter_write_sint32(writer, ptr->cookie);
+  bitwriter_write_cstring(writer, ptr->cvar_name);
 }
 
 static void handle_net_splitscreen_user(parser *thisptr, bitstream *stream,

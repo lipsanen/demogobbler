@@ -47,42 +47,6 @@ struct packet_copy_tester {
       }
     }
   }
-
-  void verify_bulk(uint64_t start_offset, uint64_t bitsize) {
-    if (this->error)
-      return;
-
-    // Original data
-    bitstream stream1;
-    memset(&stream1, 0, sizeof(stream1));
-    stream1.data = current_data;
-    stream1.bitoffset = start_offset;
-    stream1.bitsize = bitsize;
-
-    // Written data
-    bitstream stream2;
-    memset(&stream2, 0, sizeof(stream2));
-    stream2.data = writer.ptr;
-    stream2.bitoffset = start_offset;
-    stream2.bitsize = bitsize;
-
-    while (demogobbler_bitstream_bits_left(&stream1) > 0) {
-      uint32_t value1 = bitstream_read_bit(&stream1);
-      uint32_t value2 = bitstream_read_bit(&stream2);
-
-      if (value1 != value2) {
-        int64_t offset = stream1.bitoffset - prev_offset;
-        EXPECT_EQ(value1, value2) << " error writing message of type " << last_message << " at offset " << offset  << " / " << stream1.bitsize - prev_offset;
-        this->error = true;
-        break;
-      }
-    }
-  }
-
-  void verify_last_iteration() {
-    verify_bulk(this->prev_offset, this->writer.bitoffset);
-    this->prev_offset = this->writer.bitoffset;
-  }
 };
 
 static void version_handler(parser_state* state, demo_version_data data) {
@@ -101,6 +65,10 @@ static void packet_handler(parser_state* state, demogobbler_packet *packet) {
   memcpy(tester->current_data, packet->data, packet->size_bytes);
   tester->prev_offset = 0;
   tester->writer.bitoffset = 0;
+#if GROUND_TRUTH_CHECK
+  tester->writer.truth_data = packet->data;
+  tester->writer.truth_size_bits = packet->size_bytes * 8;
+#endif
   tester->packet_bits = packet->size_bytes * 8;
 }
 
@@ -120,7 +88,6 @@ static void netmessage_handler(parser_state* state, packet_net_message *message)
     }
 
     tester->last_message = message->mtype;
-    tester->verify_last_iteration();
 
     if(message->last_message) {
       tester->verify_last_packet_size();

@@ -285,6 +285,11 @@ void _parse_packet(parser *thisptr, enum demogobbler_type type) {
   demogobbler_packet message;
   message.preamble.type = message.preamble.converted_type = type;
   PARSE_PREAMBLE();
+
+#ifdef DEBUG_BREAK_PROP
+  CURRENT_PACKET = message.preamble.tick;
+#endif
+
   message.cmdinfo_size = thisptr->demo_version.cmdinfo_size;
 
   for (int i = 0; i < message.cmdinfo_size; ++i) {

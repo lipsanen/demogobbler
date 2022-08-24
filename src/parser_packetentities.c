@@ -1,6 +1,17 @@
 #include "parser_packetentities.h"
 #include "utils.h"
+#include <signal.h>
 #include <string.h>
+
+#ifdef DEBUG_BREAK_PROP
+int CURRENT_PACKET = 0;
+int CURRENT_ENT_INDEX = 0;
+int CURRENT_PROP_INDEX = 0;
+
+int BREAK_PACKET = 0;
+int BREAK_ENT_INDEX = 1;
+int BREAK_PROP_INDEX = 1;
+#endif
 
 static void read_prop(parser *thisptr, bitstream *stream, edict *ent, demogobbler_sendprop *prop);
 
@@ -32,7 +43,10 @@ static void read_float(bitstream *stream, edict *ent, demogobbler_sendprop *prop
   } else if (prop->flag_cellcoordint) {
     demogobbler_bitstream_read_bitcellcoord(stream, true, false, prop->prop_numbits);
   } else {
-    demogobbler_bitstream_read_uint(stream, prop->prop_numbits);
+    unsigned int value = demogobbler_bitstream_read_uint(stream, prop->prop_numbits);
+    float scale = (float)value / ((1 << prop->prop_numbits) - 1);
+    float val = prop->prop_.low_value + (prop->prop_.high_value - prop->prop_.low_value) * scale;
+    fprintf(stderr, "Parsed %s : %f\n", prop->name, val);
   }
 }
 
@@ -67,22 +81,37 @@ static void read_array(parser *thisptr, bitstream *stream, edict *ent, demogobbl
 }
 
 static void read_prop(parser *thisptr, bitstream *stream, edict *ent, demogobbler_sendprop *prop) {
-  if (prop->proptype == sendproptype_array) {
-    read_array(thisptr, stream, ent, prop);
-  } else if (prop->proptype == sendproptype_vector3) {
-    read_vector3(stream, ent, prop);
-  } else if (prop->proptype == sendproptype_vector2) {
-    read_vector2(stream, ent, prop);
-  } else if (prop->proptype == sendproptype_float) {
-    read_float(stream, ent, prop);
-  } else if (prop->proptype == sendproptype_string) {
-    read_string(stream, ent, prop);
-  } else if (prop->proptype == sendproptype_int) {
-    read_int(stream, ent, prop);
-  } else {
-    thisptr->error = true;
-    thisptr->error_message = "Got an unknown prop type in read_prop";
-  }
+#ifdef DEBUG_BREAK_PROP
+    ++CURRENT_PROP_INDEX;
+#endif
+
+#ifdef DEBUG_BREAK_PROP
+  if (CURRENT_ENT_INDEX == BREAK_ENT_INDEX && CURRENT_PACKET == BREAK_PACKET &&
+      CURRENT_PROP_INDEX == BREAK_PROP_INDEX) {
+        int brk = 0; // Set a breakpoint here
+      }
+#endif
+
+    if (prop->proptype == sendproptype_array) {
+      read_array(thisptr, stream, ent, prop);
+    } else if (prop->proptype == sendproptype_vector3) {
+      read_vector3(stream, ent, prop);
+    } else if (prop->proptype == sendproptype_vector2) {
+      read_vector2(stream, ent, prop);
+    } else if (prop->proptype == sendproptype_float) {
+      read_float(stream, ent, prop);
+    } else if (prop->proptype == sendproptype_string) {
+      read_string(stream, ent, prop);
+    } else if (prop->proptype == sendproptype_int) {
+      read_int(stream, ent, prop);
+    } else {
+      thisptr->error = true;
+      thisptr->error_message = "Got an unknown prop type in read_prop";
+#ifdef DEBUG_BREAK_PROP
+      fprintf(stderr, "Failed at %d/%d/%d\n", CURRENT_PACKET, CURRENT_ENT_INDEX,
+              CURRENT_PROP_INDEX);
+#endif
+    }
 }
 
 static void parse_props_prot4(parser *thisptr, bitstream *stream, edict *ent) {
@@ -94,9 +123,13 @@ static void parse_props_prot4(parser *thisptr, bitstream *stream, edict *ent) {
   while (true) {
     i = bitstream_read_field_index(stream, i, new_way);
 
-    if (i < -1 || i > props->prop_count) {
+    if (i < -1 || i > (int)props->prop_count) {
       thisptr->error = true;
       thisptr->error_message = "Invalid prop index encountered";
+#ifdef DEBUG_BREAK_PROP
+      fprintf(stderr, "Failed at %d/%d/%d\n", CURRENT_PACKET, CURRENT_ENT_INDEX,
+              CURRENT_PROP_INDEX);
+#endif
     }
 
     if (i == -1 || thisptr->error || stream->overflow)
@@ -107,17 +140,30 @@ static void parse_props_prot4(parser *thisptr, bitstream *stream, edict *ent) {
 }
 
 static void parse_props_old(parser *thisptr, bitstream *stream, edict *ent) {
-  flattened_props *props = thisptr->state.entity_state.class_props + ent->datatable_id;
+  unsigned int datatable_id = ent->datatable_id;
+  flattened_props *props = thisptr->state.entity_state.class_props + datatable_id;
   int i = -1;
+  int old_index;
 
   while (bitstream_read_bit(stream)) {
-
+    old_index = i;
     i += bitstream_read_ubitvar(stream) + 1;
-
     if (i < -1 || i > props->prop_count) {
       thisptr->error = true;
       thisptr->error_message = "Invalid prop index encountered";
+#ifdef DEBUG_BREAK_PROP
+      fprintf(stderr, "Failed at %d/%d/%d\n", CURRENT_PACKET, CURRENT_ENT_INDEX,
+              CURRENT_PROP_INDEX);
+#endif
     }
+
+#ifdef DEBUG_BREAK_PROP
+    if (old_index == -1) {
+      ++CURRENT_ENT_INDEX;
+      CURRENT_PROP_INDEX = 0;
+    }
+#endif
+
 
     if (i == -1 || thisptr->error || stream->overflow)
       break;
@@ -137,6 +183,8 @@ static void parse_props(parser *thisptr, bitstream *stream, edict *ent) {
 void demogobbler_parse_packetentities(parser *thisptr,
                                       struct demogobbler_svc_packet_entities *message) {
   bitstream stream = message->data;
+  unsigned bits = highest_bit_index(thisptr->state.entity_state.sendtables_count);
+  CURRENT_ENT_INDEX = 0;
 
   if (!thisptr->state.entity_state.class_props) {
     thisptr->error = true;
@@ -145,12 +193,22 @@ void demogobbler_parse_packetentities(parser *thisptr,
 
   int oldI = -1, newI = -1;
 
-  for (size_t i = 0; i < message->updated_entries && !thisptr->error; ++i) {
+  for (size_t i = 0; i < message->updated_entries && !thisptr->error && !stream.overflow; ++i) {
     newI += 1;
     if (thisptr->demo_version.demo_protocol >= 4) {
       newI += bitstream_read_ubitint(&stream);
     } else {
       newI += bitstream_read_ubitvar(&stream);
+    }
+
+    if (newI >= MAX_EDICTS || newI < 0) {
+      thisptr->error = true;
+      thisptr->error_message = "Illegal entity index";
+#ifdef DEBUG_BREAK_PROP
+      fprintf(stderr, "Failed at %d/%d/%d\n", CURRENT_PACKET, CURRENT_ENT_INDEX,
+              CURRENT_PROP_INDEX);
+#endif
+      goto end;
     }
 
     unsigned update_type = bitstream_read_uint(&stream, 2);
@@ -161,14 +219,15 @@ void demogobbler_parse_packetentities(parser *thisptr,
       parse_props(thisptr, &stream, ent);
     } else if (update_type == 2) {
       // enter PVS
-      unsigned bits = highest_bit_index(thisptr->state.entity_state.sendtables_count) + 1;
       unsigned int handle_serial_number_bits = 10;
-      unsigned iclass = bitstream_read_uint(&stream, bits);
-      unsigned handle = demogobbler_bitstream_read_uint(&stream, handle_serial_number_bits);
+      ent->datatable_id = bitstream_read_uint(&stream, bits);
+      ent->handle = demogobbler_bitstream_read_uint(&stream, handle_serial_number_bits);
 
-      if (iclass >= thisptr->state.entity_state.sendtables_count) {
+      if (ent->datatable_id >= thisptr->state.entity_state.sendtables_count) {
         thisptr->error = true;
         thisptr->error_message = "Invalid class ID in svc_packetentities";
+        fprintf(stderr, "Failed at %d/%d/%d\n", CURRENT_PACKET, CURRENT_ENT_INDEX,
+                CURRENT_PROP_INDEX);
         goto end;
       }
 

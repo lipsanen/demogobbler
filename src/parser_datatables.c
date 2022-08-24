@@ -181,7 +181,7 @@ static void write_sendprop(writer *thisptr, bitwriter *writer, demogobbler_sendp
 }
 
 static void parse_sendprop(parser *thisptr, arena *a, bitstream *stream,
-                           demogobbler_sendprop *prop) {
+                           demogobbler_sendtable* table, demogobbler_sendprop *prop) {
   memset(prop, 0, sizeof(demogobbler_sendprop));
   unsigned int raw_value = bitstream_read_uint(stream, 5);
   prop->proptype = raw_to_sendproptype(thisptr, raw_value);
@@ -205,9 +205,11 @@ static void parse_sendprop(parser *thisptr, arena *a, bitstream *stream,
   } else if (prop->flag_exclude) {
     prop->exclude_name = parse_cstring(a, stream);
   } else if (prop->proptype == sendproptype_array) {
+    prop->baseclass = table;
     prop->array_num_elements = bitstream_read_uint(stream, 10);
     prop->array_prop = (prop - 1); // The insidearray prop should be in the previous element
   } else {
+    prop->baseclass = table;
     prop->prop_.low_value = bitstream_read_float(stream);
     prop->prop_.high_value = bitstream_read_float(stream);
     prop->prop_numbits =
@@ -237,7 +239,7 @@ static void parse_sendtable(parser *thisptr, arena *a, bitstream *stream,
   ptable->props = demogobbler_arena_allocate(a, ptable->prop_count * sizeof(demogobbler_sendprop), alignof(demogobbler_sendprop));
 
   for (size_t i = 0; i < ptable->prop_count && !ERROR_SET; ++i) {
-    parse_sendprop(thisptr, a, stream, ptable->props + i);
+    parse_sendprop(thisptr, a, stream, ptable, ptable->props + i);
   }
 }
 

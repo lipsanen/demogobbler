@@ -117,28 +117,70 @@ static const char* get_prop_name(demogobbler_sendprop* prop) {
   }
 }
 
-void print_prop(demogobbler_sendprop* prop) {
-  char* flags = "()";
-
-  if(prop->flag_changesoften) {
-    flags = "(ChangesOften)";
+static char* write_str(char* str, char* src, size_t* len) {
+  if(*len != 0) {
+    *str++ = ' ';
+    *len += 1;
   }
 
+  while(*src) {
+    *str++ = *src++;
+    *len += 1;
+  }
+
+  return str;
+}
+
+void write_flags(char* writeptr, demogobbler_sendprop* prop) {
+  size_t len = 0;
+
+  memcpy(writeptr, "(", 1);
+  ++writeptr;
+
+#define WRITE_FLAG(flagname) if (prop->flag_ ## flagname) writeptr = write_str(writeptr, #flagname, &len);
+
+  WRITE_FLAG(changesoften);
+  WRITE_FLAG(collapsible);
+  WRITE_FLAG(coord);
+  WRITE_FLAG(coordmp);
+  WRITE_FLAG(coordmpint);
+  WRITE_FLAG(coordmplp);
+  WRITE_FLAG(exclude);
+  WRITE_FLAG(insidearray);
+  WRITE_FLAG(isvectorelem);
+  WRITE_FLAG(normal);
+  WRITE_FLAG(noscale);
+  WRITE_FLAG(proxyalwaysyes);
+  WRITE_FLAG(rounddown);
+  WRITE_FLAG(roundup);
+  WRITE_FLAG(unsigned);
+  WRITE_FLAG(xyze);
+  WRITE_FLAG(cellcoord);
+  WRITE_FLAG(cellcoordint);
+  WRITE_FLAG(cellcoordlp);
+
+  memcpy(writeptr, ")", 2);
+}
+
+void print_prop(demogobbler_sendprop* prop) {
+  char PROP_TEXT[1024];
+  char* writeptr = PROP_TEXT;
+  write_flags(writeptr, prop);
   const char* prop_name = get_prop_name(prop);
 
   if (prop->flag_exclude) {
-    printf("\t%s %s (%x) : %s : flags %s\n", message_type_name(prop->proptype), prop_name, prop->priority,
-            prop->exclude_name, flags);
+    printf("\t%s %s (%x) : %s : flags %s\n", message_type_name(prop->proptype), prop->name, prop->priority,
+            prop->exclude_name, PROP_TEXT);
   } else if (prop->proptype == sendproptype_datatable) {
-    printf("\t%s %s (%x) : %s : flags %s\n", message_type_name(prop->proptype), prop_name, prop->priority,
-            prop->dtname, flags);
+    printf("\t%s %s (%x) : %s : flags %s\n", message_type_name(prop->proptype), prop->name, prop->priority,
+            prop->dtname, PROP_TEXT);
   } else if (prop->proptype == sendproptype_array) {
-    printf("\t%s %s (%x) - %u elements : flags %s\n", message_type_name(prop->proptype), prop_name, prop->priority,
-            prop->array_num_elements, flags);
+    printf("\t%s %s (%x) - %u elements : flags %s\n", message_type_name(prop->proptype), prop->name, prop->priority,
+            prop->array_num_elements, PROP_TEXT);
   } else {
-    printf("\t%s %s (%x) - %u bit, low %f, high %f : flags %s\n", message_type_name(prop->proptype), prop_name, prop->priority,
+    printf("\t%s %s (%x) - %u bit, low %f, high %f : flags %s\n", message_type_name(prop->proptype), prop->name, prop->priority,
             prop->prop_numbits, prop->prop_.low_value,
-            prop->prop_.high_value, flags);
+            prop->prop_.high_value, PROP_TEXT);
   }
 }
 
@@ -164,11 +206,12 @@ void print_datatables_parsed(parser_state *a, demogobbler_datatables_parsed *mes
 
 void print_flattened_props(parser_state* state) {
   for (size_t i=0; i < state->entity_state.sendtables_count; ++i) {
-    printf("Sendtable %s, flattened\n", state->entity_state.sendtables[i].name);
     flattened_props class_data = state->entity_state.class_props[i];
+    printf("Sendtable %s, flattened, %lu props\n", state->entity_state.sendtables[i].name, class_data.prop_count);
     
     for(size_t u=0; u < class_data.prop_count; ++u) {
       demogobbler_sendprop* prop = class_data.props + u;
+      printf("[%lu]", u); 
       print_prop(prop);
     }
   }
@@ -189,10 +232,11 @@ int main(int argc, char **argv) {
   memset(&dump, 0, sizeof(dump_state));
   demogobbler_settings settings;
   demogobbler_settings_init(&settings);
+  settings.entity_state_init_handler = print_flattened_props;
+  settings.datatables_parsed_handler = print_datatables_parsed;
+  /*
   settings.consolecmd_handler = print_consolecmd;
   settings.customdata_handler = print_customdata;
-  settings.datatables_parsed_handler = print_datatables_parsed;
-  settings.entity_state_init_handler = print_flattened_props;
   settings.header_handler = print_header;
   settings.packet_handler = print_packet;
   settings.stop_handler = print_stop;
@@ -200,7 +244,7 @@ int main(int argc, char **argv) {
   settings.synctick_handler = print_synctick;
   settings.usercmd_handler = print_usercmd;
   settings.packet_net_message_handler = print_netmessage;
-  settings.client_state = &dump;
+  settings.client_state = &dump;*/
 
   demogobbler_parse_file(&settings, argv[1]);
 

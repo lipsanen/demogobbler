@@ -107,7 +107,6 @@ static void packet_write_test(const char *filepath) {
 
   auto out = demogobbler_parse_file(&settings, filepath);
   EXPECT_EQ(out.error, false) << out.error_message;
-  tester.verify_last_packet_size();
 
 }
 

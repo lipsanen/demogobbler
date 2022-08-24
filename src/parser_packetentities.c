@@ -4,13 +4,8 @@
 #include <string.h>
 
 #ifdef DEBUG_BREAK_PROP
-int CURRENT_PACKET = 0;
-int CURRENT_ENT_INDEX = 0;
-int CURRENT_PROP_INDEX = 0;
-
-int BREAK_PACKET = 0;
-int BREAK_ENT_INDEX = 1;
-int BREAK_PROP_INDEX = 1;
+static int CURRENT_DEBUG_INDEX = 0;
+static int BREAK_INDEX = 20;
 #endif
 
 static void read_prop(parser *thisptr, bitstream *stream, edict *ent, demogobbler_sendprop *prop);
@@ -46,7 +41,6 @@ static void read_float(bitstream *stream, edict *ent, demogobbler_sendprop *prop
     unsigned int value = demogobbler_bitstream_read_uint(stream, prop->prop_numbits);
     float scale = (float)value / ((1 << prop->prop_numbits) - 1);
     float val = prop->prop_.low_value + (prop->prop_.high_value - prop->prop_.low_value) * scale;
-    fprintf(stderr, "Parsed %s : %f\n", prop->name, val);
   }
 }
 
@@ -82,12 +76,11 @@ static void read_array(parser *thisptr, bitstream *stream, edict *ent, demogobbl
 
 static void read_prop(parser *thisptr, bitstream *stream, edict *ent, demogobbler_sendprop *prop) {
 #ifdef DEBUG_BREAK_PROP
-    ++CURRENT_PROP_INDEX;
+    ++CURRENT_DEBUG_INDEX;
 #endif
 
 #ifdef DEBUG_BREAK_PROP
-  if (CURRENT_ENT_INDEX == BREAK_ENT_INDEX && CURRENT_PACKET == BREAK_PACKET &&
-      CURRENT_PROP_INDEX == BREAK_PROP_INDEX) {
+  if (BREAK_INDEX == CURRENT_DEBUG_INDEX) {
         int brk = 0; // Set a breakpoint here
       }
 #endif
@@ -107,29 +100,23 @@ static void read_prop(parser *thisptr, bitstream *stream, edict *ent, demogobble
     } else {
       thisptr->error = true;
       thisptr->error_message = "Got an unknown prop type in read_prop";
-#ifdef DEBUG_BREAK_PROP
-      fprintf(stderr, "Failed at %d/%d/%d\n", CURRENT_PACKET, CURRENT_ENT_INDEX,
-              CURRENT_PROP_INDEX);
-#endif
     }
 }
 
 static void parse_props_prot4(parser *thisptr, bitstream *stream, edict *ent) {
   flattened_props *props = thisptr->state.entity_state.class_props + ent->datatable_id;
   int i = -1;
+  int old_index;
 
   bool new_way = thisptr->demo_version.game != l4d && bitstream_read_bit(stream);
 
   while (true) {
+    old_index = i;
     i = bitstream_read_field_index(stream, i, new_way);
 
     if (i < -1 || i > (int)props->prop_count) {
       thisptr->error = true;
       thisptr->error_message = "Invalid prop index encountered";
-#ifdef DEBUG_BREAK_PROP
-      fprintf(stderr, "Failed at %d/%d/%d\n", CURRENT_PACKET, CURRENT_ENT_INDEX,
-              CURRENT_PROP_INDEX);
-#endif
     }
 
     if (i == -1 || thisptr->error || stream->overflow)
@@ -151,19 +138,7 @@ static void parse_props_old(parser *thisptr, bitstream *stream, edict *ent) {
     if (i < -1 || i > props->prop_count) {
       thisptr->error = true;
       thisptr->error_message = "Invalid prop index encountered";
-#ifdef DEBUG_BREAK_PROP
-      fprintf(stderr, "Failed at %d/%d/%d\n", CURRENT_PACKET, CURRENT_ENT_INDEX,
-              CURRENT_PROP_INDEX);
-#endif
     }
-
-#ifdef DEBUG_BREAK_PROP
-    if (old_index == -1) {
-      ++CURRENT_ENT_INDEX;
-      CURRENT_PROP_INDEX = 0;
-    }
-#endif
-
 
     if (i == -1 || thisptr->error || stream->overflow)
       break;
@@ -184,7 +159,6 @@ void demogobbler_parse_packetentities(parser *thisptr,
                                       struct demogobbler_svc_packet_entities *message) {
   bitstream stream = message->data;
   unsigned bits = highest_bit_index(thisptr->state.entity_state.sendtables_count);
-  CURRENT_ENT_INDEX = 0;
 
   if (!thisptr->state.entity_state.class_props) {
     thisptr->error = true;
@@ -192,8 +166,9 @@ void demogobbler_parse_packetentities(parser *thisptr,
   }
 
   int oldI = -1, newI = -1;
+  size_t i;
 
-  for (size_t i = 0; i < message->updated_entries && !thisptr->error && !stream.overflow; ++i) {
+  for (i = 0; i < message->updated_entries && !thisptr->error && !stream.overflow; ++i) {
     newI += 1;
     if (thisptr->demo_version.demo_protocol >= 4) {
       newI += bitstream_read_ubitint(&stream);
@@ -204,10 +179,6 @@ void demogobbler_parse_packetentities(parser *thisptr,
     if (newI >= MAX_EDICTS || newI < 0) {
       thisptr->error = true;
       thisptr->error_message = "Illegal entity index";
-#ifdef DEBUG_BREAK_PROP
-      fprintf(stderr, "Failed at %d/%d/%d\n", CURRENT_PACKET, CURRENT_ENT_INDEX,
-              CURRENT_PROP_INDEX);
-#endif
       goto end;
     }
 
@@ -226,8 +197,6 @@ void demogobbler_parse_packetentities(parser *thisptr,
       if (ent->datatable_id >= thisptr->state.entity_state.sendtables_count) {
         thisptr->error = true;
         thisptr->error_message = "Invalid class ID in svc_packetentities";
-        fprintf(stderr, "Failed at %d/%d/%d\n", CURRENT_PACKET, CURRENT_ENT_INDEX,
-                CURRENT_PROP_INDEX);
         goto end;
       }
 
@@ -240,4 +209,20 @@ void demogobbler_parse_packetentities(parser *thisptr,
     }
   }
 end:;
+
+  if(stream.overflow && !thisptr->error) {
+    thisptr->error = true;
+    thisptr->error_message = "Stream overflowed in svc_packetentities\n";
+  }
+
+  if(!thisptr->error && i != message->updated_entries) {
+    thisptr->error = true;
+    thisptr->error_message = "Read the wrong number of entries in svc_packetentities\n";
+  }
+
+  if(thisptr->error) {
+#ifdef DEBUG_BREAK_PROP
+      fprintf(stderr, "Failed at %d\n", CURRENT_DEBUG_INDEX);
+#endif
+  }
 }

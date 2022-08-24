@@ -13,16 +13,6 @@
 #define DEBUG_BREAK_PROP 1
 #endif
 
-#ifdef DEBUG_BREAK_PROP
-extern int CURRENT_PACKET;
-extern int CURRENT_ENT_INDEX;
-extern int CURRENT_PROP_INDEX;
-
-extern int BREAK_PACKET;
-extern int BREAK_ENT_INDEX;
-extern int BREAK_PROP_INDEX;
-#endif
-
 typedef struct {
   arena memory_arena;
   parser_state state;

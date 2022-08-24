@@ -890,7 +890,9 @@ void demogobbler_bitwriter_write_netmessage(bitwriter *writer, demo_version_data
 #undef DECLARE_SWITCH_STATEMENT
 }
 
-void parse_netmessages(parser *thisptr, void *data, size_t size) {
+void parse_netmessages(parser *thisptr, demogobbler_packet* packet) {
+  void* data = packet->data;
+  size_t size = packet->size_bytes;
   bitstream stream = demogobbler_bitstream_create(data, size * 8);
   // fprintf(stderr, "packet start:\n");
 
@@ -900,7 +902,7 @@ void parse_netmessages(parser *thisptr, void *data, size_t size) {
   blk scrap_blk = allocator_alloc(&thisptr->allocator, size);
   unsigned int bits = thisptr->demo_version.netmessage_type_bits;
 
-  while (demogobbler_bitstream_bits_left(&stream) >= bits && !thisptr->error && !stream.overflow) {
+  while (demogobbler_bitstream_bits_left(&stream) > bits && !thisptr->error && !stream.overflow) {
     if (scrap_blk.address == NULL) {
       thisptr->error = true;
       thisptr->error_message = "Unable to allocate scrap block";
@@ -909,7 +911,7 @@ void parse_netmessages(parser *thisptr, void *data, size_t size) {
 
     unsigned int type_index = bitstream_read_uint(&stream, bits);
     net_message_type type = version_get_message_type(thisptr, type_index);
-    // fprintf(stderr, "%d : %d\n", type_index, type);
+    //fprintf(stderr, "%d : %d\n", type_index, type);
     packet_net_message message;
     message._mtype = type_index;
     message.mtype = type;
@@ -935,10 +937,11 @@ void parse_netmessages(parser *thisptr, void *data, size_t size) {
     thisptr->error_message = "Bitstream overflowed during packet parsing";
   }
 
-  /*if (thisptr->error) {
-    printf("%s\n", thisptr->error_message);
+  // Ignore errors on negative tick packets, these are known to be bad
+  if (packet->preamble.tick < 0 && packet->preamble.converted_type == demogobbler_type_packet && thisptr->error) {
+    //printf("%s\n", thisptr->error_message);
     thisptr->error = false;
-  }*/
+  }
 
   allocator_dealloc(&thisptr->allocator, scrap_blk);
   // fprintf(stderr, "packet end:\n");

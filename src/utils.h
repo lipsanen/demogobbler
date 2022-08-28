@@ -32,6 +32,21 @@ static inline int64_t demogobbler_dynamic_array_offset(dynamic_array* thisptr, v
   return (uint8_t*)ptr - (uint8_t*)thisptr->ptr;
 }
 
+static inline size_t alignment_loss(size_t bytes_allocated, size_t alignment) {
+  if(alignment > bytes_allocated) {
+    return bytes_allocated;
+  }
+
+  size_t offset = bytes_allocated & (alignment - 1);
+
+  if(offset == 0) {
+    return 0;
+  }
+  else {
+    return alignment - offset;
+  }
+}
+
 #define dynamic_array_add demogobbler_dynamic_array_add
 #define dynamic_array_free demogobbler_dynamic_array_free
 #define dynamic_array_init demogobbler_dynamic_array_init

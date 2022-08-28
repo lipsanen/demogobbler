@@ -42,8 +42,6 @@ static bool is_prop_excluded(propdata *data, demogobbler_sendprop *prop) {
   return entry.str != NULL;
 }
 
-static void set_clear(dynamic_array *set) { set->count = 0; }
-
 static void create_dt_hashtable(parser *thisptr, propdata *data,
                                 demogobbler_datatables_parsed *datatables) {
   const float FILL_RATE = 0.9f;

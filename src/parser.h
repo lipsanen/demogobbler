@@ -13,6 +13,8 @@
 #define DEBUG_BREAK_PROP 1
 #endif
 
+extern int CURRENT_DEBUG_INDEX;
+
 typedef struct {
   arena memory_arena;
   parser_state state;

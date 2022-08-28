@@ -5,20 +5,20 @@
 #include <string.h>
 
 #ifdef DEBUG_BREAK_PROP
-static int CURRENT_DEBUG_INDEX = 0;
+int CURRENT_DEBUG_INDEX = 0;
 static int BREAK_INDEX = 20;
 #endif
 
 typedef struct {
-  parser* thisptr;
-  bitstream* stream;
-  edict* ent;
+  parser *thisptr;
+  bitstream *stream;
+  edict *ent;
   vector_array prop_array;
 } prop_parse_state;
 
-static void read_prop(prop_parse_state* state, demogobbler_sendprop *prop);
+static void read_prop(prop_parse_state *state, demogobbler_sendprop *prop);
 
-static void read_int(prop_parse_state* state, demogobbler_sendprop *prop) {
+static void read_int(prop_parse_state *state, demogobbler_sendprop *prop) {
   if (prop->flag_unsigned) {
     demogobbler_bitstream_read_uint(state->stream, prop->prop_numbits);
   } else {
@@ -26,8 +26,8 @@ static void read_int(prop_parse_state* state, demogobbler_sendprop *prop) {
   }
 }
 
-static void read_float(prop_parse_state* state, demogobbler_sendprop *prop) {
-  bitstream* stream = state->stream;
+static void read_float(prop_parse_state *state, demogobbler_sendprop *prop) {
+  bitstream *stream = state->stream;
   if (prop->flag_coord) {
     demogobbler_bitstream_read_bitcoord(stream);
   } else if (prop->flag_coordmp) {
@@ -53,7 +53,7 @@ static void read_float(prop_parse_state* state, demogobbler_sendprop *prop) {
   }
 }
 
-static void read_vector3(prop_parse_state* state, demogobbler_sendprop *prop) {
+static void read_vector3(prop_parse_state *state, demogobbler_sendprop *prop) {
   read_float(state, prop);
   read_float(state, prop);
 
@@ -64,58 +64,59 @@ static void read_vector3(prop_parse_state* state, demogobbler_sendprop *prop) {
   }
 }
 
-static void read_vector2(prop_parse_state* state, demogobbler_sendprop *prop) {
+static void read_vector2(prop_parse_state *state, demogobbler_sendprop *prop) {
   read_float(state, prop);
   read_float(state, prop);
 }
 
-static void read_string(prop_parse_state* state, demogobbler_sendprop *prop) {
+static void read_string(prop_parse_state *state, demogobbler_sendprop *prop) {
   const size_t dt_max_string_bits = 9;
   size_t len = bitstream_read_uint(state->stream, dt_max_string_bits);
   bitstream_read_fixed_string(state->stream, NULL, len);
 }
 
-static void read_array(prop_parse_state* state, demogobbler_sendprop *prop) {
-  unsigned count = bitstream_read_uint(state->stream, highest_bit_index(prop->array_num_elements) + 1);
+static void read_array(prop_parse_state *state, demogobbler_sendprop *prop) {
+  unsigned count =
+      bitstream_read_uint(state->stream, highest_bit_index(prop->array_num_elements) + 1);
 
   for (size_t i = 0; i < count; ++i) {
     read_prop(state, prop->array_prop);
   }
 }
 
-static void read_prop(prop_parse_state* state, demogobbler_sendprop *prop) {
+static void read_prop(prop_parse_state *state, demogobbler_sendprop *prop) {
 #ifdef DEBUG_BREAK_PROP
-    ++CURRENT_DEBUG_INDEX;
+  ++CURRENT_DEBUG_INDEX;
 #endif
 
 #ifdef DEBUG_BREAK_PROP
   if (BREAK_INDEX == CURRENT_DEBUG_INDEX) {
-        int brk = 0; // Set a breakpoint here
-      }
+    int brk = 0; // Set a breakpoint here
+  }
 #endif
 
-    if (prop->proptype == sendproptype_array) {
-      read_array(state, prop);
-    } else if (prop->proptype == sendproptype_vector3) {
-      read_vector3(state, prop);
-    } else if (prop->proptype == sendproptype_vector2) {
-      read_vector2(state, prop);
-    } else if (prop->proptype == sendproptype_float) {
-      read_float(state, prop);
-    } else if (prop->proptype == sendproptype_string) {
-      read_string(state, prop);
-    } else if (prop->proptype == sendproptype_int) {
-      read_int(state, prop);
-    } else {
-      state->thisptr->error = true;
-      state->thisptr->error_message = "Got an unknown prop type in read_prop";
-    }
+  if (prop->proptype == sendproptype_array) {
+    read_array(state, prop);
+  } else if (prop->proptype == sendproptype_vector3) {
+    read_vector3(state, prop);
+  } else if (prop->proptype == sendproptype_vector2) {
+    read_vector2(state, prop);
+  } else if (prop->proptype == sendproptype_float) {
+    read_float(state, prop);
+  } else if (prop->proptype == sendproptype_string) {
+    read_string(state, prop);
+  } else if (prop->proptype == sendproptype_int) {
+    read_int(state, prop);
+  } else {
+    state->thisptr->error = true;
+    state->thisptr->error_message = "Got an unknown prop type in read_prop";
+  }
 }
 
-static void parse_props_prot4(prop_parse_state* state) {
-  parser* thisptr = state->thisptr;
-  bitstream* stream = state->stream;
-  edict* ent = state->ent;
+static void parse_props_prot4(prop_parse_state *state) {
+  parser *thisptr = state->thisptr;
+  bitstream *stream = state->stream;
+  edict *ent = state->ent;
   flattened_props *props = thisptr->state.entity_state.class_props + ent->datatable_id;
   int i = -1;
   int old_index;
@@ -138,7 +139,7 @@ static void parse_props_prot4(prop_parse_state* state) {
   }
 }
 
-static void parse_props_old(prop_parse_state* state) {
+static void parse_props_old(prop_parse_state *state) {
   unsigned int datatable_id = state->ent->datatable_id;
   flattened_props *props = state->thisptr->state.entity_state.class_props + datatable_id;
   int i = -1;
@@ -159,21 +160,19 @@ static void parse_props_old(prop_parse_state* state) {
   }
 }
 
-static void parse_props(parser *thisptr, bitstream *stream, edict *ent) {
-  prop_parse_state state;
-  state.thisptr = thisptr;
-  state.stream = stream;
-  state.ent = ent;
-  if (thisptr->demo_version.demo_protocol == 4) {
-    parse_props_prot4(&state);
+static void parse_props(prop_parse_state* state, edict *ent) {
+  state->ent = ent;
+  demo_version_data* demo_version = &state->thisptr->demo_version;
+  if (demo_version->demo_protocol == 4) {
+    parse_props_prot4(state);
   } else {
-    parse_props_old(&state);
+    parse_props_old(state);
   }
 }
 
-static int update_old_index(parser* thisptr, int oldI) {
-  edict* ent = thisptr->state.entity_state.edicts + oldI;
-  while(oldI <= MAX_EDICTS && !ent->exists) {
+static int update_old_index(parser *thisptr, int oldI) {
+  edict *ent = thisptr->state.entity_state.edicts + oldI;
+  while (oldI <= MAX_EDICTS && !ent->exists) {
     ++oldI;
     ent = thisptr->state.entity_state.edicts + oldI;
   }
@@ -184,6 +183,13 @@ static int update_old_index(parser* thisptr, int oldI) {
 void demogobbler_parse_packetentities(parser *thisptr,
                                       struct demogobbler_svc_packet_entities *message) {
   bitstream stream = message->data;
+  prop_parse_state state;
+  state.thisptr = thisptr;
+  state.stream = &stream;
+
+  prop_value props_array[64];
+  state.prop_array = demogobbler_va_create(props_array);
+
   unsigned bits = highest_bit_index(thisptr->state.entity_state.sendtables_count);
 
   if (!thisptr->state.entity_state.class_props) {
@@ -202,63 +208,72 @@ void demogobbler_parse_packetentities(parser *thisptr,
       newI += bitstream_read_ubitvar(&stream);
     }
 
-    if (newI >= MAX_EDICTS || newI < 0) {
-      thisptr->error = true;
-      thisptr->error_message = "Illegal entity index";
-      goto end;
-    }
-
-    if(newI > oldI) {
+    if (newI > oldI) {
       oldI = newI - 1;
+      
     }
 
     unsigned update_type = bitstream_read_uint(&stream, 2);
-    
 
-    if (update_type == 0) {
+    if (update_type == 0 || update_type == 2) {
       // delta
-      edict *ent = thisptr->state.entity_state.edicts + newI;
-      parse_props(thisptr, &stream, ent);
-    } else if (update_type == 2) {
-      // enter PVS
-      edict *ent = thisptr->state.entity_state.edicts + newI;
-      unsigned int handle_serial_number_bits = 10;
-      ent->datatable_id = bitstream_read_uint(&stream, bits);
-      ent->handle = demogobbler_bitstream_read_uint(&stream, handle_serial_number_bits);
-
-      if (ent->datatable_id >= thisptr->state.entity_state.sendtables_count) {
+      if (newI >= MAX_EDICTS || newI < 0) {
         thisptr->error = true;
-        thisptr->error_message = "Invalid class ID in svc_packetentities";
+        thisptr->error_message = "Illegal entity index";
         goto end;
       }
 
-      parse_props(thisptr, &stream, ent);
+      edict *ent = thisptr->state.entity_state.edicts + newI;
+      if (update_type == 0) { // delta
+        parse_props(&state, ent);
+      } else {  // enter pvs
+        unsigned int handle_serial_number_bits = 10;
+        ent->datatable_id = bitstream_read_uint(&stream, bits);
+        ent->handle = demogobbler_bitstream_read_uint(&stream, handle_serial_number_bits);
+        ent->exists = true;
 
-    } else if (update_type == 1) {
-      oldI = update_old_index(thisptr, oldI);
-      edict *ent = thisptr->state.entity_state.edicts + oldI;
-      ent->in_pvs = false; // Leave PVS
+        if (ent->datatable_id >= thisptr->state.entity_state.sendtables_count) {
+          thisptr->error = true;
+          thisptr->error_message = "Invalid class ID in svc_packetentities";
+          goto end;
+        }
+
+        parse_props(&state, ent);
+
+        if(newI == oldI) {
+          oldI = update_old_index(thisptr, oldI);
+        }
+      }
     } else {
-      oldI = update_old_index(thisptr, oldI);
+      if (oldI >= MAX_EDICTS || oldI < 0) {
+        thisptr->error = true;
+        thisptr->error_message = "Illegal entity old index";
+        goto end;
+      }
       edict *ent = thisptr->state.entity_state.edicts + oldI;
-      memset(ent, 0, sizeof(edict)); // Delete
+      if (update_type == 1) {
+        ent->in_pvs = false;           // Leave PVS
+      } else { // update_type == 3
+        memset(ent, 0, sizeof(edict)); // Delete
+      }
+      oldI = update_old_index(thisptr, oldI);
     }
   }
 end:;
 
-  if(stream.overflow && !thisptr->error) {
+  if (stream.overflow && !thisptr->error) {
     thisptr->error = true;
     thisptr->error_message = "Stream overflowed in svc_packetentities\n";
   }
 
-  if(!thisptr->error && i != message->updated_entries) {
+  if (!thisptr->error && i != message->updated_entries) {
     thisptr->error = true;
     thisptr->error_message = "Read the wrong number of entries in svc_packetentities\n";
   }
 
-  if(thisptr->error) {
+  if (thisptr->error) {
 #ifdef DEBUG_BREAK_PROP
-      fprintf(stderr, "Failed at %d\n", CURRENT_DEBUG_INDEX);
+    fprintf(stderr, "Failed at %d\n", CURRENT_DEBUG_INDEX);
 #endif
   }
 }

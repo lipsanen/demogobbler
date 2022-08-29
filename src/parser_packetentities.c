@@ -50,6 +50,8 @@ static void read_int(prop_parse_state *state, demogobbler_sendprop *prop) {
   }
 }
 
+
+// OE floats? source-2003 src_main/engine/dt_encode.cpp#L98
 static void read_float(prop_parse_state *state, demogobbler_sendprop *prop) {
   bitstream *stream = state->stream;
   if (prop->flag_coord) {
@@ -161,7 +163,8 @@ static void parse_props_prot4(prop_parse_state *state) {
   }
 }
 
-static void parse_props_old(prop_parse_state *state) {
+// Protocol 2 might have different parsing, check source-2003 src_main/engine/dt.cpp#L172
+static void parse_props_prot3(prop_parse_state *state) {
   unsigned int datatable_id = state->ent->datatable_id;
   flattened_props *props = state->thisptr->state.entity_state.class_props + datatable_id;
   int i = -1;
@@ -182,13 +185,58 @@ static void parse_props_old(prop_parse_state *state) {
   }
 }
 
+static bool parse_prop_index_prot2(prop_parse_state* state, int* iProp) {
+  if(bitstream_read_bit(state->stream)) {
+    *iProp += 1;
+
+    int iteration = 1;
+
+    while(true) {
+      int val = bitstream_read_uint(state->stream, iteration);
+      *iProp += val;
+
+      if(val == (1 << iteration) - 1) {
+        ++iteration;
+      } else {
+        break;
+      }
+    }
+
+    return true;
+  }
+  else {
+    return false;
+  }
+}
+
+static void parse_props_prot2(prop_parse_state* state) {
+  unsigned int datatable_id = state->ent->datatable_id;
+  flattened_props *props = state->thisptr->state.entity_state.class_props + datatable_id;
+  int i = -1;
+
+  while(parse_prop_index_prot2(state, &i)) {
+    if (i < -1 || i > props->prop_count) {
+      state->thisptr->error = true;
+      state->thisptr->error_message = "Invalid prop index encountered";
+    }
+
+    if (i == -1 || state->thisptr->error || state->stream->overflow)
+      break;
+
+    read_prop(state, props->props + i);
+  }
+
+}
+
 static void parse_props(prop_parse_state *state, edict *ent) {
   state->ent = ent;
   demo_version_data *demo_version = &state->thisptr->demo_version;
   if (demo_version->demo_protocol == 4) {
     parse_props_prot4(state);
-  } else {
-    parse_props_old(state);
+  } else if (demo_version->demo_protocol == 3) {
+    parse_props_prot3(state);
+  } else if (demo_version->demo_protocol == 2) {
+    parse_props_prot2(state);
   }
 }
 
@@ -210,16 +258,36 @@ static void next_old_entity(prop_parse_state *state) {
   }
 }
 
-static void cl_parsedeltaheader(prop_parse_state *state) {
+static void cl_parsedeltaheader_prot2(prop_parse_state* state) {
   centityinfo *u = &state->entity_read_info;
-
-  u->m_nNewEntity = u->m_nHeaderBase + 1 + bitstream_read_ubitvar(state->stream);
+  const unsigned DELTA_OFFSET_BITS = 5;
+  if(!bitstream_read_bit(state->stream)) {
+    // read delta offset
+    unsigned offset = bitstream_read_uint(state->stream, DELTA_OFFSET_BITS);
+    u->m_nNewEntity = u->m_nHeaderBase + offset;
+  } else {
+    u->m_nNewEntity = bitstream_read_uint(state->stream, MAX_EDICT_BITS);
+  }
   u->m_nHeaderBase = u->m_nNewEntity;
   u->m_UpdateFlags = bitstream_read_uint(state->stream, 2);
-  // 0 = delta
-  // 1 = leave pvs
-  // 2 = enter pvs
-  // 3 = delete
+  // we parse the extra bit for leavepvs later
+}
+
+static void cl_parsedeltaheader(prop_parse_state *state) {
+
+  if(state->thisptr->demo_version.demo_protocol == 2) { 
+    cl_parsedeltaheader_prot2(state);
+  } else {
+    centityinfo *u = &state->entity_read_info;
+
+    u->m_nNewEntity = u->m_nHeaderBase + 1 + bitstream_read_ubitvar(state->stream);
+    u->m_nHeaderBase = u->m_nNewEntity;
+    u->m_UpdateFlags = bitstream_read_uint(state->stream, 2);
+    // 0 = delta
+    // 1 = leave pvs
+    // 2 = enter pvs
+    // 3 = delete
+  }
 }
 
 static bool cl_determineupdatetype(prop_parse_state *state) {
@@ -251,6 +319,11 @@ static bool cl_determineupdatetype(prop_parse_state *state) {
   goto end;
 
 static void read_enter_pvs(prop_parse_state *state) {
+
+  if(state->thisptr->demo_version.demo_protocol == 2) {
+    bitstream_read_bit(state->stream); // recreate flag
+  }
+
   centityinfo *u = &state->entity_read_info;
   const int networked_ehandle_bits = 10;
   edict *ent = state->thisptr->state.entity_state.edicts + state->entity_read_info.m_nNewEntity;

@@ -37,7 +37,6 @@ void parser_init(parser *thisptr, demogobbler_settings *settings) {
 void parser_parse(parser *thisptr, void *stream, input_interface input) {
   if (stream) {
     enum { FILE_BUFFER_SIZE = 1 << 15 };
-    CURRENT_DEBUG_INDEX = 0;
     uint64_t buffer[FILE_BUFFER_SIZE / sizeof(uint64_t)];
     filereader_init(thisreader, buffer, sizeof(buffer), stream, input);
     _parse_header(thisptr);

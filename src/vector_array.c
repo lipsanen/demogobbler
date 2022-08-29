@@ -52,6 +52,7 @@ bool demogobbler_va_push_back(vector_array *thisptr, void *src) {
       }
       thisptr->ptr = new_array;
     }
+    thisptr->allocated_by_malloc = true;
   }
   thisptr->count_elements = thisptr->count_elements + 1;
   uint8_t *index_ptr = (uint8_t *)thisptr->ptr + (new_size - thisptr->bytes_per_element);

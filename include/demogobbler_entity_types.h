@@ -22,7 +22,7 @@ typedef struct {
   flattened_props* class_props;
   struct demogobbler_sendtable* sendtables;
   edict* edicts;
-  size_t sendtables_count;
+  size_t serverclass_count;
 } estate;
 
 struct demogobbler_parser_state {

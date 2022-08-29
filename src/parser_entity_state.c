@@ -8,7 +8,8 @@ typedef struct {
   size_t max_props;
   hashtable exclude_props_hashtable;
   hashtable dt_hashtable;
-  size_t datatable_write_index;
+  size_t dt_index;
+  size_t serverclass_index;
   size_t flattenedprop_index;
   size_t baseclass_array[1024];
   size_t baseclass_count;
@@ -189,11 +190,11 @@ static void iterate_props(parser *thisptr, propdata *data,
       bool prop_excluded = is_prop_excluded(data, prop);
       if (!prop_excluded) {
         size_t flattenedprop_index =
-            entstate_ptr->class_props[data->datatable_write_index].prop_count;
+            entstate_ptr->class_props[data->serverclass_index].prop_count;
         demogobbler_sendprop *dest =
-            entstate_ptr->class_props[data->datatable_write_index].props + flattenedprop_index;
+            entstate_ptr->class_props[data->serverclass_index].props + flattenedprop_index;
         memcpy(dest, prop, sizeof(demogobbler_sendprop));
-        ++entstate_ptr->class_props[data->datatable_write_index].prop_count;
+        ++entstate_ptr->class_props[data->serverclass_index].prop_count;
       }
     }
   }
@@ -207,7 +208,7 @@ static void gather_props(parser *thisptr, propdata *data,
     iterate_props(thisptr, data, datatables, table);
   }
 
-  iterate_props(thisptr, data, datatables, datatables->sendtables + data->datatable_write_index);
+  iterate_props(thisptr, data, datatables, datatables->sendtables + data->dt_index);
 }
 
 void demogobbler_parser_init_estate(parser *thisptr, demogobbler_datatables_parsed *datatables) {
@@ -224,20 +225,23 @@ void demogobbler_parser_init_estate(parser *thisptr, demogobbler_datatables_pars
     goto end;
 
   data.exclude_props_hashtable = demogobbler_hashtable_create(256);
-  size_t array_size = sizeof(flattened_props) * datatables->sendtable_count;
+  size_t array_size = sizeof(flattened_props) * datatables->serverclass_count;
   entstate_ptr->class_props =
       demogobbler_arena_allocate(&thisptr->memory_arena, array_size, alignof(flattened_props));
   memset(entstate_ptr->class_props, 0, array_size);
 
-  for (size_t i = 0; i < datatables->sendtable_count; ++i) {
-    data.datatable_write_index = i;
+  for (size_t i = 0; i < datatables->serverclass_count; ++i) {
+    data.serverclass_index = i;
+    demogobbler_serverclass* cls = datatables->serverclasses + i;
+    hashtable_entry entry = demogobbler_hashtable_get(&data.dt_hashtable, cls->datatable_name);
+    data.dt_index = entry.value;
     data.flattenedprop_index = 0;
     data.max_props = 0;
     data.baseclass_count = data.baseclass_index = 0;
     memset(data.exclude_props_hashtable.arr, 0,
            data.exclude_props_hashtable.max_items * sizeof(hashtable_entry));
-    gather_excludes(thisptr, &data, datatables, i);
-    gather_propdata(thisptr, &data, datatables, i);
+    gather_excludes(thisptr, &data, datatables, data.dt_index);
+    gather_propdata(thisptr, &data, datatables, data.dt_index);
 
     entstate_ptr->class_props[i].props = demogobbler_arena_allocate(
         &thisptr->memory_arena, sizeof(demogobbler_sendprop) * data.max_props,

@@ -346,11 +346,6 @@ void parse_datatables(parser *thisptr, demogobbler_datatables* input) {
     ++output.sendtable_count;
   }
 
-  if(thisptr->m_settings.store_ents) {
-    thisptr->state.entity_state.sendtables = output.sendtables;
-    thisptr->state.entity_state.sendtables_count = output.sendtable_count;
-  }
-
   output.serverclass_count = bitstream_read_uint(&stream, 16);
   output.serverclasses = malloc(output.serverclass_count * sizeof(demogobbler_serverclass));
 
@@ -359,6 +354,11 @@ void parse_datatables(parser *thisptr, demogobbler_datatables* input) {
   }
 
   if (!ERROR_SET) {
+    if(thisptr->m_settings.store_ents) {
+      thisptr->state.entity_state.sendtables = output.sendtables;
+      thisptr->state.entity_state.serverclass_count = output.serverclass_count;
+    }
+
     if(thisptr->m_settings.datatables_parsed_handler)
       thisptr->m_settings.datatables_parsed_handler(&thisptr->state, &output);
     if(thisptr->m_settings.store_ents)

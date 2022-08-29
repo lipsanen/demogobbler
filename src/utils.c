@@ -46,8 +46,29 @@ void* demogobbler_dynamic_array_get(dynamic_array* thisptr, int64_t offset)
   }
 }
 
+unsigned demogobbler_bits_required(unsigned i) {
+  unsigned j = 1;
+  uint64_t value = 2;
+
+  while((value - 1) < i) {
+    value <<= 1;
+    ++j;
+  }
+  
+  return j;
+}
+
+
 unsigned int highest_bit_index(unsigned int i) {
   int j;
   for (j = 31; j >= 0 && (i & (1 << j)) == 0; j--);
   return j;
+}
+
+int Q_log2(int val)
+{
+	int answer=0;
+	while (val>>=1)
+		answer++;
+	return answer;
 }

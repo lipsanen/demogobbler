@@ -190,7 +190,7 @@ void demogobbler_parse_packetentities(parser *thisptr,
   prop_value props_array[64];
   state.prop_array = demogobbler_va_create(props_array);
 
-  unsigned bits = highest_bit_index(thisptr->state.entity_state.sendtables_count);
+  unsigned bits = Q_log2(thisptr->state.entity_state.serverclass_count) + 1;
 
   if (!thisptr->state.entity_state.class_props) {
     thisptr->error = true;
@@ -232,7 +232,7 @@ void demogobbler_parse_packetentities(parser *thisptr,
         ent->handle = demogobbler_bitstream_read_uint(&stream, handle_serial_number_bits);
         ent->exists = true;
 
-        if (ent->datatable_id >= thisptr->state.entity_state.sendtables_count) {
+        if (ent->datatable_id >= thisptr->state.entity_state.serverclass_count) {
           thisptr->error = true;
           thisptr->error_message = "Invalid class ID in svc_packetentities";
           goto end;

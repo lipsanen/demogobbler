@@ -346,10 +346,6 @@ void parse_datatables(parser *thisptr, demogobbler_datatables* input) {
     ++output.sendtable_count;
   }
 
-  if(thisptr->m_settings.store_ents) {
-    thisptr->state.entity_state.sendtables_count = output.sendtable_count;
-  }
-
   output.serverclass_count = bitstream_read_uint(&stream, 16);
   output.serverclasses = malloc(output.serverclass_count * sizeof(demogobbler_serverclass));
 
@@ -357,22 +353,25 @@ void parse_datatables(parser *thisptr, demogobbler_datatables* input) {
     parse_serverclass(thisptr, memory_arena, &stream, output.serverclasses + i);
   }
 
+  bool should_free_sendtable_stuff = true;
+
   if (!ERROR_SET) {
     if(thisptr->m_settings.datatables_parsed_handler)
       thisptr->m_settings.datatables_parsed_handler(&thisptr->state, &output);
     if(thisptr->m_settings.store_ents) {
       demogobbler_parser_init_estate(thisptr, &output);
       
-      if(thisptr->state.entity_state.sendtables)
+      if(thisptr->state.entity_state.sendtables) {
+        // Could get multiples of these messages with spliced demos
         free(thisptr->state.entity_state.sendtables);
+      }
       thisptr->state.entity_state.sendtables = output.sendtables;
-      output.sendtables = NULL;
+      thisptr->state.entity_state.serverclass_count = output.serverclass_count;
+      should_free_sendtable_stuff = false;
     }
-    else {
-      demogobbler_arena_free(memory_arena);
-      free(output.sendtables);
-    }
-  } else {
+  }
+
+  if(should_free_sendtable_stuff) {
     demogobbler_arena_free(memory_arena);
     free(output.sendtables);
   }

@@ -91,7 +91,7 @@ static void read_prop(prop_parse_state *state, demogobbler_sendprop *prop) {
 
 #ifdef DEBUG_BREAK_PROP
   if (BREAK_INDEX == CURRENT_DEBUG_INDEX) {
-    int brk = 0; // Set a breakpoint here
+    ; // Set a breakpoint here
   }
 #endif
 
@@ -119,12 +119,9 @@ static void parse_props_prot4(prop_parse_state *state) {
   edict *ent = state->ent;
   flattened_props *props = thisptr->state.entity_state.class_props + ent->datatable_id;
   int i = -1;
-  int old_index;
-
   bool new_way = thisptr->demo_version.game != l4d && bitstream_read_bit(state->stream);
 
   while (true) {
-    old_index = i;
     i = bitstream_read_field_index(state->stream, i, new_way);
 
     if (i < -1 || i > (int)props->prop_count) {
@@ -180,6 +177,14 @@ static int update_old_index(parser *thisptr, int oldI) {
   return oldI;
 }
 
+static void read_explicit_deletes(prop_parse_state* state) {
+  while(bitstream_read_bit(state->stream)) {
+    unsigned delete_index = bitstream_read_uint(state->stream, MAX_EDICT_BITS);
+    edict *ent = state->thisptr->state.entity_state.edicts + delete_index;
+    memset(ent, 0, sizeof(edict));
+  }
+}
+
 void demogobbler_parse_packetentities(parser *thisptr,
                                       struct demogobbler_svc_packet_entities *message) {
   bitstream stream = message->data;
@@ -197,7 +202,7 @@ void demogobbler_parse_packetentities(parser *thisptr,
     thisptr->error_message = "Tried to parse packet entities with no flattened props";
   }
 
-  int oldI = -1, newI = -1;
+  int newI = -1;
   size_t i;
 
   for (i = 0; i < message->updated_entries && !thisptr->error && !stream.overflow; ++i) {
@@ -208,21 +213,16 @@ void demogobbler_parse_packetentities(parser *thisptr,
       newI += bitstream_read_ubitvar(&stream);
     }
 
-    if (newI > oldI) {
-      oldI = newI - 1;
-      
-    }
-
     unsigned update_type = bitstream_read_uint(&stream, 2);
+
+    if (newI >= MAX_EDICTS || newI < 0) {
+      thisptr->error = true;
+      thisptr->error_message = "Illegal entity index";
+      goto end;
+    }
 
     if (update_type == 0 || update_type == 2) {
       // delta
-      if (newI >= MAX_EDICTS || newI < 0) {
-        thisptr->error = true;
-        thisptr->error_message = "Illegal entity index";
-        goto end;
-      }
-
       edict *ent = thisptr->state.entity_state.edicts + newI;
       if (update_type == 0) { // delta
         parse_props(&state, ent);
@@ -239,26 +239,21 @@ void demogobbler_parse_packetentities(parser *thisptr,
         }
 
         parse_props(&state, ent);
-
-        if(newI == oldI) {
-          oldI = update_old_index(thisptr, oldI);
-        }
       }
     } else {
-      if (oldI >= MAX_EDICTS || oldI < 0) {
-        thisptr->error = true;
-        thisptr->error_message = "Illegal entity old index";
-        goto end;
-      }
-      edict *ent = thisptr->state.entity_state.edicts + oldI;
+      edict *ent = thisptr->state.entity_state.edicts + newI;
       if (update_type == 1) {
         ent->in_pvs = false;           // Leave PVS
       } else { // update_type == 3
         memset(ent, 0, sizeof(edict)); // Delete
       }
-      oldI = update_old_index(thisptr, oldI);
     }
   }
+
+  if(message->is_delta && !thisptr->error && !stream.overflow) {
+    read_explicit_deletes(&state);
+  }
+
 end:;
 
   if (stream.overflow && !thisptr->error) {

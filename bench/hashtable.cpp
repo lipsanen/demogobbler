@@ -313,7 +313,6 @@ struct compare {
 
 static void hashmap_map(benchmark::State &state) {
   const size_t array_size = ARRAYSIZE(TEST_STRINGS);
-  const size_t allocated_size = static_cast<size_t>(array_size / LOAD_FACTOR);
 
   for(auto _ : state) {
     std::map<const char*, size_t, compare> map;

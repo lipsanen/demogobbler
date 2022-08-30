@@ -1,6 +1,5 @@
 #include "benchmark/benchmark.h"
 #include "demogobbler.h"
-#include "freddie.h"
 #include "test_demos.hpp"
 #include <iostream>
 #include <filesystem>
@@ -121,28 +120,7 @@ static void testdemos_header_only(benchmark::State &state) {
   get_bytes(state);
 }
 
-static void testdemos_freddie(benchmark::State &state) {
-  // Benchmarks only the parsing portion
-  demogobbler_settings settings;
-  demogobbler_settings_init(&settings);
-
-  settings.packet_handler = packet_handler;
-
-  auto demos = get_test_demos();
-
-  for (auto _ : state) {
-    for(auto& demo : demos)
-    {
-      freddie_demo d;
-      freddie_parse_file(demo.c_str(), &d);
-    }
-  }
-
-  get_bytes(state);
-}
-
 BENCHMARK(testdemos_parse_only);
 BENCHMARK(testdemos_packet_only);
 BENCHMARK(testdemos_header_only);
 BENCHMARK(testdemos_parse_everything);
-BENCHMARK(testdemos_freddie);

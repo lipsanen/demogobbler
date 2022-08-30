@@ -141,6 +141,11 @@ bool _parse_anymessage(parser *thisptr) {
          !thisptr->error; // Return false when done parsing demo, or when at eof
 }
 
+static void parser_free_state(parser* thisptr) {
+  demogobbler_arena_free(&thisptr->memory_arena);
+  free(thisptr->state.entity_state.sendtables);
+}
+
 #define PARSE_PREAMBLE()                                                                           \
   message.preamble.tick = filereader_readint32(thisreader);                                        \
   if (thisptr->demo_version.has_slot_in_preamble)                                                  \
@@ -183,8 +188,7 @@ void _parser_mainloop(parser *thisptr) {
 
   while (_parse_anymessage(thisptr))
     ;
-  demogobbler_arena_free(&thisptr->memory_arena);
-  free(thisptr->state.entity_state.sendtables);
+  parser_free_state(thisptr);
 }
 
 #define READ_MESSAGE_DATA()                                                                        \

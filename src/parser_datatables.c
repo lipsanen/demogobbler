@@ -347,7 +347,6 @@ void parse_datatables(parser *thisptr, demogobbler_datatables* input) {
   }
 
   if(thisptr->m_settings.store_ents) {
-    thisptr->state.entity_state.sendtables = output.sendtables;
     thisptr->state.entity_state.sendtables_count = output.sendtable_count;
   }
 
@@ -361,17 +360,22 @@ void parse_datatables(parser *thisptr, demogobbler_datatables* input) {
   if (!ERROR_SET) {
     if(thisptr->m_settings.datatables_parsed_handler)
       thisptr->m_settings.datatables_parsed_handler(&thisptr->state, &output);
-    if(thisptr->m_settings.store_ents)
+    if(thisptr->m_settings.store_ents) {
       demogobbler_parser_init_estate(thisptr, &output);
-  }
-
-  if(stream.bitsize - stream.bitoffset >= 8) {
-    fprintf(stderr, "Had more than one byte left in bitstream after parsing datatables\n");
-  }
-
-  if(!thisptr->m_settings.store_ents) {
+      
+      if(thisptr->state.entity_state.sendtables)
+        free(thisptr->state.entity_state.sendtables);
+      thisptr->state.entity_state.sendtables = output.sendtables;
+      output.sendtables = NULL;
+    }
+    else {
+      demogobbler_arena_free(memory_arena);
+      free(output.sendtables);
+    }
+  } else {
     demogobbler_arena_free(memory_arena);
     free(output.sendtables);
   }
+
   free(output.serverclasses);
 }

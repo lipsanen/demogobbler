@@ -45,6 +45,7 @@ bool demogobbler_va_push_back(vector_array *thisptr, void *src) {
                thisptr->count_elements * thisptr->bytes_per_element); // Copy the bytes in use
       }
       thisptr->ptr = new_array;
+      thisptr->allocated_by_malloc = true;
     } else {
       void *new_array = realloc(thisptr->ptr, new_allocation_size);
       if (!new_array) {

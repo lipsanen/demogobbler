@@ -349,6 +349,7 @@ demogobbler_bitcoordmp demogobbler_bitstream_read_bitcoordmp(bitstream *thisptr,
 
 demogobbler_bitnormal demogobbler_bitstream_read_bitnormal(bitstream *thisptr) {
   demogobbler_bitnormal output;
+  memset(&output, 0, sizeof(output));
   const size_t frac_bits = 11;
   output.sign = bitstream_read_bit(thisptr);
   output.frac = bitstream_read_uint(thisptr, frac_bits);

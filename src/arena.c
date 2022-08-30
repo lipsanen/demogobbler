@@ -1,4 +1,5 @@
 #include "demogobbler_arena.h"
+#include "utils.h"
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,17 +10,6 @@ arena demogobbler_arena_create(uint32_t first_block_size) {
   out.first_block_size = first_block_size;
 
   return out;
-}
-
-static size_t alignment_loss(struct demogobbler_arena_block* block, uint32_t alignment) {
-  size_t offset = block->bytes_allocated & (alignment - 1);
-
-  if(offset == 0) {
-    return 0;
-  }
-  else {
-    return alignment - offset;
-  }
 }
 
 static size_t block_bytes_left(struct demogobbler_arena_block* block, uint32_t size, uint32_t alignment) {
@@ -51,6 +41,8 @@ static void allocate_new_block(arena* a, uint32_t requested_size) {
     allocated_size = ptr->total_bytes * 2; // Double the size for the next block
   }
 
+  allocated_size = MAX(1, allocated_size); // Allocate at least 1 byte
+
   // This shouldnt usually happen since allocations are supposed to be a fraction of the total size of the block
   // But make sure that we have enough space for the next allocation
   while(allocated_size < requested_size) {
@@ -71,7 +63,7 @@ static void allocate_new_block(arena* a, uint32_t requested_size) {
 }
 
 static void* allocate(struct demogobbler_arena_block* block, uint32_t size, uint32_t alignment) {
-  size_t increment = alignment_loss(block, alignment);
+  size_t increment = alignment_loss(block->bytes_allocated, alignment);
   size_t allocation_size = size + increment; // size_t here in case overflow
 
   if(block->data == NULL || allocation_size > block->total_bytes - block->bytes_allocated) { 

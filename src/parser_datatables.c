@@ -235,6 +235,13 @@ static void parse_sendtable(parser *thisptr, arena *a, bitstream *stream,
   memset(ptable, 0, sizeof(demogobbler_sendtable));
   ptable->needs_decoder = bitstream_read_bit(stream);
   ptable->name = parse_cstring(a, stream);
+
+  if(ptable->name == NULL) {
+    thisptr->error = true;
+    thisptr->error_message = "Sendtable name was null";
+    return;
+  }
+
   ptable->prop_count = bitstream_read_uint(stream, thisptr->demo_version.datatable_propcount_bits);
   ptable->props = demogobbler_arena_allocate(a, ptable->prop_count * sizeof(demogobbler_sendprop), alignof(demogobbler_sendprop));
 
@@ -359,14 +366,13 @@ void parse_datatables(parser *thisptr, demogobbler_datatables* input) {
     if(thisptr->m_settings.datatables_parsed_handler)
       thisptr->m_settings.datatables_parsed_handler(&thisptr->state, &output);
     if(thisptr->m_settings.store_ents) {
-      demogobbler_parser_init_estate(thisptr, &output);
-      
       if(thisptr->state.entity_state.sendtables) {
         // Could get multiples of these messages with spliced demos
         free(thisptr->state.entity_state.sendtables);
       }
       thisptr->state.entity_state.sendtables = output.sendtables;
       thisptr->state.entity_state.serverclass_count = output.serverclass_count;
+      demogobbler_parser_init_estate(thisptr, &output);
       should_free_sendtable_stuff = false;
     }
   }

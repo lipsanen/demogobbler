@@ -27,6 +27,7 @@ TEST(E2E, test_ents_reading) {
   for(auto& demo : get_test_demos())
   {
     std::cout << "[----------] " << demo << std::endl;
-    demogobbler_parse_file(&settings, demo.c_str());
+    auto output = demogobbler_parse_file(&settings, demo.c_str());
+    ASSERT_EQ(output.error, false);
   }
 }

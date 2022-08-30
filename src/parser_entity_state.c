@@ -210,6 +210,8 @@ static void gather_props(parser *thisptr, propdata *data,
   iterate_props(thisptr, data, datatables, datatables->sendtables + data->dt_index);
 }
 
+#define CHECK_ERR() if (thisptr->error) goto end
+
 void demogobbler_parser_init_estate(parser *thisptr, demogobbler_datatables_parsed *datatables) {
   estate *entstate_ptr = &thisptr->state.entity_state;
   entstate_ptr->edicts = demogobbler_arena_allocate(&thisptr->memory_arena,
@@ -220,8 +222,7 @@ void demogobbler_parser_init_estate(parser *thisptr, demogobbler_datatables_pars
   memset(&data, 0, sizeof(propdata));
   create_dt_hashtable(thisptr, &data, datatables);
 
-  if (thisptr->error)
-    goto end;
+  CHECK_ERR();
 
   data.exclude_props_hashtable = demogobbler_hashtable_create(256);
   size_t array_size = sizeof(flattened_props) * datatables->serverclass_count;
@@ -230,17 +231,28 @@ void demogobbler_parser_init_estate(parser *thisptr, demogobbler_datatables_pars
   memset(entstate_ptr->class_props, 0, array_size);
 
   for (size_t i = 0; i < datatables->serverclass_count; ++i) {
+    // Reset iteration state
     data.serverclass_index = i;
-    demogobbler_serverclass* cls = datatables->serverclasses + i;
-    hashtable_entry entry = demogobbler_hashtable_get(&data.dt_hashtable, cls->datatable_name);
-    data.dt_index = entry.value;
     data.flattenedprop_index = 0;
     data.max_props = 0;
     data.baseclass_count = data.baseclass_index = 0;
+
+    demogobbler_serverclass* cls = datatables->serverclasses + i;
+    hashtable_entry entry = demogobbler_hashtable_get(&data.dt_hashtable, cls->datatable_name);
+    data.dt_index = entry.value;
+
+    if(entry.str == NULL) {
+      thisptr->error = true;
+      thisptr->error_message = "No datatable found for serverclass";
+      goto end;
+    }
+
     memset(data.exclude_props_hashtable.arr, 0,
            data.exclude_props_hashtable.max_items * sizeof(hashtable_entry));
     gather_excludes(thisptr, &data, datatables, data.dt_index);
+    CHECK_ERR();
     gather_propdata(thisptr, &data, datatables, data.dt_index);
+    CHECK_ERR();
 
     entstate_ptr->class_props[i].props = demogobbler_arena_allocate(
         &thisptr->memory_arena, sizeof(demogobbler_sendprop) * data.max_props,
@@ -248,10 +260,9 @@ void demogobbler_parser_init_estate(parser *thisptr, demogobbler_datatables_pars
     entstate_ptr->class_props[i].prop_count = 0;
 
     gather_props(thisptr, &data, datatables);
+    CHECK_ERR();
     sort_props(thisptr, entstate_ptr->class_props + i);
-
-    if (thisptr->error)
-      goto end;
+    CHECK_ERR();
   }
 
   if (thisptr->m_settings.entity_state_init_handler)

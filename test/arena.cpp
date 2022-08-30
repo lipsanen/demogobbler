@@ -9,7 +9,6 @@ TEST(Arena, Int32Works) {
   *ptr = 1;
   ASSERT_EQ(a.block_count, 1);
   ASSERT_EQ(a.blocks[0].bytes_allocated, 4);
-  ASSERT_EQ(a.blocks[0].total_bytes, 4);
   demogobbler_arena_free(&a);
 }
 

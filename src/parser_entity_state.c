@@ -1,6 +1,5 @@
 #include "parser_entity_state.h"
 #include "demogobbler_hashtable.h"
-#include "dynamic_array.h"
 #include "utils.h"
 #include <string.h>
 

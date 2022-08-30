@@ -1,6 +1,5 @@
 #pragma once
 
-#include "dynamic_array.h"
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -21,17 +20,6 @@ enum { MAX_EDICT_BITS = 11 };
 enum { ENTITY_SENTINEL = 9999 };
 
 #define ARRAYSIZE(a) ((sizeof(a) / sizeof(*(a))) / (size_t)(!(sizeof(a) % sizeof(*(a)))))
-
-void *demogobbler_dynamic_array_add(dynamic_array *thisptr, size_t count);
-void demogobbler_dynamic_array_free(dynamic_array *thisptr);
-void demogobbler_dynamic_array_init(dynamic_array *thisptr, size_t min_allocation,
-                                    size_t item_size);
-void *demogobbler_dynamic_array_get(dynamic_array *thisptr,
-                                    int64_t offset); // Gets pointer to offset, does bound checking
-
-static inline int64_t demogobbler_dynamic_array_offset(dynamic_array *thisptr, void *ptr) {
-  return (uint8_t *)ptr - (uint8_t *)thisptr->ptr;
-}
 
 static inline size_t alignment_loss(size_t bytes_allocated, size_t alignment) {
   if (alignment > bytes_allocated) {

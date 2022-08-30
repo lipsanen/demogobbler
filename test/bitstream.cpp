@@ -438,8 +438,8 @@ TEST(BitstreamPlusWriter, BitNormal) {
 
       bitstream stream = bitstream_create(writer.ptr, writer.bitsize);
       demogobbler_bitnormal output = demogobbler_bitstream_read_bitnormal(&stream);
-      EXPECT_EQ(memcmp(&normal, &output, sizeof(output)), 0);
-      EXPECT_EQ(stream.bitoffset, writer.bitoffset);
+      ASSERT_EQ(memcmp(&normal, &output, sizeof(output)), 0);
+      ASSERT_EQ(stream.bitoffset, writer.bitoffset);
       bitwriter_free(&writer);
     }
   }

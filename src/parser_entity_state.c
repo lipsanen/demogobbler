@@ -1,4 +1,5 @@
 #include "parser_entity_state.h"
+#include "arena.h"
 #include "demogobbler_hashtable.h"
 #include "utils.h"
 #include <string.h>

@@ -5,6 +5,7 @@
 
 struct demogobbler_sendprop;
 struct demogobbler_sendtable;
+struct demogobbler_svc_packet_entities;
 
 typedef struct {
   int handle;
@@ -66,5 +67,8 @@ typedef struct {
 
 typedef struct {
   ent_update* ent_updates;
-  size_t updated_entries;
-} svc_packetentities_data;
+  size_t ent_updates_count;
+  int* explicit_deletes;
+  size_t explicit_deletes_count;
+  struct demogobbler_svc_packet_entities* orig;
+} svc_packetentities_parsed;

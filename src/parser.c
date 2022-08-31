@@ -1,4 +1,5 @@
 #include "parser.h"
+#include "arena.h"
 #include "demogobbler.h"
 #include "filereader.h"
 #include "packettypes.h"
@@ -10,7 +11,6 @@
 #include <string.h>
 
 #define thisreader &thisptr->m_reader
-#define thisallocator &thisptr->allocator
 
 void _parser_mainloop(parser *thisptr);
 void _parse_header(parser *thisptr);
@@ -30,8 +30,10 @@ void parser_init(parser *thisptr, demogobbler_settings *settings) {
   thisptr->m_settings = *settings;
 
   const size_t INITIAL_SIZE = 1 << 15;
+  const size_t INITIAL_TEMP_SIZE = 1 << 20;
   // Does lazy allocation, only allocates stuff if requested
   thisptr->memory_arena = demogobbler_arena_create(INITIAL_SIZE); 
+  thisptr->temp_arena = demogobbler_arena_create(INITIAL_TEMP_SIZE);
 }
 
 void parser_parse(parser *thisptr, void *stream, input_interface input) {
@@ -97,6 +99,7 @@ void _parse_header(parser *thisptr) {
 
 bool _parse_anymessage(parser *thisptr) {
   uint8_t type = filereader_readbyte(thisreader);
+  demogobbler_arena_clear(&thisptr->temp_arena);
 
   switch (type) {
   case demogobbler_type_consolecmd:
@@ -142,6 +145,7 @@ bool _parse_anymessage(parser *thisptr) {
 
 static void parser_free_state(parser* thisptr) {
   demogobbler_arena_free(&thisptr->memory_arena);
+  demogobbler_arena_free(&thisptr->temp_arena);
   free(thisptr->state.entity_state.sendtables);
 }
 
@@ -181,10 +185,6 @@ void _parser_mainloop(parser *thisptr) {
   if (!should_parse)
     return;
 
-  enum { STACK_SIZE = 1 << 13 };
-  uint64_t buffer[STACK_SIZE / sizeof(uint64_t)];
-  allocator_init(&thisptr->allocator, buffer, sizeof(buffer));
-
   while (_parse_anymessage(thisptr))
     ;
   parser_free_state(thisptr);
@@ -192,12 +192,12 @@ void _parser_mainloop(parser *thisptr) {
 
 #define READ_MESSAGE_DATA()                                                                        \
   {                                                                                                \
-    size_t read_bytes = filereader_readdata(thisreader, block.address, message.size_bytes);        \
+    size_t read_bytes = filereader_readdata(thisreader, block, message.size_bytes);        \
     if (read_bytes != message.size_bytes) {                                                        \
       thisptr->error = true;                                                                       \
       thisptr->error_message = "Message could not be read fully, reached end of file.";            \
     }                                                                                              \
-    message.data = block.address;                                                                  \
+    message.data = block;                                                                  \
   }
 
 void _parse_consolecmd(parser *thisptr) {
@@ -209,15 +209,13 @@ void _parse_consolecmd(parser *thisptr) {
   if (message.size_bytes > 0) {
     ;
     if (thisptr->m_settings.consolecmd_handler) {
-      blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
+      void* block = demogobbler_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
       READ_MESSAGE_DATA();
 
       if (!thisptr->error) {
         message.data[message.size_bytes - 1] = '\0'; // Add null terminator in-case malformed data
         thisptr->m_settings.consolecmd_handler(&thisptr->state, &message);
       }
-
-      allocator_dealloc(thisallocator, block);
 
     } else {
       filereader_skipbytes(thisreader, message.size_bytes);
@@ -237,12 +235,11 @@ void _parse_customdata(parser *thisptr) {
   message.size_bytes = _parser_read_length(thisptr);
 
   if (thisptr->m_settings.customdata_handler && message.size_bytes > 0) {
-    blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
+    void* block = demogobbler_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
     READ_MESSAGE_DATA();
     if (!thisptr->error) {
       thisptr->m_settings.customdata_handler(&thisptr->state, &message);
     }
-    allocator_dealloc(thisallocator, block);
   } else {
     filereader_skipbytes(thisreader, message.size_bytes);
   }
@@ -260,7 +257,7 @@ void _parse_datatables(parser *thisptr) {
                                thisptr->m_settings.store_ents;
 
   if (has_datatable_handler && message.size_bytes > 0) {
-    blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
+    void* block = demogobbler_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
     READ_MESSAGE_DATA();
     if (!thisptr->error) {
 
@@ -270,7 +267,6 @@ void _parse_datatables(parser *thisptr) {
       if (thisptr->m_settings.datatables_parsed_handler || thisptr->m_settings.store_ents)
         parse_datatables(thisptr, &message);
     }
-    allocator_dealloc(thisallocator, block);
   } else {
     filereader_skipbytes(thisreader, message.size_bytes);
   }
@@ -301,7 +297,7 @@ void _parse_packet(parser *thisptr, enum demogobbler_type type) {
 
   if ((thisptr->m_settings.packet_handler || thisptr->m_settings.packet_net_message_handler) &&
       message.size_bytes > 0) {
-    blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
+    void* block = demogobbler_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
     READ_MESSAGE_DATA();
     if (!thisptr->error) {
 
@@ -314,7 +310,6 @@ void _parse_packet(parser *thisptr, enum demogobbler_type type) {
       }
     }
 
-    allocator_dealloc(thisallocator, block);
   } else {
     filereader_skipbytes(thisreader, message.size_bytes);
   }
@@ -328,11 +323,20 @@ void _parse_stop(parser *thisptr) {
     const int bytes_per_read = 4096;
     size_t bytes = 0;
     size_t bytesReadIt;
-    blk block = allocator_alloc(&thisptr->allocator, bytes_per_read);
+    // The dangerous alligator still lives here
+    // Switch this to use temp_arena after realloc is implemented for it
+    // After that can remove the stack allocator from existence
+    allocator alligator;
+
+    enum { STACK_SIZE = 1 << 13 };
+    uint64_t buffer[STACK_SIZE / sizeof(uint64_t)];
+    allocator_init(&alligator, buffer, sizeof(buffer));
+
+    blk block = allocator_alloc(&alligator, bytes_per_read);
 
     do {
       if (bytes + bytes_per_read > block.size) {
-        block = allocator_realloc(&thisptr->allocator, block, bytes + bytes_per_read);
+        block = allocator_realloc(&alligator, block, bytes + bytes_per_read);
       }
 
       bytesReadIt =
@@ -343,7 +347,7 @@ void _parse_stop(parser *thisptr) {
     message.data = block.address;
 
     thisptr->m_settings.stop_handler(&thisptr->state, &message);
-    allocator_dealloc(thisallocator, block);
+    allocator_dealloc(&alligator, block);
   }
 }
 
@@ -355,12 +359,11 @@ void _parse_stringtables(parser *thisptr, int32_t type) {
   message.size_bytes = _parser_read_length(thisptr);
 
   if (thisptr->m_settings.stringtables_handler && message.size_bytes > 0) {
-    blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
+    void* block = demogobbler_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
     READ_MESSAGE_DATA();
     if (!thisptr->error) {
       thisptr->m_settings.stringtables_handler(&thisptr->state, &message);
     }
-    allocator_dealloc(thisallocator, block);
   } else {
     filereader_skipbytes(thisreader, message.size_bytes);
   }
@@ -385,13 +388,11 @@ void _parse_usercmd(parser *thisptr) {
   message.size_bytes = filereader_readint32(thisreader);
 
   if (thisptr->m_settings.usercmd_handler && message.size_bytes > 0) {
-
-    blk block = allocator_alloc(&thisptr->allocator, message.size_bytes);
+    void* block = demogobbler_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
     READ_MESSAGE_DATA();
     if (!thisptr->error) {
       thisptr->m_settings.usercmd_handler(&thisptr->state, &message);
     }
-    allocator_dealloc(thisallocator, block);
   } else {
     filereader_skipbytes(thisreader, message.size_bytes);
   }

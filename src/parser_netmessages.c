@@ -1,4 +1,5 @@
 #include "parser_netmessages.h"
+#include "arena.h"
 #include "utils.h"
 #include "version_utils.h"
 #include <string.h>
@@ -314,15 +315,12 @@ static void handle_svc_classinfo(parser *thisptr, bitstream *stream, packet_net_
 
   // Could in theory have 32768 classes so use the allocator for this
   if (!ptr->create_on_client) {
-    blk allocated = allocator_alloc(
-        &thisptr->allocator, ptr->length * sizeof(struct demogobbler_svc_classinfo_serverclass));
-    ptr->server_classes = allocated.address;
+    ptr->server_classes = demogobbler_arena_allocate(&thisptr->temp_arena, ptr->length * sizeof(struct demogobbler_svc_classinfo_serverclass), 1);
     for (unsigned int i = 0; i < ptr->length && !stream->overflow; ++i) {
       ptr->server_classes[i].class_id = bitstream_read_uint(stream, bits);
       COPY_STRING(ptr->server_classes[i].class_name);
       COPY_STRING(ptr->server_classes[i].datatable_name);
     }
-    allocator_dealloc(&thisptr->allocator, allocated);
   } else {
     ptr->server_classes = NULL;
   }
@@ -897,9 +895,11 @@ void parse_netmessages(parser *thisptr, demogobbler_packet* packet) {
   // fprintf(stderr, "packet start:\n");
 
   // We allocate a single scrap buffer for the duration of parsing the packet that is as large as
-  // the whole packet Should never run out of space as long as we don't make things larger as we
+  // the whole packet. Should never run out of space as long as we don't make things larger as we
   // read it out
-  blk scrap_blk = allocator_alloc(&thisptr->allocator, size);
+  blk scrap_blk;
+  scrap_blk.address = demogobbler_arena_allocate(&thisptr->temp_arena, size, 1);
+  scrap_blk.size = size;
   unsigned int bits = thisptr->demo_version.netmessage_type_bits;
 
   while (demogobbler_bitstream_bits_left(&stream) > bits && !thisptr->error && !stream.overflow) {
@@ -943,6 +943,5 @@ void parse_netmessages(parser *thisptr, demogobbler_packet* packet) {
     thisptr->error = false;
   }
 
-  allocator_dealloc(&thisptr->allocator, scrap_blk);
   // fprintf(stderr, "packet end:\n");
 }

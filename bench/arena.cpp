@@ -1,5 +1,7 @@
 #include "benchmark/benchmark.h"
-#include "demogobbler_arena.h"
+extern "C" {
+#include "arena.h"
+}
 #include <cstring>
 #include <cstdint>
 

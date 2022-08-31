@@ -12,13 +12,21 @@ arena demogobbler_arena_create(uint32_t first_block_size) {
   return out;
 }
 
+
+void demogobbler_arena_clear(arena* a) {
+  for(size_t i=0; i < a->block_count; ++i) {
+    a->blocks[i].bytes_used = 0;
+  }
+  a->current_block = 0;
+}
+
 static size_t block_bytes_left(struct demogobbler_arena_block* block, uint32_t size, uint32_t alignment) {
   if(block == NULL) {
     return 0;
   }
   else {
     size_t inc = alignment_loss(block, alignment);
-    return block->total_bytes - (block->bytes_allocated + inc);
+    return block->total_bytes - (block->bytes_used + inc);
   }
 }
 
@@ -58,20 +66,41 @@ static void allocate_new_block(arena* a, uint32_t requested_size) {
   a->blocks = realloc(a->blocks, sizeof(struct demogobbler_arena_block) * a->block_count);
   struct demogobbler_arena_block* ptr = get_last_block(a);
   ptr->data = malloc(allocated_size);
-  ptr->bytes_allocated = 0;
+  ptr->bytes_used = 0;
   ptr->total_bytes = allocated_size;
 }
 
+static struct demogobbler_arena_block* find_block_with_memory(arena* a, uint32_t requested_size, uint32_t alignment) {
+  struct demogobbler_arena_block* ptr;
+
+  if(a->block_count == 0) {
+    allocate_new_block(a, requested_size);
+  }
+
+  ptr = &a->blocks[a->current_block];
+
+  while(block_bytes_left(ptr, requested_size, alignment) < requested_size) {
+    ++a->current_block;
+    if(a->current_block >= a->block_count) {
+      allocate_new_block(a, requested_size);
+      return &a->blocks[a->current_block];
+    }
+    ptr = &a->blocks[a->current_block];
+  }
+
+  return ptr;
+}
+
 static void* allocate(struct demogobbler_arena_block* block, uint32_t size, uint32_t alignment) {
-  size_t increment = alignment_loss(block->bytes_allocated, alignment);
+  size_t increment = alignment_loss(block->bytes_used, alignment);
   size_t allocation_size = size + increment; // size_t here in case overflow
 
-  if(block->data == NULL || allocation_size > block->total_bytes - block->bytes_allocated) { 
+  if(block->data == NULL || allocation_size > block->total_bytes - block->bytes_used) { 
     return NULL;
   }
   else {
-    void* out = (uint8_t*)block->data + block->bytes_allocated + increment;
-    block->bytes_allocated += size + increment;
+    void* out = (uint8_t*)block->data + block->bytes_used + increment;
+    block->bytes_used += size + increment;
     return out;
   }
 }
@@ -81,13 +110,7 @@ void* demogobbler_arena_allocate(arena* a, uint32_t size, uint32_t alignment) {
     return NULL;
   }
 
-  struct demogobbler_arena_block* ptr = get_last_block(a);
-  size_t bytes_left = block_bytes_left(ptr, size, alignment);
-  if(bytes_left < size) {
-    allocate_new_block(a, size);
-    ptr = get_last_block(a);
-  }
-
+  struct demogobbler_arena_block* ptr = find_block_with_memory(a, size, alignment);
   return allocate(ptr, size, alignment);
 }
 

@@ -20,7 +20,7 @@ typedef struct {
   parser_state state;
   demogobbler_settings m_settings;
   filereader m_reader;
-  allocator allocator;
+  arena temp_arena;
   demo_version_data demo_version;
   const char* error_message;
   bool error;

@@ -1,6 +1,6 @@
 #include "parser_datatables.h"
 #include "parser_entity_state.h"
-#include "demogobbler_arena.h"
+#include "arena.h"
 #include "demogobbler_datatables.h"
 #include "utils.h"
 #include <string.h>

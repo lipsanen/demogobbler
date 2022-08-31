@@ -34,6 +34,8 @@ typedef void (*func_demogobbler_handle_packet_net_message)(parser_state *state,
                                                            packet_net_message *message);
 typedef void (*func_demogobbler_handle_datatables_parsed)(parser_state *state,
                                                            demogobbler_datatables_parsed *message);
+typedef void (*func_demogobbler_handle_packetentities_parsed)(parser_state *state,
+                                                           svc_packetentities_parsed *message);
 typedef void (*func_demogobbler_handle_entity_state_init)(parser_state *state);
 
 struct demogobbler_settings {
@@ -41,6 +43,7 @@ struct demogobbler_settings {
   func_demogobbler_handle_customdata customdata_handler;
   func_demogobbler_handle_datatables datatables_handler;
   func_demogobbler_handle_datatables_parsed datatables_parsed_handler;
+  func_demogobbler_handle_packetentities_parsed packetentities_parsed_handler;
   func_demogobbler_handle_demo_version demo_version_handler;
   func_demogobbler_handle_entity_state_init entity_state_init_handler; // Called after parsing prop flattening stuff
   func_demogobbler_handle_header header_handler;

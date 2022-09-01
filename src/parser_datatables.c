@@ -1,8 +1,8 @@
 #include "parser_datatables.h"
-#include "parser_entity_state.h"
 #include "arena.h"
-#include "demogobbler_datatables.h"
 #include "bitstream.h"
+#include "demogobbler_datatables.h"
+#include "parser_entity_state.h"
 #include "utils.h"
 #include <string.h>
 
@@ -82,7 +82,7 @@ static unsigned get_flags_from_sendprop(writer *thisptr, demogobbler_sendprop *p
   // otherwise there's like 100 branches in this function
 #define GET_BIT(member, index)                                                                     \
   flags |= (prop->member && (index < thisptr->version.sendprop_flag_bits)) ? (1 << index) : 0;
-   // Uses & instead of && in the hope that it avoids a branch
+  // Uses & instead of && in the hope that it avoids a branch
 
   GET_BIT(flag_unsigned, 0);
   GET_BIT(flag_coord, 1);
@@ -170,7 +170,7 @@ static void write_sendprop(writer *thisptr, bitwriter *writer, demogobbler_sendp
 
   if (prop->proptype == sendproptype_datatable) {
     bitwriter_write_cstring(writer, prop->dtname);
-  } else if(prop->flag_exclude) {
+  } else if (prop->flag_exclude) {
     bitwriter_write_cstring(writer, prop->exclude_name);
   } else if (prop->proptype == sendproptype_array) {
     bitwriter_write_uint(writer, prop->array_num_elements, 10);
@@ -182,7 +182,7 @@ static void write_sendprop(writer *thisptr, bitwriter *writer, demogobbler_sendp
 }
 
 static void parse_sendprop(parser *thisptr, arena *a, bitstream *stream,
-                           demogobbler_sendtable* table, demogobbler_sendprop *prop) {
+                           demogobbler_sendtable *table, demogobbler_sendprop *prop) {
   memset(prop, 0, sizeof(demogobbler_sendprop));
   unsigned int raw_value = bitstream_read_uint(stream, 5);
   prop->proptype = raw_to_sendproptype(thisptr, raw_value);
@@ -218,13 +218,12 @@ static void parse_sendprop(parser *thisptr, arena *a, bitstream *stream,
   }
 }
 
-static void write_sendtable(writer* thisptr, bitwriter *writer,
-                            demogobbler_sendtable *ptable) {
+static void write_sendtable(writer *thisptr, bitwriter *writer, demogobbler_sendtable *ptable) {
   bitwriter_write_bit(writer, ptable->needs_decoder);
   bitwriter_write_cstring(writer, ptable->name);
   bitwriter_write_uint(writer, ptable->prop_count, thisptr->version.datatable_propcount_bits);
 
-  for(size_t i=0; i < ptable->prop_count; ++i) {
+  for (size_t i = 0; i < ptable->prop_count; ++i) {
     write_sendprop(thisptr, writer, ptable->props + i);
   }
 }
@@ -237,14 +236,15 @@ static void parse_sendtable(parser *thisptr, arena *a, bitstream *stream,
   ptable->needs_decoder = bitstream_read_bit(stream);
   ptable->name = parse_cstring(a, stream);
 
-  if(ptable->name == NULL) {
+  if (ptable->name == NULL) {
     thisptr->error = true;
     thisptr->error_message = "Sendtable name was null";
     return;
   }
 
   ptable->prop_count = bitstream_read_uint(stream, thisptr->demo_version.datatable_propcount_bits);
-  ptable->props = demogobbler_arena_allocate(a, ptable->prop_count * sizeof(demogobbler_sendprop), alignof(demogobbler_sendprop));
+  ptable->props = demogobbler_arena_allocate(a, ptable->prop_count * sizeof(demogobbler_sendprop),
+                                             alignof(demogobbler_sendprop));
 
   for (size_t i = 0; i < ptable->prop_count && !ERROR_SET; ++i) {
     parse_sendprop(thisptr, a, stream, ptable, ptable->props + i);
@@ -268,7 +268,8 @@ static void parse_serverclass(parser *thisptr, arena *a, bitstream *stream,
 #undef ERROR_SET
 #define ERROR_SET (stream.overflow || thisptr->error)
 
-void demogobbler_write_datatables_parsed(writer* thisptr, demogobbler_datatables_parsed* datatables) {
+void demogobbler_write_datatables_parsed(writer *thisptr,
+                                         demogobbler_datatables_parsed *datatables) {
   bitwriter writer;
   bitwriter_init(&writer, datatables->_raw_buffer_bytes * 8);
 
@@ -277,26 +278,28 @@ void demogobbler_write_datatables_parsed(writer* thisptr, demogobbler_datatables
   writer.truth_size_bits = datatables->_raw_buffer_bytes * 8;
 #endif
 
-  for(size_t i=0; i < datatables->sendtable_count; ++i) {
+  for (size_t i = 0; i < datatables->sendtable_count; ++i) {
     bitwriter_write_bit(&writer, true);
     write_sendtable(thisptr, &writer, datatables->sendtables + i);
   }
   bitwriter_write_bit(&writer, false);
   bitwriter_write_uint(&writer, datatables->serverclass_count, 16);
 
-  for(size_t i=0; i < datatables->serverclass_count; ++i) {
+  for (size_t i = 0; i < datatables->serverclass_count; ++i) {
     write_serverclass(&writer, datatables->serverclasses + i);
   }
 
   size_t bytes = writer.bitoffset / 8;
   size_t bit_in_byte_offset = writer.bitoffset & 0x7;
 
-  if(bit_in_byte_offset != 0) {
+  if (bit_in_byte_offset != 0) {
     bytes += 1;
 #ifdef GROUND_TRUTH_CHECK
-    if(datatables->_raw_buffer && bytes == datatables->_raw_buffer_bytes) {
-      // If we are exactly at the same number of bytes, copy the last bits out of the buffer to ensure bit for bit equality
-      bitstream stream = bitstream_create(datatables->_raw_buffer, datatables->_raw_buffer_bytes * 8);
+    if (datatables->_raw_buffer && bytes == datatables->_raw_buffer_bytes) {
+      // If we are exactly at the same number of bytes, copy the last bits out of the buffer to
+      // ensure bit for bit equality
+      bitstream stream =
+          bitstream_create(datatables->_raw_buffer, datatables->_raw_buffer_bytes * 8);
       bitstream_advance(&stream, writer.bitoffset);
       unsigned int bits_left = stream.bitsize - stream.bitoffset;
       unsigned int value = bitstream_read_uint(&stream, bits_left);
@@ -305,12 +308,12 @@ void demogobbler_write_datatables_parsed(writer* thisptr, demogobbler_datatables
 #endif
   }
 
-  if(writer.error && !thisptr->error) {
+  if (writer.error && !thisptr->error) {
     thisptr->error = writer.error;
     thisptr->error_message = writer.error_message;
   }
 
-  if(!thisptr->error) {
+  if (!thisptr->error) {
     demogobbler_write_preamble(thisptr, datatables->preamble);
     thisptr->output_funcs.write(thisptr->_stream, &bytes, 4);
     thisptr->output_funcs.write(thisptr->_stream, writer.ptr, bytes);
@@ -319,7 +322,7 @@ void demogobbler_write_datatables_parsed(writer* thisptr, demogobbler_datatables
   bitwriter_free(&writer);
 }
 
-void parse_datatables(parser *thisptr, demogobbler_datatables* input) {
+void parse_datatables(parser *thisptr, demogobbler_datatables *input) {
   // Takes slightly more space in memory most likely, use some arbitrary scaling factor to make it
   // work with 1 allocation in most cases
   datatables output;
@@ -329,15 +332,12 @@ void parse_datatables(parser *thisptr, demogobbler_datatables* input) {
   output._raw_buffer = input->data;
   output._raw_buffer_bytes = input->size_bytes;
 
-  arena* memory_arena;
-  arena temp_arena;
+  arena *memory_arena;
 
-  if(thisptr->m_settings.store_ents) {
+  if (thisptr->m_settings.store_ents) {
     memory_arena = &thisptr->memory_arena;
-  }
-  else {
-    temp_arena = demogobbler_arena_create(input->size_bytes * 2);
-    memory_arena = &temp_arena;
+  } else {
+    memory_arena = &thisptr->temp_arena;
   }
 
   bitstream stream = bitstream_create(input->data, input->size_bytes * 8);
@@ -355,7 +355,9 @@ void parse_datatables(parser *thisptr, demogobbler_datatables* input) {
   }
 
   output.serverclass_count = bitstream_read_uint(&stream, 16);
-  output.serverclasses = malloc(output.serverclass_count * sizeof(demogobbler_serverclass));
+  output.serverclasses = demogobbler_arena_allocate(
+      memory_arena, output.serverclass_count * sizeof(demogobbler_serverclass),
+      alignof(demogobbler_serverclass));
 
   for (size_t i = 0; i < output.serverclass_count && !ERROR_SET; ++i) {
     parse_serverclass(thisptr, memory_arena, &stream, output.serverclasses + i);
@@ -364,24 +366,25 @@ void parse_datatables(parser *thisptr, demogobbler_datatables* input) {
   bool should_free_sendtable_stuff = true;
 
   if (!ERROR_SET) {
-    if(thisptr->m_settings.datatables_parsed_handler)
+    if (thisptr->m_settings.datatables_parsed_handler)
       thisptr->m_settings.datatables_parsed_handler(&thisptr->state, &output);
-    if(thisptr->m_settings.store_ents) {
-      if(thisptr->state.entity_state.sendtables) {
+    if (thisptr->m_settings.store_ents) {
+      if (thisptr->state.entity_state.sendtables) {
         // Could get multiples of these messages with spliced demos
         free(thisptr->state.entity_state.sendtables);
+        // serverclasses get "leaked" inside the permanent store, still get freed at the end
       }
       thisptr->state.entity_state.sendtables = output.sendtables;
+      thisptr->state.entity_state.serverclasses = output.serverclasses;
       thisptr->state.entity_state.serverclass_count = output.serverclass_count;
-      demogobbler_parser_init_estate(thisptr, &output);
+      thisptr->state.entity_state.sendtable_count = output.sendtable_count;
+      demogobbler_parser_init_estate(thisptr);
       should_free_sendtable_stuff = false;
     }
   }
 
-  if(should_free_sendtable_stuff) {
+  if (should_free_sendtable_stuff) {
     demogobbler_arena_free(memory_arena);
     free(output.sendtables);
   }
-
-  free(output.serverclasses);
 }

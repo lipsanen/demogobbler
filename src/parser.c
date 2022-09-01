@@ -2,6 +2,7 @@
 #include "arena.h"
 #include "demogobbler.h"
 #include "filereader.h"
+#include "hashtable.h"
 #include "packettypes.h"
 #include "parser_datatables.h"
 #include "parser_netmessages.h"
@@ -146,6 +147,7 @@ bool _parse_anymessage(parser *thisptr) {
 static void parser_free_state(parser* thisptr) {
   demogobbler_arena_free(&thisptr->memory_arena);
   demogobbler_arena_free(&thisptr->temp_arena);
+  demogobbler_hashtable_free(&thisptr->state.entity_state.dt_hashtable);
   free(thisptr->state.entity_state.sendtables);
 }
 

@@ -68,6 +68,7 @@ bool demogobbler_hashtable_insert(hashtable* thisptr, hashtable_entry entry) {
 
 void demogobbler_hashtable_free(hashtable* thisptr) {
   free(thisptr->arr);
+  thisptr->arr = NULL;
 }
 
 

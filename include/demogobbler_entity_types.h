@@ -8,6 +8,27 @@ struct demogobbler_sendtable;
 struct demogobbler_svc_packet_entities;
 
 typedef struct {
+  const char* str;
+  size_t value;
+} hashtable_entry;
+
+typedef struct {
+  hashtable_entry* arr;
+  size_t max_items;
+  size_t item_count;
+} hashtable;
+
+typedef struct {
+  demogobbler_sendprop* exclude_prop;
+} prop_exclude_entry;
+
+typedef struct {
+  prop_exclude_entry* arr;
+  size_t max_items;
+  size_t item_count;
+} prop_exclude_set;
+
+typedef struct {
   int handle;
   int datatable_id;
   bool in_pvs;
@@ -23,9 +44,13 @@ typedef struct {
 typedef struct {
   serverclass_data* class_datas;
   struct demogobbler_sendtable* sendtables;
+  demogobbler_serverclass* serverclasses;
   edict* edicts;
   uint32_t sendtable_count;
   uint32_t serverclass_count;
+  prop_exclude_set excluded_props;
+  hashtable dts_with_excludes;
+  hashtable dt_hashtable;
 } estate;
 
 struct demogobbler_parser_state {

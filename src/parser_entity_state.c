@@ -7,6 +7,7 @@
 typedef struct {
   size_t max_props;
   prop_exclude_set excluded_props;
+  hashtable dts_with_excludes;
   hashtable dt_hashtable;
   size_t dt_index;
   size_t serverclass_index;
@@ -33,8 +34,20 @@ static uint16_t get_baseclass_from_array(propdata *data, size_t index) {
   return data->baseclass_array[index];
 }
 
+// Returns true if either hashtable gets completely full
 static bool add_exclude(propdata *data, demogobbler_sendprop *prop, arena* a) {
-  return demogobbler_pes_insert(&data->excluded_props, prop);
+  demogobbler_pes_insert(&data->excluded_props, prop);
+  hashtable_entry entry;
+  entry.str = prop->exclude_name;
+  entry.value = 0;
+  demogobbler_hashtable_insert(&data->dts_with_excludes, entry);
+  return data->excluded_props.item_count != data->excluded_props.max_items &&
+  data->dts_with_excludes.item_count != data->dts_with_excludes.max_items;
+}
+
+static bool does_datatable_have_excludes(propdata *data, demogobbler_sendtable *table) {
+  hashtable_entry entry = demogobbler_hashtable_get(&data->dts_with_excludes, table->name);
+  return entry.str != NULL;
 }
 
 static bool is_prop_excluded(propdata *data, demogobbler_sendtable *table,
@@ -90,7 +103,10 @@ static void gather_excludes(parser *thisptr, propdata *data,
 
       gather_excludes(thisptr, data, datatables, baseclass_index);
     } else if (prop->flag_exclude) {
-      add_exclude(data, prop, &thisptr->temp_arena);
+      if(!add_exclude(data, prop, &thisptr->temp_arena)) {
+        thisptr->error = true;
+        thisptr->error_message = "Was unable to add exclude";
+      }
     }
   }
 }
@@ -98,14 +114,11 @@ static void gather_excludes(parser *thisptr, propdata *data,
 static void gather_propdata(parser *thisptr, propdata *data,
                             demogobbler_datatables_parsed *datatables, size_t datatable_index) {
   demogobbler_sendtable *table = datatables->sendtables + datatable_index;
-
-  if (strcmp(table->name, "DT_PropTractorBeamProjector") == 0) {
-    int brk = 0;
-  }
+  bool table_has_excludes = does_datatable_have_excludes(data,  table);
 
   for (size_t prop_index = 0; prop_index < table->prop_count; ++prop_index) {
     demogobbler_sendprop *prop = table->props + prop_index;
-    bool prop_excluded = is_prop_excluded(data, table, prop);
+    bool prop_excluded = table_has_excludes && is_prop_excluded(data, table, prop);
     if (prop_excluded)
       continue;
 
@@ -182,6 +195,7 @@ static void sort_props(parser *thisptr, serverclass_data *class_data) {
 
 static void iterate_props(parser *thisptr, propdata *data,
                           demogobbler_datatables_parsed *datatables, demogobbler_sendtable *table) {
+  bool table_has_excludes = does_datatable_have_excludes(data, table);
   estate *entstate_ptr = &thisptr->state.entity_state;
   for (size_t prop_index = 0; prop_index < table->prop_count; ++prop_index) {
     demogobbler_sendprop *prop = table->props + prop_index;
@@ -189,7 +203,7 @@ static void iterate_props(parser *thisptr, propdata *data,
       if (prop->flag_collapsible)
         iterate_props(thisptr, data, datatables, prop->baseclass);
     } else if (!prop->flag_exclude && !prop->flag_insidearray) {
-      bool prop_excluded = is_prop_excluded(data, table, prop);
+      bool prop_excluded = table_has_excludes && is_prop_excluded(data, table, prop);
       if (!prop_excluded) {
         size_t flattenedprop_index = entstate_ptr->class_datas[data->serverclass_index].prop_count;
         demogobbler_sendprop *dest =
@@ -229,6 +243,7 @@ void demogobbler_parser_init_estate(parser *thisptr, demogobbler_datatables_pars
   CHECK_ERR();
 
   data.excluded_props = demogobbler_pes_create(256);
+  data.dts_with_excludes = demogobbler_hashtable_create(256);
   size_t array_size = sizeof(serverclass_data) * datatables->serverclass_count;
   entstate_ptr->class_datas =
       demogobbler_arena_allocate(&thisptr->memory_arena, array_size, alignof(serverclass_data));
@@ -251,6 +266,7 @@ void demogobbler_parser_init_estate(parser *thisptr, demogobbler_datatables_pars
       goto end;
     }
 
+    data.dts_with_excludes.item_count = 0;
     demogobbler_pes_clear(&data.excluded_props);
     gather_excludes(thisptr, &data, datatables, data.dt_index);
     CHECK_ERR();
@@ -275,4 +291,5 @@ void demogobbler_parser_init_estate(parser *thisptr, demogobbler_datatables_pars
 end:
   demogobbler_pes_free(&data.excluded_props);
   demogobbler_hashtable_free(&data.dt_hashtable);
+  demogobbler_hashtable_free(&data.dts_with_excludes);
 }

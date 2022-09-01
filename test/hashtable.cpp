@@ -1,5 +1,5 @@
 extern "C" {
-#include "demogobbler_hashtable.h"
+#include "hashtable.h"
 }
 
 #include "gtest/gtest.h"

@@ -1,12 +1,12 @@
 #include "parser_entity_state.h"
 #include "arena.h"
-#include "demogobbler_hashtable.h"
+#include "hashtable.h"
 #include "utils.h"
 #include <string.h>
 
 typedef struct {
   size_t max_props;
-  hashtable exclude_props_hashtable;
+  prop_exclude_set excluded_props;
   hashtable dt_hashtable;
   size_t dt_index;
   size_t serverclass_index;
@@ -29,46 +29,17 @@ static void add_baseclass(propdata *data, size_t dt_index) {
   data->baseclass_array[data->baseclass_index] = dt_index;
 }
 
-static void create_combined_name(char* dest, char* prop, char* table, size_t max_size) {
-  size_t prop_length = strlen(prop);
-  size_t table_length = strlen(table);
-  if(prop_length + table_length + 1 > max_size) {
-    abort();
-  }
-  memcpy(dest, prop, prop_length);
-  memcpy(dest + prop_length, table, table_length + 1);
-}
-
 static uint16_t get_baseclass_from_array(propdata *data, size_t index) {
   return data->baseclass_array[index];
 }
 
 static bool add_exclude(propdata *data, demogobbler_sendprop *prop, arena* a) {
-  hashtable_entry entry;
-  size_t prop_length = strlen(prop->name);
-  size_t table_length = strlen(prop->exclude_name);
-  // Use a temp arena for this
-  char* dest = demogobbler_arena_allocate(a, prop_length + table_length + 1, 1);
-  memcpy(dest, prop->name, prop_length);
-  memcpy(dest + prop_length, prop->exclude_name, table_length + 1);
-
-  entry.str = dest;
-  entry.value = 0;
-
-  return demogobbler_hashtable_insert(&data->exclude_props_hashtable, entry);
+  return demogobbler_pes_insert(&data->excluded_props, prop);
 }
 
 static bool is_prop_excluded(propdata *data, demogobbler_sendtable *table,
                              demogobbler_sendprop *prop) {
-  char BUFFER[1024];
-  create_combined_name(BUFFER, prop->name, table->name, sizeof(BUFFER));
-  hashtable_entry entry = demogobbler_hashtable_get(&data->exclude_props_hashtable, BUFFER);
-
-  if (entry.str != NULL) {
-    return true;
-  } else {
-    return false;
-  }
+  return demogobbler_pes_has(&data->excluded_props, table, prop);
 }
 
 static void create_dt_hashtable(parser *thisptr, propdata *data,
@@ -257,7 +228,7 @@ void demogobbler_parser_init_estate(parser *thisptr, demogobbler_datatables_pars
 
   CHECK_ERR();
 
-  data.exclude_props_hashtable = demogobbler_hashtable_create(256);
+  data.excluded_props = demogobbler_pes_create(256);
   size_t array_size = sizeof(serverclass_data) * datatables->serverclass_count;
   entstate_ptr->class_datas =
       demogobbler_arena_allocate(&thisptr->memory_arena, array_size, alignof(serverclass_data));
@@ -280,8 +251,7 @@ void demogobbler_parser_init_estate(parser *thisptr, demogobbler_datatables_pars
       goto end;
     }
 
-    memset(data.exclude_props_hashtable.arr, 0,
-           data.exclude_props_hashtable.max_items * sizeof(hashtable_entry));
+    demogobbler_pes_clear(&data.excluded_props);
     gather_excludes(thisptr, &data, datatables, data.dt_index);
     CHECK_ERR();
     gather_propdata(thisptr, &data, datatables, data.dt_index);
@@ -303,6 +273,6 @@ void demogobbler_parser_init_estate(parser *thisptr, demogobbler_datatables_pars
     thisptr->m_settings.entity_state_init_handler(&thisptr->state);
 
 end:
-  demogobbler_hashtable_free(&data.exclude_props_hashtable);
+  demogobbler_pes_free(&data.excluded_props);
   demogobbler_hashtable_free(&data.dt_hashtable);
 }

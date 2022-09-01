@@ -1,7 +1,7 @@
 #include "benchmark/benchmark.h"
 
 extern "C" {
-  #include "demogobbler_hashtable.h"
+  #include "hashtable.h"
   #define XXH_INLINE_ALL
   #include "xxhash.h"
 }

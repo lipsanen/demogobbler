@@ -1,4 +1,5 @@
-#include "demogobbler_bitstream.h"
+#include "arena.h"
+#include "bitstream.h"
 #include "utils.h"
 #include <stdio.h>
 #include <string.h>

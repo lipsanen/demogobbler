@@ -2,6 +2,7 @@
 #include "parser_entity_state.h"
 #include "arena.h"
 #include "demogobbler_datatables.h"
+#include "bitstream.h"
 #include "utils.h"
 #include <string.h>
 

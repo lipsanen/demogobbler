@@ -169,16 +169,16 @@ void print_prop(demogobbler_sendprop* prop) {
   const char* prop_name = get_prop_name(prop);
 
   if (prop->flag_exclude) {
-    printf("\t%s %s (%x) : %s : flags %s\n", message_type_name(prop->proptype), prop->name, prop->priority,
+    printf("\t%s %s (%d) : %s : flags %s\n", message_type_name(prop->proptype), prop_name, prop->priority,
             prop->exclude_name, PROP_TEXT);
   } else if (prop->proptype == sendproptype_datatable) {
-    printf("\t%s %s (%x) : %s : flags %s\n", message_type_name(prop->proptype), prop->name, prop->priority,
+    printf("\t%s %s (%d) : %s : flags %s\n", message_type_name(prop->proptype), prop_name, prop->priority,
             prop->dtname, PROP_TEXT);
   } else if (prop->proptype == sendproptype_array) {
-    printf("\t%s %s (%x) - %u elements : flags %s\n", message_type_name(prop->proptype), prop->name, prop->priority,
+    printf("\t%s %s (%d) - %u elements : flags %s\n", message_type_name(prop->proptype), prop_name, prop->priority,
             prop->array_num_elements, PROP_TEXT);
   } else {
-    printf("\t%s %s (%x) - %u bit, low %f, high %f : flags %s\n", message_type_name(prop->proptype), prop->name, prop->priority,
+    printf("\t%s %s (%d) - %u bit, low %f, high %f : flags %s\n", message_type_name(prop->proptype), prop_name, prop->priority,
             prop->prop_numbits, prop->prop_.low_value,
             prop->prop_.high_value, PROP_TEXT);
   }
@@ -189,7 +189,7 @@ void print_datatables_parsed(parser_state *a, demogobbler_datatables_parsed *mes
 
   for (size_t i = 0; i < message->sendtable_count; ++i) {
     demogobbler_sendtable *table = message->sendtables + i;
-    printf("Sendtable: %s, decoder: %d\n", table->name, table->needs_decoder);
+    printf("Sendtable: %s, decoder: %d, props %lu\n", table->name, table->needs_decoder, table->prop_count);
     for (size_t u = 0; u < table->prop_count; ++u) {
       demogobbler_sendprop *prop = table->props + u;
       print_prop(prop);
@@ -206,7 +206,7 @@ void print_datatables_parsed(parser_state *a, demogobbler_datatables_parsed *mes
 
 void print_flattened_props(parser_state* state) {
   for (size_t i=0; i < state->entity_state.serverclass_count; ++i) {
-    flattened_props class_data = state->entity_state.class_props[i];
+    serverclass_data class_data = state->entity_state.class_datas[i];
     printf("Sendtable %s, flattened, %lu props\n", state->entity_state.sendtables[i].name, class_data.prop_count);
     
     for(size_t u=0; u < class_data.prop_count; ++u) {
@@ -234,7 +234,7 @@ int main(int argc, char **argv) {
   demogobbler_settings_init(&settings);
   settings.entity_state_init_handler = print_flattened_props;
   settings.datatables_parsed_handler = print_datatables_parsed;
-  /*
+  settings.store_ents = true;
   settings.consolecmd_handler = print_consolecmd;
   settings.customdata_handler = print_customdata;
   settings.header_handler = print_header;
@@ -244,9 +244,13 @@ int main(int argc, char **argv) {
   settings.synctick_handler = print_synctick;
   settings.usercmd_handler = print_usercmd;
   settings.packet_net_message_handler = print_netmessage;
-  settings.client_state = &dump;*/
+  settings.client_state = &dump;
 
-  demogobbler_parse_file(&settings, argv[1]);
+  demogobbler_parse_result result = demogobbler_parse_file(&settings, argv[1]);
+
+  if(result.error) {
+    printf("%s\n", result.error_message);
+  }
 
   return 0;
 }

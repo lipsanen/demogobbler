@@ -117,14 +117,14 @@ static void parse_props_prot4(prop_parse_state *state) {
   parser *thisptr = state->thisptr;
   bitstream *stream = state->stream;
   edict *ent = state->ent;
-  flattened_props *props = thisptr->state.entity_state.class_props + ent->datatable_id;
+  serverclass_data *datas = thisptr->state.entity_state.class_datas + ent->datatable_id;
   int i = -1;
   bool new_way = thisptr->demo_version.game != l4d && bitstream_read_bit(state->stream);
 
   while (true) {
     i = bitstream_read_field_index(state->stream, i, new_way);
 
-    if (i < -1 || i > (int)props->prop_count) {
+    if (i < -1 || i > (int)datas->prop_count) {
       thisptr->error = true;
       thisptr->error_message = "Invalid prop index encountered";
     }
@@ -132,20 +132,20 @@ static void parse_props_prot4(prop_parse_state *state) {
     if (i == -1 || thisptr->error || stream->overflow)
       break;
 
-    read_prop(state, props->props + i);
+    read_prop(state, datas->props + i);
   }
 }
 
 static void parse_props_old(prop_parse_state *state) {
   unsigned int datatable_id = state->ent->datatable_id;
-  flattened_props *props = state->thisptr->state.entity_state.class_props + datatable_id;
+  serverclass_data *data = state->thisptr->state.entity_state.class_datas + datatable_id;
   int i = -1;
   int old_index;
 
   while (bitstream_read_bit(state->stream)) {
     old_index = i;
     i += bitstream_read_ubitvar(state->stream) + 1;
-    if (i < -1 || i > props->prop_count) {
+    if (i < -1 || i > data->prop_count) {
       state->thisptr->error = true;
       state->thisptr->error_message = "Invalid prop index encountered";
     }
@@ -153,12 +153,13 @@ static void parse_props_old(prop_parse_state *state) {
     if (i == -1 || state->thisptr->error || state->stream->overflow)
       break;
 
-    read_prop(state, props->props + i);
+    read_prop(state, data->props + i);
   }
 }
 
 static void parse_props(prop_parse_state* state, edict *ent) {
   state->ent = ent;
+  serverclass_data *data = state->thisptr->state.entity_state.class_datas + state->ent->datatable_id;
   demo_version_data* demo_version = &state->thisptr->demo_version;
   if (demo_version->demo_protocol == 4) {
     parse_props_prot4(state);
@@ -197,7 +198,7 @@ void demogobbler_parse_packetentities(parser *thisptr,
 
   unsigned bits = Q_log2(thisptr->state.entity_state.serverclass_count) + 1;
 
-  if (!thisptr->state.entity_state.class_props) {
+  if (!thisptr->state.entity_state.class_datas) {
     thisptr->error = true;
     thisptr->error_message = "Tried to parse packet entities with no flattened props";
   }

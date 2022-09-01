@@ -28,6 +28,6 @@ TEST(E2E, test_ents_reading) {
   {
     std::cout << "[----------] " << demo << std::endl;
     auto output = demogobbler_parse_file(&settings, demo.c_str());
-    ASSERT_EQ(output.error, false);
+    EXPECT_EQ(output.error, false);
   }
 }

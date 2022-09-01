@@ -17,10 +17,11 @@ typedef struct {
 typedef struct {
   struct demogobbler_sendprop *props;
   size_t prop_count;
-} flattened_props;
+  const char* dt_name;
+} serverclass_data;
 
 typedef struct {
-  flattened_props* class_props;
+  serverclass_data* class_datas;
   struct demogobbler_sendtable* sendtables;
   edict* edicts;
   uint32_t sendtable_count;

@@ -6,7 +6,7 @@
 
 typedef struct {
   const char* str;
-  uint32_t value;
+  size_t value;
 } hashtable_entry;
 
 typedef struct {

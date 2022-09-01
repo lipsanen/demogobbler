@@ -148,6 +148,8 @@ static void parser_free_state(parser* thisptr) {
   demogobbler_arena_free(&thisptr->memory_arena);
   demogobbler_arena_free(&thisptr->temp_arena);
   demogobbler_hashtable_free(&thisptr->state.entity_state.dt_hashtable);
+  demogobbler_hashtable_free(&thisptr->state.entity_state.dts_with_excludes);
+  demogobbler_pes_free(&thisptr->state.entity_state.excluded_props);
   free(thisptr->state.entity_state.sendtables);
 }
 
@@ -177,7 +179,7 @@ void _parser_mainloop(parser *thisptr) {
   NULL_CHECK(stringtables);
   NULL_CHECK(usercmd);
 
-  if (settings->entity_state_init_handler || settings->store_ents) {
+  if (settings->flattened_props_handler || settings->store_ents) {
     settings->store_ents = true; // Entity state init handler => we should store ents
     should_parse = true;
     thisptr->parse_netmessages = true;

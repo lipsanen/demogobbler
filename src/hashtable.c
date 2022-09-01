@@ -147,6 +147,7 @@ bool demogobbler_pes_insert(prop_exclude_set* thisptr, demogobbler_sendprop* pro
 
 void demogobbler_pes_free(prop_exclude_set* thisptr) {
   free(thisptr->arr);
+  thisptr->arr = NULL;
 }
 
 void demogobbler_pes_clear(prop_exclude_set* thisptr) {

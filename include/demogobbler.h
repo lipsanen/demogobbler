@@ -45,7 +45,7 @@ struct demogobbler_settings {
   func_demogobbler_handle_datatables_parsed datatables_parsed_handler;
   func_demogobbler_handle_packetentities_parsed packetentities_parsed_handler;
   func_demogobbler_handle_demo_version demo_version_handler;
-  func_demogobbler_handle_entity_state_init entity_state_init_handler; // Called after parsing prop flattening stuff
+  func_demogobbler_handle_entity_state_init flattened_props_handler; // Called after parsing prop flattening stuff
   func_demogobbler_handle_header header_handler;
   func_demogobbler_handle_packet packet_handler;
   func_demogobbler_handle_synctick synctick_handler;

@@ -232,7 +232,7 @@ int main(int argc, char **argv) {
   memset(&dump, 0, sizeof(dump_state));
   demogobbler_settings settings;
   demogobbler_settings_init(&settings);
-  settings.entity_state_init_handler = print_flattened_props;
+  settings.flattened_props_handler = print_flattened_props;
   settings.datatables_parsed_handler = print_datatables_parsed;
   settings.store_ents = true;
   settings.consolecmd_handler = print_consolecmd;

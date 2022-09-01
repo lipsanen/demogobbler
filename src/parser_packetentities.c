@@ -1,4 +1,5 @@
 #include "parser_packetentities.h"
+#include "parser_entity_state.h"
 #include "utils.h"
 #include "vector_array.h"
 #include <signal.h>
@@ -117,7 +118,7 @@ static void parse_props_prot4(prop_parse_state *state) {
   parser *thisptr = state->thisptr;
   bitstream *stream = state->stream;
   edict *ent = state->ent;
-  serverclass_data *datas = thisptr->state.entity_state.class_datas + ent->datatable_id;
+  serverclass_data *datas = demogobbler_estate_serverclass_data(thisptr, ent->datatable_id);
   int i = -1;
   bool new_way = thisptr->demo_version.game != l4d && bitstream_read_bit(state->stream);
 
@@ -137,8 +138,10 @@ static void parse_props_prot4(prop_parse_state *state) {
 }
 
 static void parse_props_old(prop_parse_state *state) {
+  parser *thisptr = state->thisptr;
+  edict *ent = state->ent;
   unsigned int datatable_id = state->ent->datatable_id;
-  serverclass_data *data = state->thisptr->state.entity_state.class_datas + datatable_id;
+  serverclass_data *data = demogobbler_estate_serverclass_data(thisptr, ent->datatable_id);
   int i = -1;
   int old_index;
 
@@ -159,7 +162,6 @@ static void parse_props_old(prop_parse_state *state) {
 
 static void parse_props(prop_parse_state* state, edict *ent) {
   state->ent = ent;
-  serverclass_data *data = state->thisptr->state.entity_state.class_datas + state->ent->datatable_id;
   demo_version_data* demo_version = &state->thisptr->demo_version;
   if (demo_version->demo_protocol == 4) {
     parse_props_prot4(state);

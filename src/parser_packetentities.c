@@ -1,4 +1,5 @@
 #include "parser_packetentities.h"
+#include "bitstream.h"
 #include "parser_entity_state.h"
 #include "utils.h"
 #include "vector_array.h"

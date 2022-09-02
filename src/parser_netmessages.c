@@ -1,5 +1,7 @@
 #include "parser_netmessages.h"
 #include "arena.h"
+#include "bitstream.h"
+#include "parser_packetentities.h"
 #include "utils.h"
 #include "version_utils.h"
 #include <string.h>
@@ -679,6 +681,10 @@ static void handle_svc_packet_entities(parser *thisptr, bitstream *stream,
   ptr->update_baseline = bitstream_read_bit(stream);
   ptr->data = bitstream_fork_and_advance(stream, ptr->data_length);
   SEND_MESSAGE();
+
+  if(thisptr->m_settings.store_ents) {
+    demogobbler_parse_packetentities(thisptr, ptr);
+  }
 }
 
 static void write_svc_packet_entities(bitwriter *writer, demo_version_data *version,

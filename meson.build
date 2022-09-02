@@ -1,10 +1,10 @@
 project('demogobbler', ['c', 'cpp'], default_options : ['c_std=c11', 'cpp_std=c++17', 'default_library=both'])
 
 current_c_compiler = meson.get_compiler('c', native : false).get_id()
+add_project_arguments('-DBITSTREAM_INLINED', language : ['c', 'cpp'])
 
 if get_option('buildtype').startswith('debug')
-  add_project_arguments('-DDEBUG', language : 'c')
-  add_project_arguments('-DDEBUG', language : 'cpp')
+  add_project_arguments('-DDEBUG', language : ['c', 'cpp'])
 endif
 
 if current_c_compiler == 'clang' or current_c_compiler == 'gcc'

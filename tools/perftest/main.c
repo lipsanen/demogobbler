@@ -62,6 +62,7 @@ int main(int argc, char **argv) {
     settings.synctick_handler = print_synctick;
     settings.usercmd_handler = print_usercmd;
     settings.packet_net_message_handler = print_netmessages;
+    settings.store_ents = true;
 ;
     demogobbler_parse_file(&settings, argv[1]);
   }

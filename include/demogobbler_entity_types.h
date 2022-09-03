@@ -60,10 +60,14 @@ struct demogobbler_parser_state {
   bool error;
 };
 
-struct prop_array_value;
-typedef struct prop_array_value prop_array_value;
+struct array_value;
+struct vector2_value;
+struct vector3_value;
+typedef struct array_value array_value;
+typedef struct vector2_value vector2_value;
+typedef struct vector3_value vector3_value;
 
-typedef struct{
+typedef struct {
   union {
     uint32_t unsigned_val;
     int32_t signed_val;
@@ -74,19 +78,38 @@ typedef struct{
     float float_val;
     char* str_val; // strings
     // vector and array types, use pointer here to reduce the size of the prop_value struct
-    struct prop_array_value* arr_val;
+    struct array_value* arr_val;
+    struct vector2_value* v2_val;
+    struct vector3_value* v3_val;
   };
+} prop_value_inner;
+
+typedef struct{
+  prop_value_inner value; // Actual value
   demogobbler_sendprop* prop; // Pointer to sendprop containing all the metadata
 } prop_value;
 
-struct prop_array_value {
-  prop_value* values;
+struct vector2_value {
+  prop_value_inner x, y;
+};
+
+struct vector3_value {
+  prop_value_inner x, y;
+  union {
+    bool sign;
+    prop_value_inner z;
+  };
+};
+
+struct array_value {
+  prop_value_inner* values;
   size_t array_size;
 };
 
 typedef struct {
   size_t ent_index;
   size_t update_type;
+  edict* ent;
   prop_value* prop_value_array;
   size_t prop_value_array_size;
 } ent_update;

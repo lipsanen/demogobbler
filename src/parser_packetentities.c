@@ -1,5 +1,7 @@
 #include "parser_packetentities.h"
+#include "arena.h"
 #include "bitstream.h"
+#include "demogobbler_entity_types.h"
 #include "parser_entity_state.h"
 #include "utils.h"
 #include "vector_array.h"
@@ -15,78 +17,100 @@ typedef struct {
   parser *thisptr;
   bitstream *stream;
   edict *ent;
+  arena *a;
   vector_array prop_array;
+  svc_packetentities_parsed output;
 } prop_parse_state;
 
-static void read_prop(prop_parse_state *state, demogobbler_sendprop *prop);
+static prop_value read_prop(prop_parse_state *state, demogobbler_sendprop *prop);
 
-static void read_int(prop_parse_state *state, demogobbler_sendprop *prop) {
+static void read_int(prop_parse_state *state, demogobbler_sendprop *prop, prop_value_inner *value) {
   if (prop->flag_unsigned) {
-    demogobbler_bitstream_read_uint(state->stream, prop->prop_numbits);
+    value->unsigned_val = demogobbler_bitstream_read_uint(state->stream, prop->prop_numbits);
   } else {
-    demogobbler_bitstream_read_sint(state->stream, prop->prop_numbits);
+    value->signed_val = demogobbler_bitstream_read_sint(state->stream, prop->prop_numbits);
   }
 }
 
-static void read_float(prop_parse_state *state, demogobbler_sendprop *prop) {
+static void read_float(prop_parse_state *state, demogobbler_sendprop *prop,
+                       prop_value_inner *value) {
   bitstream *stream = state->stream;
   if (prop->flag_coord) {
-    demogobbler_bitstream_read_bitcoord(stream);
+    value->bitcoord_val = demogobbler_bitstream_read_bitcoord(stream);
   } else if (prop->flag_coordmp) {
-    demogobbler_bitstream_read_bitcoordmp(stream, false, false);
+    value->bitcoordmp_val = demogobbler_bitstream_read_bitcoordmp(stream, false, false);
   } else if (prop->flag_coordmplp) {
-    demogobbler_bitstream_read_bitcoordmp(stream, false, true);
+    value->bitcoordmp_val = demogobbler_bitstream_read_bitcoordmp(stream, false, true);
   } else if (prop->flag_coordmpint) {
-    demogobbler_bitstream_read_bitcoordmp(stream, true, false);
+    value->bitcoordmp_val = demogobbler_bitstream_read_bitcoordmp(stream, true, false);
   } else if (prop->flag_noscale) {
-    demogobbler_bitstream_read_float(stream);
+    value->float_val = demogobbler_bitstream_read_float(stream);
   } else if (prop->flag_normal) {
-    demogobbler_bitstream_read_bitnormal(stream);
+    value->bitnormal_val = demogobbler_bitstream_read_bitnormal(stream);
   } else if (prop->flag_cellcoord) {
-    demogobbler_bitstream_read_bitcellcoord(stream, false, false, prop->prop_numbits);
+    value->bitcellcoord_val =
+        demogobbler_bitstream_read_bitcellcoord(stream, false, false, prop->prop_numbits);
   } else if (prop->flag_cellcoordlp) {
-    demogobbler_bitstream_read_bitcellcoord(stream, false, true, prop->prop_numbits);
+    value->bitcellcoord_val =
+        demogobbler_bitstream_read_bitcellcoord(stream, false, true, prop->prop_numbits);
   } else if (prop->flag_cellcoordint) {
-    demogobbler_bitstream_read_bitcellcoord(stream, true, false, prop->prop_numbits);
+    value->bitcellcoord_val =
+        demogobbler_bitstream_read_bitcellcoord(stream, true, false, prop->prop_numbits);
   } else {
-    unsigned int value = demogobbler_bitstream_read_uint(stream, prop->prop_numbits);
-    float scale = (float)value / ((1 << prop->prop_numbits) - 1);
-    float val = prop->prop_.low_value + (prop->prop_.high_value - prop->prop_.low_value) * scale;
+    value->unsigned_val = demogobbler_bitstream_read_uint(stream, prop->prop_numbits);
   }
 }
 
-static void read_vector3(prop_parse_state *state, demogobbler_sendprop *prop) {
-  read_float(state, prop);
-  read_float(state, prop);
+static void read_vector3(prop_parse_state *state, demogobbler_sendprop *prop,
+                         prop_value_inner *value) {
+  value->v3_val =
+      demogobbler_arena_allocate(state->a, sizeof(vector3_value), alignof(vector3_value));
+  memset(value->v3_val, 0, sizeof(vector3_value));
+
+  read_float(state, prop, &value->v3_val->x);
+  read_float(state, prop, &value->v3_val->y);
 
   if (prop->flag_normal) {
-    bool sign = bitstream_read_bit(state->stream);
+    value->v3_val->sign = bitstream_read_bit(state->stream);
   } else {
-    read_float(state, prop);
+    read_float(state, prop, &value->v3_val->z);
   }
 }
 
-static void read_vector2(prop_parse_state *state, demogobbler_sendprop *prop) {
-  read_float(state, prop);
-  read_float(state, prop);
+static void read_vector2(prop_parse_state *state, demogobbler_sendprop *prop,
+                         prop_value_inner *value) {
+  value->v2_val =
+      demogobbler_arena_allocate(state->a, sizeof(vector2_value), alignof(vector2_value));
+  memset(value->v2_val, 0, sizeof(vector2_value));
+
+  read_float(state, prop, &value->v2_val->x);
+  read_float(state, prop, &value->v2_val->y);
 }
 
-static void read_string(prop_parse_state *state, demogobbler_sendprop *prop) {
+static void read_string(prop_parse_state *state, demogobbler_sendprop *prop,
+                        prop_value_inner *value) {
   const size_t dt_max_string_bits = 9;
   size_t len = bitstream_read_uint(state->stream, dt_max_string_bits);
-  bitstream_read_fixed_string(state->stream, NULL, len);
+  value->str_val = demogobbler_arena_allocate(state->a, len + 1, 1);
+  bitstream_read_fixed_string(state->stream, value->str_val, len);
+  value->str_val[len] = '\0';
 }
 
-static void read_array(prop_parse_state *state, demogobbler_sendprop *prop) {
+static void read_array(prop_parse_state *state, demogobbler_sendprop *prop,
+                       prop_value_inner *value) {
+  value->arr_val = demogobbler_arena_allocate(state->a, sizeof(array_value), alignof(array_value));
   unsigned count =
       bitstream_read_uint(state->stream, highest_bit_index(prop->array_num_elements) + 1);
+  value->arr_val->values = demogobbler_arena_allocate(state->a, sizeof(prop_value_inner) * count,
+                                                      alignof(prop_value_inner));
 
   for (size_t i = 0; i < count; ++i) {
-    read_prop(state, prop->array_prop);
+    prop_value temp = read_prop(state, prop->array_prop);
+    value->arr_val->values[i] = temp.value;
   }
 }
 
-static void read_prop(prop_parse_state *state, demogobbler_sendprop *prop) {
+static prop_value read_prop(prop_parse_state *state, demogobbler_sendprop *prop) {
 #ifdef DEBUG_BREAK_PROP
   ++CURRENT_DEBUG_INDEX;
 #endif
@@ -97,22 +121,27 @@ static void read_prop(prop_parse_state *state, demogobbler_sendprop *prop) {
   }
 #endif
 
+  prop_value value;
+  memset(&value, 0, sizeof(value));
+  value.prop = prop;
   if (prop->proptype == sendproptype_array) {
-    read_array(state, prop);
+    read_array(state, prop, &value.value);
   } else if (prop->proptype == sendproptype_vector3) {
-    read_vector3(state, prop);
+    read_vector3(state, prop, &value.value);
   } else if (prop->proptype == sendproptype_vector2) {
-    read_vector2(state, prop);
+    read_vector2(state, prop, &value.value);
   } else if (prop->proptype == sendproptype_float) {
-    read_float(state, prop);
+    read_float(state, prop, &value.value);
   } else if (prop->proptype == sendproptype_string) {
-    read_string(state, prop);
+    read_string(state, prop, &value.value);
   } else if (prop->proptype == sendproptype_int) {
-    read_int(state, prop);
+    read_int(state, prop, &value.value);
   } else {
     state->thisptr->error = true;
     state->thisptr->error_message = "Got an unknown prop type in read_prop";
   }
+
+  return value;
 }
 
 static void parse_props_prot4(prop_parse_state *state) {
@@ -134,7 +163,8 @@ static void parse_props_prot4(prop_parse_state *state) {
     if (i == -1 || thisptr->error || stream->overflow)
       break;
 
-    read_prop(state, datas->props + i);
+    prop_value value = read_prop(state, datas->props + i);
+    demogobbler_va_push_back(&state->prop_array, &value);
   }
 }
 
@@ -157,17 +187,27 @@ static void parse_props_old(prop_parse_state *state) {
     if (i == -1 || state->thisptr->error || state->stream->overflow)
       break;
 
-    read_prop(state, data->props + i);
+    prop_value value = read_prop(state, data->props + i);
+    demogobbler_va_push_back(&state->prop_array, &value);
   }
 }
 
-static void parse_props(prop_parse_state* state, edict *ent) {
+static void parse_props(prop_parse_state *state, edict *ent, size_t index) {
   state->ent = ent;
-  demo_version_data* demo_version = &state->thisptr->demo_version;
+  ent_update *update = state->output.ent_updates + index;
+  demogobbler_va_clear(&state->prop_array);
+  demo_version_data *demo_version = &state->thisptr->demo_version;
   if (demo_version->demo_protocol == 4) {
     parse_props_prot4(state);
   } else {
     parse_props_old(state);
+  }
+
+  if (state->prop_array.count_elements > 0) {
+    update->prop_value_array_size = state->prop_array.count_elements;
+    size_t bytes = sizeof(prop_value) * state->prop_array.count_elements;
+    update->prop_value_array = demogobbler_arena_allocate(state->a, bytes, alignof(prop_value));
+    memcpy(update->prop_value_array, state->prop_array.ptr, bytes);
   }
 }
 
@@ -181,11 +221,30 @@ static int update_old_index(parser *thisptr, int oldI) {
   return oldI;
 }
 
-static void read_explicit_deletes(prop_parse_state* state) {
-  while(bitstream_read_bit(state->stream)) {
+static void read_explicit_deletes(prop_parse_state *state) {
+  int max_updates = (state->stream->bitsize - state->stream->bitoffset) / (1 + MAX_EDICT_BITS);
+
+  if (max_updates >= 0) {
+    size_t bytes = sizeof(int) * max_updates;
+    state->output.explicit_deletes = demogobbler_arena_allocate(state->a, bytes, alignof(int));
+    memset(state->output.ent_updates, 0, bytes);
+  }
+
+  int index = 0;
+
+  while (bitstream_read_bit(state->stream)) {
     unsigned delete_index = bitstream_read_uint(state->stream, MAX_EDICT_BITS);
     edict *ent = state->thisptr->state.entity_state.edicts + delete_index;
     memset(ent, 0, sizeof(edict));
+
+    if (index >= max_updates) {
+      state->thisptr->error = true;
+      state->thisptr->error_message = "Had more explicit deletes than expected";
+      break;
+    }
+
+    state->output.explicit_deletes[index] = delete_index;
+    ++index;
   }
 }
 
@@ -193,8 +252,17 @@ void demogobbler_parse_packetentities(parser *thisptr,
                                       struct demogobbler_svc_packet_entities *message) {
   bitstream stream = message->data;
   prop_parse_state state;
+  memset(&state, 0, sizeof(state));
   state.thisptr = thisptr;
+  state.a = &thisptr->temp_arena;
   state.stream = &stream;
+
+  state.output.orig = message;
+  state.output.ent_updates_count = message->updated_entries;
+  size_t ent_update_bytes = sizeof(ent_update) * state.output.ent_updates_count;
+  state.output.ent_updates =
+      demogobbler_arena_allocate(state.a, ent_update_bytes, alignof(ent_update));
+  memset(state.output.ent_updates, 0, ent_update_bytes);
 
   prop_value props_array[64];
   state.prop_array = demogobbler_va_create(props_array);
@@ -219,46 +287,55 @@ void demogobbler_parse_packetentities(parser *thisptr,
 
     unsigned update_type = bitstream_read_uint(&stream, 2);
 
+    state.output.ent_updates[i].update_type = update_type;
+    state.output.ent_updates[i].ent_index = newI;
+
     if (newI >= MAX_EDICTS || newI < 0) {
       thisptr->error = true;
       thisptr->error_message = "Illegal entity index";
       goto end;
     }
 
-    if (update_type == 0 || update_type == 2) {
+    edict *ent = thisptr->state.entity_state.edicts + newI;
+    state.output.ent_updates[i].ent = ent;
+
+    if (update_type == 0) {
       // delta
-      edict *ent = thisptr->state.entity_state.edicts + newI;
-      if (update_type == 0) { // delta
-        parse_props(&state, ent);
-      } else {  // enter pvs
-        unsigned int handle_serial_number_bits = 10;
-        ent->datatable_id = bitstream_read_uint(&stream, bits);
-        ent->handle = demogobbler_bitstream_read_uint(&stream, handle_serial_number_bits);
-        ent->exists = true;
+      parse_props(&state, ent, i); 
+    } else if (update_type == 2) {
+      // enter pvs
+      unsigned int handle_serial_number_bits = 10;
+      ent->datatable_id = bitstream_read_uint(&stream, bits);
+      ent->handle = demogobbler_bitstream_read_uint(&stream, handle_serial_number_bits);
+      ent->exists = true;
 
-        if (ent->datatable_id >= thisptr->state.entity_state.serverclass_count) {
-          thisptr->error = true;
-          thisptr->error_message = "Invalid class ID in svc_packetentities";
-          goto end;
-        }
-
-        parse_props(&state, ent);
+      if (ent->datatable_id >= thisptr->state.entity_state.serverclass_count) {
+        thisptr->error = true;
+        thisptr->error_message = "Invalid class ID in svc_packetentities";
+        goto end;
       }
+
+      parse_props(&state, ent, i);
+    } else if (update_type == 1) {
+      // Leave PVS
+      ent->in_pvs = false;
     } else {
-      edict *ent = thisptr->state.entity_state.edicts + newI;
-      if (update_type == 1) {
-        ent->in_pvs = false;           // Leave PVS
-      } else { // update_type == 3
-        memset(ent, 0, sizeof(edict)); // Delete
-      }
+      // Delete
+      memset(ent, 0, sizeof(edict));
     }
   }
 
-  if(message->is_delta && !thisptr->error && !stream.overflow) {
+  if (message->is_delta && !thisptr->error && !stream.overflow) {
     read_explicit_deletes(&state);
   }
 
+  if (!thisptr->error && !stream.overflow && thisptr->m_settings.packetentities_parsed_handler) {
+    thisptr->m_settings.packetentities_parsed_handler(&thisptr->state, &state.output);
+  }
+
 end:;
+
+  demogobbler_va_free(&state.prop_array);
 
   if (stream.overflow && !thisptr->error) {
     thisptr->error = true;

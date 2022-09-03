@@ -275,7 +275,6 @@ end:;
 
 void demogobbler_parser_init_estate(parser *thisptr) {
   estate *entstate_ptr = &thisptr->state.entity_state;
-  demogobbler_sendtable *sendtables = entstate_ptr->sendtables;
   entstate_ptr->edicts = demogobbler_arena_allocate(&thisptr->memory_arena,
                                                     sizeof(edict) * MAX_EDICTS, alignof(edict));
   memset(entstate_ptr->edicts, 0, sizeof(edict) * MAX_EDICTS);

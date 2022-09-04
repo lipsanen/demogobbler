@@ -65,6 +65,12 @@ bool demogobbler_hashtable_insert(hashtable* thisptr, hashtable_entry entry) {
   return true;
 }
 
+void demogobbler_hashtable_clear(hashtable* thisptr) {
+  const size_t array_size_bytes = thisptr->max_items * sizeof(hashtable_entry);
+  thisptr->item_count = 0;
+  memset(thisptr->arr, 0, array_size_bytes);
+}
+
 void demogobbler_hashtable_free(hashtable* thisptr) {
   free(thisptr->arr);
   thisptr->arr = NULL;

@@ -25,7 +25,7 @@ static size_t block_bytes_left(struct demogobbler_arena_block* block, uint32_t s
     return 0;
   }
   else {
-    size_t inc = alignment_loss(block, alignment);
+    size_t inc = alignment_loss(block->bytes_used, alignment);
     return block->total_bytes - (block->bytes_used + inc);
   }
 }

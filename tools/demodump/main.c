@@ -212,7 +212,7 @@ void print_datatables_parsed(parser_state *a, demogobbler_datatables_parsed *mes
 void print_flattened_props(parser_state *state) {
   for (size_t i = 0; i < state->entity_state.serverclass_count; ++i) {
     serverclass_data class_data = state->entity_state.class_datas[i];
-    printf("Sendtable %s, flattened, %lu props\n", state->entity_state.sendtables[i].name,
+    printf("Sendtable %s, flattened, %lu props\n", class_data.dt_name,
            class_data.prop_count);
 
     for (size_t u = 0; u < class_data.prop_count; ++u) {
@@ -323,8 +323,8 @@ static void print_packetentities_parsed(parser_state *state, svc_packetentities_
   for (size_t i = 0; i < message->data.ent_updates_count; ++i) {
     ent_update *update = message->data.ent_updates + i;
 
-    printf("[%lu] Entity %d, update: %s\n", i, update->ent_index,
-           update_name(update->update_type));
+    printf("[%lu] Entity %d, update: %s, props %lu\n", i, update->ent_index,
+           update_name(update->update_type), update->prop_value_array_size);
     if (update->update_type == 2) {
       serverclass_data *data = state->entity_state.class_datas + update->ent->datatable_id;
       printf("Handle %d, datatable %s\n", update->ent->handle, data->dt_name);

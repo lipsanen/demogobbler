@@ -69,7 +69,9 @@ static char *parse_cstring(arena *a, bitstream *stream) {
   size_t size = bitstream_read_cstring(stream, STRINGBUF, sizeof(STRINGBUF));
   char *rval = NULL;
 
-  if (!stream->overflow) {
+  if(size == 0) {
+    stream->overflow = true;
+  } else if (!stream->overflow) {
     rval = demogobbler_arena_allocate(a, size, 1);
     memcpy(rval, STRINGBUF, size);
   }
@@ -183,7 +185,7 @@ static void write_sendprop(writer *thisptr, bitwriter *writer, demogobbler_sendp
 }
 
 static void parse_sendprop(parser *thisptr, arena *a, bitstream *stream,
-                           demogobbler_sendtable *table, demogobbler_sendprop *prop) {
+                           demogobbler_sendtable *table, demogobbler_sendprop *prop, size_t index) {
   memset(prop, 0, sizeof(demogobbler_sendprop));
   unsigned int raw_value = bitstream_read_uint(stream, 5);
   prop->proptype = raw_to_sendproptype(thisptr, raw_value);
@@ -210,6 +212,11 @@ static void parse_sendprop(parser *thisptr, arena *a, bitstream *stream,
     prop->baseclass = table;
     prop->array_num_elements = bitstream_read_uint(stream, 10);
     prop->array_prop = (prop - 1); // The insidearray prop should be in the previous element
+
+    if(index == 0 || !prop->array_prop->flag_insidearray) {
+      thisptr->error = true;
+      thisptr->error_message = "Array prop not preceded by insidearray prop";
+    }
   } else {
     prop->baseclass = table;
     prop->prop_.low_value = bitstream_read_float(stream);
@@ -248,7 +255,7 @@ static void parse_sendtable(parser *thisptr, arena *a, bitstream *stream,
                                              alignof(demogobbler_sendprop));
 
   for (size_t i = 0; i < ptable->prop_count && !ERROR_SET; ++i) {
-    parse_sendprop(thisptr, a, stream, ptable, ptable->props + i);
+    parse_sendprop(thisptr, a, stream, ptable, ptable->props + i, i);
   }
 }
 
@@ -382,6 +389,11 @@ void parse_datatables(parser *thisptr, demogobbler_datatables *input) {
       demogobbler_parser_init_estate(thisptr);
       should_free_sendtable_stuff = false;
     }
+  }
+
+  if(stream.overflow && !thisptr->error) {
+    thisptr->error = true;
+    thisptr->error_message = "Bitstream overflowed while parsing datatables";
   }
 
   if (should_free_sendtable_stuff) {

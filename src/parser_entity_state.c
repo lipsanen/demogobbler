@@ -60,7 +60,13 @@ static void create_dt_hashtable(parser *thisptr) {
   const size_t sendtable_count = entstate_ptr->sendtable_count;
   const float FILL_RATE = 0.9f;
   const size_t buckets = (size_t)(sendtable_count / FILL_RATE);
-  entstate_ptr->dt_hashtable = demogobbler_hashtable_create(buckets);
+
+  if(entstate_ptr->dt_hashtable.arr != NULL) {
+    demogobbler_hashtable_clear(&entstate_ptr->dt_hashtable);
+  } else {
+    entstate_ptr->dt_hashtable = demogobbler_hashtable_create(buckets);
+  }
+
   for (size_t i = 0; i < sendtable_count && !thisptr->error; ++i) {
     hashtable_entry entry;
     entry.str = sendtables[i].name;
@@ -275,15 +281,21 @@ end:;
 
 void demogobbler_parser_init_estate(parser *thisptr) {
   estate *entstate_ptr = &thisptr->state.entity_state;
-  entstate_ptr->edicts = demogobbler_arena_allocate(&thisptr->memory_arena,
-                                                    sizeof(edict) * MAX_EDICTS, alignof(edict));
+  if(entstate_ptr->edicts == NULL) {
+    entstate_ptr->edicts = demogobbler_arena_allocate(&thisptr->memory_arena,
+                                                      sizeof(edict) * MAX_EDICTS, alignof(edict));
+  }
   memset(entstate_ptr->edicts, 0, sizeof(edict) * MAX_EDICTS);
   create_dt_hashtable(thisptr);
 
   CHECK_ERR();
 
-  entstate_ptr->excluded_props = demogobbler_pes_create(256);
-  entstate_ptr->dts_with_excludes = demogobbler_hashtable_create(256);
+  if(entstate_ptr->excluded_props.arr == NULL) {
+    entstate_ptr->excluded_props = demogobbler_pes_create(256);
+  }
+  if(entstate_ptr->dts_with_excludes.arr == NULL) {
+    entstate_ptr->dts_with_excludes = demogobbler_hashtable_create(256);
+  }
   size_t array_size = sizeof(serverclass_data) * entstate_ptr->serverclass_count;
   entstate_ptr->class_datas =
       demogobbler_arena_allocate(&thisptr->memory_arena, array_size, alignof(serverclass_data));

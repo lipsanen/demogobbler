@@ -155,7 +155,7 @@ static void parse_props_prot4(prop_parse_state *state) {
   while (true) {
     i = bitstream_read_field_index(state->stream, i, new_way);
 
-    if (i < -1 || i > (int)datas->prop_count) {
+    if (i < -1 || i >= (int)datas->prop_count) {
       thisptr->error = true;
       thisptr->error_message = "Invalid prop index encountered";
     }
@@ -176,7 +176,7 @@ static void parse_props_old(prop_parse_state *state) {
 
   while (bitstream_read_bit(state->stream)) {
     i += bitstream_read_ubitvar(state->stream) + 1;
-    if (i < -1 || i > data->prop_count) {
+    if (i < -1 || i >= data->prop_count) {
       state->thisptr->error = true;
       state->thisptr->error_message = "Invalid prop index encountered";
     }
@@ -224,7 +224,7 @@ static void read_explicit_deletes(prop_parse_state *state) {
   if (max_updates >= 0) {
     size_t bytes = sizeof(int) * max_updates;
     state->output.explicit_deletes = demogobbler_arena_allocate(state->a, bytes, alignof(int));
-    memset(state->output.ent_updates, 0, bytes);
+    memset(state->output.explicit_deletes, 0, bytes);
   }
 
   int index = 0;
@@ -247,6 +247,12 @@ static void read_explicit_deletes(prop_parse_state *state) {
 
 void demogobbler_parse_packetentities(parser *thisptr,
                                       struct demogobbler_svc_packet_entities *message) {
+  if(!thisptr->state.entity_state.edicts) {
+    thisptr->error = true;
+    thisptr->error_message = "Tried to parse packetentities without datatables";
+    return;
+  }
+  
   bitstream stream = message->data;
   prop_parse_state state;
   memset(&state, 0, sizeof(state));

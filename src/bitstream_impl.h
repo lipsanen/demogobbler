@@ -187,15 +187,21 @@ BITSTREAM_PREAMBLE float demogobbler_bitstream_read_float(bitstream *thisptr) {
 
 BITSTREAM_PREAMBLE size_t demogobbler_bitstream_read_cstring(bitstream *thisptr, char *dest, size_t max_bytes) {
   size_t i;
+  bool overflow = true;
   for (i = 0; i < max_bytes; ++i) {
     uint64_t value = read_ubit(thisptr, 8);
     char c = *(char *)&value;
     dest[i] = c;
 
     if (value == 0) {
+      overflow = false;
       ++i;
       break;
     }
+  }
+
+  if(overflow) {
+    thisptr->overflow = true;
   }
 
   return i;

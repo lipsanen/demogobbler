@@ -9,6 +9,7 @@
 hashtable demogobbler_hashtable_create(size_t array_size);
 hashtable_entry demogobbler_hashtable_get(hashtable* thisptr, const char* str);
 bool demogobbler_hashtable_insert(hashtable* thisptr, hashtable_entry entry);
+void demogobbler_hashtable_clear(hashtable* thisptr);
 void demogobbler_hashtable_free(hashtable* thisptr);
 
 prop_exclude_set demogobbler_pes_create(size_t array_size);

@@ -5,6 +5,9 @@ extern "C" {
 #endif
 
 #include "demogobbler_bitstream.h"
+#include "demogobbler_datatable_types.h"
+#include "demogobbler_entity_types.h"
+#include "demogobbler_parser_types.h"
 #include "demogobbler_vector.h"
 #include <stdint.h>
 
@@ -46,6 +49,7 @@ void demogobbler_bitwriter_write_bitcoordmp(bitwriter* thisptr, demogobbler_bitc
 void demogobbler_bitwriter_write_bitnormal(bitwriter* thisptr, demogobbler_bitnormal value);
 void demogobbler_bitwriter_write_field_index(bitwriter* thisptr, int32_t new_index, int32_t last_index, bool new_way);
 void demogobbler_bitwriter_write_ubitint(bitwriter *thisptr, uint32_t value);
+void demogobbler_bitwriter_write_packetentities(bitwriter* thisptr, packetentities_data data, const estate* entity_state, const demo_version_data* version);
 void demogobbler_bitwriter_free(bitwriter *thisptr);
 
 #define bitwriter_init demogobbler_bitwriter_init

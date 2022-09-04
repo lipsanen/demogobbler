@@ -1,7 +1,7 @@
 #pragma once
 
 #include "demogobbler_arena.h"
-#include "demogobbler_datatables.h"
+#include "demogobbler_datatable_types.h"
 #include "demogobbler.h"
 #include "filereader.h"
 #include "parser.h"

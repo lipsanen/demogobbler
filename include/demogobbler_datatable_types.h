@@ -35,19 +35,23 @@ struct demogobbler_sendprop {
   const char *name;
   union {
     prop_values prop_;
-    const char* exclude_name;
-    const char* dtname; // Datatable or exclude flag is set
-    demogobbler_sendprop* array_prop;
+    const char *exclude_name;
+    const char *dtname; // Datatable or exclude flag is set
+    demogobbler_sendprop *array_prop;
   };
 
-  // For sendproptype_datatable this is a pointer to the baseclass
-  // For flattened props that are from a derived class this points to the class (sendtable) where they came from
-  struct demogobbler_sendtable* baseclass; 
+  union {
+    struct demogobbler_sendtable
+        *baseclass; // For sendproptype_datatable this is a pointer to the baseclass
+    struct demogobbler_sendtable
+        *owner_class; // For flattened props that are from a derived class this points to the class
+                      // (sendtable) where they came from
+  };
 
   unsigned priority : 8;
   unsigned prop_numbits : 7;
   demogobbler_sendproptype proptype : 4;
-  unsigned flag_unsigned: 1;
+  unsigned flag_unsigned : 1;
   unsigned flag_coord : 1;
   unsigned flag_noscale : 1;
   unsigned flag_rounddown : 1;
@@ -57,7 +61,7 @@ struct demogobbler_sendprop {
   unsigned flag_xyze : 1;
   unsigned flag_insidearray : 1;
   unsigned flag_proxyalwaysyes : 1;
-  unsigned flag_changesoften : 1; 
+  unsigned flag_changesoften : 1;
   unsigned flag_isvectorelem : 1;
   unsigned flag_collapsible : 1;
   unsigned flag_coordmp : 1;
@@ -67,23 +71,22 @@ struct demogobbler_sendprop {
   unsigned flag_cellcoordlp : 1;
   unsigned flag_cellcoordint : 1;
   unsigned array_num_elements : 10;
-
 };
 
 struct demogobbler_sendtable {
-
   const char *name;
   demogobbler_sendprop *props;
   size_t prop_count;
   bool needs_decoder;
 };
 
-typedef struct {
+struct demogobbler_serverclass {
   uint16_t serverclass_id;
   const char *serverclass_name;
   const char *datatable_name;
+};
 
-} demogobbler_serverclass;
+typedef struct demogobbler_serverclass demogobbler_serverclass;
 
 typedef struct {
   demogobbler_message_preamble preamble;
@@ -92,7 +95,7 @@ typedef struct {
   demogobbler_serverclass *serverclasses;
   size_t serverclass_count;
 
-  void* _raw_buffer;
+  void *_raw_buffer;
   size_t _raw_buffer_bytes;
 } demogobbler_datatables_parsed;
 

@@ -5,8 +5,9 @@ extern "C" {
 #endif
 
 #include "demogobbler_io.h"
-#include "demogobbler_datatables.h"
+#include "demogobbler_datatable_types.h"
 #include "demogobbler_entity_types.h"
+#include "demogobbler_parser_types.h"
 #include "header.h"
 #include "packet_netmessages.h"
 #include "packettypes.h"

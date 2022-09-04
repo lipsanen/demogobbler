@@ -51,9 +51,8 @@ static float bitcoord_to_float(bitcoord value) {
 
 float demogobbler_prop_to_float(demogobbler_sendprop* prop, prop_value_inner value) {
   if (prop->flag_coord) {
-
-  }
-  else if (prop->flag_coordmp) {
+    return bitcoord_to_float(value.bitcoord_val);
+  } else if (prop->flag_coordmp) {
     return bitcoordmp_to_float(value.bitcoordmp_val, false, false);
   } else if (prop->flag_coordmplp) {
     return bitcoordmp_to_float(value.bitcoordmp_val, false, true);

@@ -19,7 +19,7 @@ typedef struct {
   edict *ent;
   arena *a;
   vector_array prop_array;
-  svc_packetentities_parsed output;
+  packetentities_data output;
 } prop_parse_state;
 
 static prop_value read_prop(prop_parse_state *state, demogobbler_sendprop *prop);
@@ -171,13 +171,10 @@ static void parse_props_prot4(prop_parse_state *state) {
 static void parse_props_old(prop_parse_state *state) {
   parser *thisptr = state->thisptr;
   edict *ent = state->ent;
-  unsigned int datatable_id = state->ent->datatable_id;
   serverclass_data *data = demogobbler_estate_serverclass_data(thisptr, ent->datatable_id);
   int i = -1;
-  int old_index;
 
   while (bitstream_read_bit(state->stream)) {
-    old_index = i;
     i += bitstream_read_ubitvar(state->stream) + 1;
     if (i < -1 || i > data->prop_count) {
       state->thisptr->error = true;
@@ -257,7 +254,6 @@ void demogobbler_parse_packetentities(parser *thisptr,
   state.a = &thisptr->temp_arena;
   state.stream = &stream;
 
-  state.output.orig = message;
   state.output.ent_updates_count = message->updated_entries;
   size_t ent_update_bytes = sizeof(ent_update) * state.output.ent_updates_count;
   state.output.ent_updates =
@@ -330,7 +326,11 @@ void demogobbler_parse_packetentities(parser *thisptr,
   }
 
   if (!thisptr->error && !stream.overflow && thisptr->m_settings.packetentities_parsed_handler) {
-    thisptr->m_settings.packetentities_parsed_handler(&thisptr->state, &state.output);
+    svc_packetentities_parsed parsed;
+    memset(&parsed, 0, sizeof(parsed));
+    parsed.data = state.output;
+    parsed.orig = message;
+    thisptr->m_settings.packetentities_parsed_handler(&thisptr->state, &parsed);
   }
 
 end:;

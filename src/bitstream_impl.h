@@ -175,9 +175,14 @@ BITSTREAM_PREAMBLE int64_t demogobbler_bitstream_read_sint(bitstream *thisptr, u
 }
 
 BITSTREAM_PREAMBLE float demogobbler_bitstream_read_float(bitstream *thisptr) {
-  uint32_t uint = demogobbler_bitstream_read_uint32(thisptr);
+  union result {
+    uint32_t uint;
+    float res;
+  };
 
-  return *(float *)&uint;
+  union result out;
+  out.uint = demogobbler_bitstream_read_uint32(thisptr);
+  return out.res;
 }
 
 BITSTREAM_PREAMBLE size_t demogobbler_bitstream_read_cstring(bitstream *thisptr, char *dest, size_t max_bytes) {

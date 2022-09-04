@@ -1,6 +1,7 @@
 #pragma once
 
 #include "demogobbler_bitstream.h"
+#include "demogobbler_floats.h"
 
 #ifdef BITSTREAM_INLINED
 #define BITSTREAM_PREAMBLE static inline

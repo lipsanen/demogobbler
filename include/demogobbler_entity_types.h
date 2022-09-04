@@ -1,12 +1,12 @@
 #pragma once
 
 #include "demogobbler_floats.h"
-#include "demogobbler_datatables.h"
 #include <stddef.h>
 
 struct demogobbler_sendprop;
 struct demogobbler_sendtable;
 struct demogobbler_svc_packet_entities;
+struct demogobbler_serverclass;
 
 typedef struct {
   const char* str;
@@ -45,7 +45,7 @@ typedef struct {
 typedef struct {
   serverclass_data* class_datas;
   struct demogobbler_sendtable* sendtables;
-  demogobbler_serverclass* serverclasses;
+  struct demogobbler_serverclass* serverclasses;
   edict* edicts;
   uint32_t sendtable_count;
   uint32_t serverclass_count;
@@ -108,7 +108,7 @@ struct array_value {
 };
 
 typedef struct {
-  size_t ent_index;
+  int ent_index;
   size_t update_type;
   edict* ent;
   prop_value* prop_value_array;
@@ -120,5 +120,9 @@ typedef struct {
   size_t ent_updates_count;
   int* explicit_deletes;
   size_t explicit_deletes_count;
+} packetentities_data;
+
+typedef struct {
+  packetentities_data data;
   struct demogobbler_svc_packet_entities* orig;
 } svc_packetentities_parsed;

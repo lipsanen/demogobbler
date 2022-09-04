@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
-#include "demogobbler_datatables.h"
+#include "demogobbler_datatable_types.h"
 #include "demogobbler_entity_types.h"
 
 hashtable demogobbler_hashtable_create(size_t array_size);

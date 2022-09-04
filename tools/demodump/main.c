@@ -1,5 +1,6 @@
 #include "demogobbler.h"
 #include "demogobbler_conversions.h"
+#include "demogobbler_datatable_types.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -317,12 +318,12 @@ static void print_prop_value(prop_value *value) {
 
 static void print_packetentities_parsed(parser_state *state, svc_packetentities_parsed *message) {
   printf("SVC_PacketEntities: %d delta, %lu updates, %lu deletes\n", message->orig->is_delta,
-         message->ent_updates_count, message->explicit_deletes_count);
+         message->data.ent_updates_count, message->data.explicit_deletes_count);
 
-  for (size_t i = 0; i < message->ent_updates_count; ++i) {
-    ent_update *update = message->ent_updates + i;
+  for (size_t i = 0; i < message->data.ent_updates_count; ++i) {
+    ent_update *update = message->data.ent_updates + i;
 
-    printf("[%lu] Entity %lu, update: %s\n", i, update->ent_index,
+    printf("[%lu] Entity %d, update: %s\n", i, update->ent_index,
            update_name(update->update_type));
     if (update->update_type == 2) {
       serverclass_data *data = state->entity_state.class_datas + update->ent->datatable_id;

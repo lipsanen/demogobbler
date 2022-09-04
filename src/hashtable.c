@@ -1,5 +1,4 @@
 #include "hashtable.h"
-#include "demogobbler_datatables.h"
 #define XXH_INLINE_ALL
 #include "xxhash.h"
 #include <stdlib.h>

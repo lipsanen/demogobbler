@@ -11,16 +11,16 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
-struct demogobbler_bitangle_vector {
+struct bitangle_vector {
   uint32_t x;
   uint32_t y;
   uint32_t z;
   unsigned int bits : 6;
 };
 
-typedef struct demogobbler_bitangle_vector bitangle_vector;
+typedef struct bitangle_vector bitangle_vector;
 
-struct demogobbler_bitcoord {
+struct bitcoord {
   unsigned exists : 1; // Used by vector
   unsigned has_int : 1;
   unsigned has_frac : 1;
@@ -29,15 +29,15 @@ struct demogobbler_bitcoord {
   unsigned frac_value : 5;
 };
 
-typedef struct demogobbler_bitcoord bitcoord;
+typedef struct bitcoord bitcoord;
 
-struct demogobbler_bitcoord_vector {
+struct bitcoord_vector {
   bitcoord x;
   bitcoord y;
   bitcoord z;
 };
 
-typedef struct demogobbler_bitcoord_vector bitcoord_vector;
+typedef struct bitcoord_vector bitcoord_vector;
 
 typedef struct {
   unsigned frac;

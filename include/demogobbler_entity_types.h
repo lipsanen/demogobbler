@@ -1,6 +1,7 @@
 #pragma once
 
 #include "demogobbler_floats.h"
+#include "demogobbler_datatables.h"
 #include <stddef.h>
 
 struct demogobbler_sendprop;
@@ -19,7 +20,7 @@ typedef struct {
 } hashtable;
 
 typedef struct {
-  demogobbler_sendprop* exclude_prop;
+  struct demogobbler_sendprop* exclude_prop;
 } prop_exclude_entry;
 
 typedef struct {
@@ -86,7 +87,7 @@ typedef struct {
 
 typedef struct{
   prop_value_inner value; // Actual value
-  demogobbler_sendprop* prop; // Pointer to sendprop containing all the metadata
+  struct demogobbler_sendprop* prop; // Pointer to sendprop containing all the metadata
 } prop_value;
 
 struct vector2_value {

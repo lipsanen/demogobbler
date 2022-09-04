@@ -7,6 +7,7 @@ extern "C" {
 #include "demogobbler_vector.h"
 #include <assert.h>
 #include <stdalign.h>
+#include <stddef.h>
 #include <stdint.h>
 
 enum demogobbler_type {

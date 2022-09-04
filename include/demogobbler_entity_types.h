@@ -64,9 +64,11 @@ struct demogobbler_parser_state {
 struct array_value;
 struct vector2_value;
 struct vector3_value;
+struct string_value;
 typedef struct array_value array_value;
 typedef struct vector2_value vector2_value;
 typedef struct vector3_value vector3_value;
+typedef struct string_value string_value;
 
 typedef struct {
   union {
@@ -77,7 +79,7 @@ typedef struct {
     demogobbler_bitcellcoord bitcellcoord_val;
     demogobbler_bitnormal bitnormal_val;
     float float_val;
-    char* str_val; // strings
+    struct string_value* str_val; // strings
     // vector and array types, use pointer here to reduce the size of the prop_value struct
     struct array_value* arr_val;
     struct vector2_value* v2_val;
@@ -89,6 +91,11 @@ typedef struct{
   prop_value_inner value; // Actual value
   struct demogobbler_sendprop* prop; // Pointer to sendprop containing all the metadata
 } prop_value;
+
+struct string_value {
+  char* str;
+  size_t len;
+};
 
 struct vector2_value {
   prop_value_inner x, y;
@@ -113,6 +120,7 @@ typedef struct {
   edict* ent;
   prop_value* prop_value_array;
   size_t prop_value_array_size;
+  bool new_way;
 } ent_update;
 
 typedef struct {

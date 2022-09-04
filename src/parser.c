@@ -179,7 +179,7 @@ void _parser_mainloop(parser *thisptr) {
   NULL_CHECK(stringtables);
   NULL_CHECK(usercmd);
 
-  if (settings->flattened_props_handler || settings->store_ents) {
+  if (settings->flattened_props_handler || settings->store_ents || settings->packetentities_parsed_handler) {
     settings->store_ents = true; // Entity state init handler => we should store ents
     should_parse = true;
     thisptr->parse_netmessages = true;
@@ -314,7 +314,7 @@ void _parse_packet(parser *thisptr, enum demogobbler_type type) {
         thisptr->m_settings.packet_handler(&thisptr->state, &message);
       }
 
-      if (thisptr->m_settings.packet_net_message_handler) {
+      if (thisptr->parse_netmessages) {
         parse_netmessages(thisptr, &message);
       }
     }

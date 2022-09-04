@@ -28,7 +28,6 @@ BITSTREAM_PREAMBLE uint32_t demogobbler_bitstream_read_uint32(bitstream *thisptr
 BITSTREAM_PREAMBLE uint32_t demogobbler_bitstream_read_ubitvar(bitstream* thisptr);
 BITSTREAM_PREAMBLE int32_t demogobbler_bitstream_read_sint32(bitstream *thisptr);
 BITSTREAM_PREAMBLE uint32_t demogobbler_bitstream_read_ubitint(bitstream* thisptr);
-BITSTREAM_PREAMBLE uint32_t demogobbler_bitstream_read_ubitvar(bitstream* thisptr);
 BITSTREAM_PREAMBLE demogobbler_bitcellcoord demogobbler_bitstream_read_bitcellcoord(bitstream* thisptr, bool is_int, bool lp, unsigned bits);
 BITSTREAM_PREAMBLE demogobbler_bitcoordmp demogobbler_bitstream_read_bitcoordmp(bitstream* thisptr, bool is_int, bool lp);
 BITSTREAM_PREAMBLE demogobbler_bitnormal demogobbler_bitstream_read_bitnormal(bitstream* thisptr);
@@ -53,7 +52,7 @@ BITSTREAM_PREAMBLE int32_t demogobbler_bitstream_read_field_index(bitstream* thi
 #define bitstream_read_coordvector demogobbler_bitstream_read_coordvector
 
 static inline int64_t demogobbler_bitstream_bits_left(bitstream *thisptr) {
-  if (thisptr->bitsize >= thisptr->bitoffset) {
+  if (thisptr->bitsize >= thisptr->bitoffset && !thisptr->overflow) {
     return thisptr->bitsize - thisptr->bitoffset;
   } else {
     return 0;

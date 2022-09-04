@@ -15,6 +15,7 @@ enum { MAX_EDICT_BITS = 11 };
 enum { ENTITY_SENTINEL = 9999 };
 enum { NORM_FRAC_BITS = 11 };
 enum { NORM_DENOM = (1 << NORM_FRAC_BITS) - 1 };
+enum { HANDLE_BITS = 10 };
 
 #define COORD_INTEGER_BITS 14
 #define COORD_FRACTIONAL_BITS 5

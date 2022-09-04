@@ -1,4 +1,5 @@
 #include "demogobbler.h"
+#include "demogobbler_bitwriter.h"
 #include "gtest/gtest.h"
 #include "test_demos.hpp"
 
@@ -7,13 +8,27 @@ extern "C" {
   #include "parser_packetentities.h"
 }
 
-void handle_packet_net_message(parser_state *state, packet_net_message *message) {
-  parser* thisptr = (parser*)((size_t)(state) - offsetof(parser, state));
-  if(message->mtype == svc_packet_entities) {
-    demogobbler_parse_packetentities(thisptr, &message->message_svc_packet_entities);
+void handle_packetentities(parser_state *state, svc_packetentities_parsed* parsed) {
+  parser* thisptr = (parser*)((size_t)(state) - offsetof(parser, state)); // dont try this at home
+  bitwriter writer;
+  bitwriter_init(&writer, parsed->orig->data_length);
+  write_packetentities_args args;
+  args.data = parsed->data;
+  args.entity_state = &state->entity_state;
+  args.is_delta = parsed->orig->is_delta;
+  args.version = &thisptr->demo_version;
+#ifdef GROUND_TRUTH_CHECK
+  writer.truth_data = parsed->orig->data.data;
+  writer.truth_data_offset = parsed->orig->data.bitoffset;
+  writer.truth_size_bits = parsed->orig->data_length;
+#endif
 
-    EXPECT_EQ(thisptr->error, false) << thisptr->error_message;
+  demogobbler_bitwriter_write_packetentities(&writer, args);
+  if(writer.error || writer.bitoffset != parsed->orig->data_length) {
+    thisptr->error = true;
+    thisptr->error_message = writer.error_message;
   }
+  bitwriter_free(&writer);
 }
 
 
@@ -21,13 +36,12 @@ TEST(E2E, test_ents_reading) {
 
   demogobbler_settings settings;
   demogobbler_settings_init(&settings);
-  settings.packet_net_message_handler = handle_packet_net_message;
-  settings.store_ents = true;
+  settings.packetentities_parsed_handler = handle_packetentities;
 
   for(auto& demo : get_test_demos())
   {
     std::cout << "[----------] " << demo << std::endl;
     auto output = demogobbler_parse_file(&settings, demo.c_str());
-    EXPECT_EQ(output.error, false);
+    EXPECT_EQ(output.error, false) << output.error_message;
   }
 }

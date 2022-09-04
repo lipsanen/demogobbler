@@ -1,6 +1,7 @@
 #include "parser_packetentities.h"
 #include "arena.h"
 #include "bitstream.h"
+#include "demogobbler_bitwriter.h"
 #include "demogobbler_entity_types.h"
 #include "parser_entity_state.h"
 #include "utils.h"
@@ -20,15 +21,49 @@ typedef struct {
   arena *a;
   vector_array prop_array;
   packetentities_data output;
+  bool new_way;
 } prop_parse_state;
 
 static prop_value read_prop(prop_parse_state *state, demogobbler_sendprop *prop);
+static void write_prop(bitwriter* writer, prop_value value);
+
+static void write_int(bitwriter* thisptr, prop_value value) {
+  if(value.prop->flag_unsigned) {
+    bitwriter_write_uint(thisptr, value.value.unsigned_val, value.prop->prop_numbits);
+  } else {
+    bitwriter_write_sint(thisptr, value.value.signed_val, value.prop->prop_numbits);
+  }
+}
 
 static void read_int(prop_parse_state *state, demogobbler_sendprop *prop, prop_value_inner *value) {
   if (prop->flag_unsigned) {
     value->unsigned_val = demogobbler_bitstream_read_uint(state->stream, prop->prop_numbits);
   } else {
     value->signed_val = demogobbler_bitstream_read_sint(state->stream, prop->prop_numbits);
+  }
+}
+
+static void write_float(bitwriter* thisptr, demogobbler_sendprop *prop, prop_value_inner value) {
+  if (prop->flag_coord) {
+    bitwriter_write_bitcoord(thisptr, value.bitcoord_val);
+  } else if (prop->flag_coordmp) {
+    demogobbler_bitwriter_write_bitcoordmp(thisptr, value.bitcoordmp_val, false, false);
+  } else if (prop->flag_coordmplp) {
+    demogobbler_bitwriter_write_bitcoordmp(thisptr, value.bitcoordmp_val, false, true);
+  } else if (prop->flag_coordmpint) {
+    demogobbler_bitwriter_write_bitcoordmp(thisptr, value.bitcoordmp_val, true, false);
+  } else if (prop->flag_noscale) {
+    bitwriter_write_float(thisptr, value.float_val);
+  } else if (prop->flag_normal) {
+    demogobbler_bitwriter_write_bitnormal(thisptr, value.bitnormal_val);
+  } else if (prop->flag_cellcoord) {
+    demogobbler_bitwriter_write_bitcellcoord(thisptr, value.bitcellcoord_val, false, false, prop->prop_numbits);
+  } else if (prop->flag_cellcoordlp) {
+    demogobbler_bitwriter_write_bitcellcoord(thisptr, value.bitcellcoord_val, false, true, prop->prop_numbits);
+  } else if (prop->flag_cellcoordint) {
+    demogobbler_bitwriter_write_bitcellcoord(thisptr, value.bitcellcoord_val, true, false, prop->prop_numbits);
+  } else {
+    bitwriter_write_uint(thisptr, value.unsigned_val, prop->prop_numbits);
   }
 }
 
@@ -61,6 +96,17 @@ static void read_float(prop_parse_state *state, demogobbler_sendprop *prop,
   }
 }
 
+static void write_vector3(bitwriter* thisptr, prop_value value) {
+  write_float(thisptr, value.prop, value.value.v3_val->x);
+  write_float(thisptr, value.prop, value.value.v3_val->y);
+
+  if(value.prop->flag_normal) {
+    bitwriter_write_bit(thisptr, value.value.v3_val->sign);
+  } else {
+    write_float(thisptr, value.prop, value.value.v3_val->z);
+  }
+}
+
 static void read_vector3(prop_parse_state *state, demogobbler_sendprop *prop,
                          prop_value_inner *value) {
   value->v3_val =
@@ -77,6 +123,11 @@ static void read_vector3(prop_parse_state *state, demogobbler_sendprop *prop,
   }
 }
 
+static void write_vector2(bitwriter* thisptr, prop_value value) {
+  write_float(thisptr, value.prop, value.value.v2_val->x);
+  write_float(thisptr, value.prop, value.value.v2_val->y);
+}
+
 static void read_vector2(prop_parse_state *state, demogobbler_sendprop *prop,
                          prop_value_inner *value) {
   value->v2_val =
@@ -87,26 +138,76 @@ static void read_vector2(prop_parse_state *state, demogobbler_sendprop *prop,
   read_float(state, prop, &value->v2_val->y);
 }
 
+static const size_t dt_max_string_bits = 9;
+
+static void write_string(bitwriter* thisptr, prop_value value) {
+  bitwriter_write_uint(thisptr, value.value.str_val->len, dt_max_string_bits);
+  bitwriter_write_bits(thisptr, value.value.str_val->str, 8 * value.value.str_val->len);
+}
+
 static void read_string(prop_parse_state *state, demogobbler_sendprop *prop,
                         prop_value_inner *value) {
-  const size_t dt_max_string_bits = 9;
-  size_t len = bitstream_read_uint(state->stream, dt_max_string_bits);
-  value->str_val = demogobbler_arena_allocate(state->a, len + 1, 1);
-  bitstream_read_fixed_string(state->stream, value->str_val, len);
-  value->str_val[len] = '\0';
+  value->str_val =
+      demogobbler_arena_allocate(state->a, sizeof(string_value), alignof(string_value));
+  size_t len = value->str_val->len = bitstream_read_uint(state->stream, dt_max_string_bits);
+  value->str_val->str = demogobbler_arena_allocate(state->a, len + 1, 1);
+  bitstream_read_fixed_string(state->stream, value->str_val->str, len);
+  value->str_val->str[len] = '\0'; // make sure we have zero terminated string
+}
+
+static void write_array(bitwriter* thisptr, prop_value value) {
+  struct array_value* arr = value.value.arr_val;
+  unsigned int bits = highest_bit_index(value.prop->array_num_elements) + 1;
+  bitwriter_write_uint(thisptr, arr->array_size, bits);
+  prop_value temp;
+  memset(&temp, 0, sizeof(temp));
+  temp.prop = value.prop->array_prop;
+
+  for (size_t i=0; i < arr->array_size; ++i) {
+    temp.value = arr->values[i];
+    write_prop(thisptr, temp);
+  }
 }
 
 static void read_array(prop_parse_state *state, demogobbler_sendprop *prop,
                        prop_value_inner *value) {
   value->arr_val = demogobbler_arena_allocate(state->a, sizeof(array_value), alignof(array_value));
-  unsigned count =
+  value->arr_val->array_size =
       bitstream_read_uint(state->stream, highest_bit_index(prop->array_num_elements) + 1);
-  value->arr_val->values = demogobbler_arena_allocate(state->a, sizeof(prop_value_inner) * count,
+  value->arr_val->values = demogobbler_arena_allocate(state->a, sizeof(prop_value_inner) * value->arr_val->array_size,
                                                       alignof(prop_value_inner));
 
-  for (size_t i = 0; i < count; ++i) {
+  for (size_t i = 0; i < value->arr_val->array_size; ++i) {
     prop_value temp = read_prop(state, prop->array_prop);
     value->arr_val->values[i] = temp.value;
+  }
+}
+
+static void write_prop(bitwriter* thisptr, prop_value value) {
+  demogobbler_sendproptype type = value.prop->proptype;
+  switch(type) {
+    case sendproptype_array:
+      write_array(thisptr, value);
+      break;
+    case sendproptype_vector3:
+      write_vector3(thisptr, value);
+      break;
+    case sendproptype_vector2:
+      write_vector2(thisptr, value);
+      break;
+    case sendproptype_float:
+      write_float(thisptr, value.prop, value.value);
+      break;
+    case sendproptype_string:
+      write_string(thisptr, value);
+      break;
+    case sendproptype_int:
+      write_int(thisptr, value);
+      break;
+    default:
+      thisptr->error = true;
+      thisptr->error_message = "Unknown sendproptype for write_prop";
+      break;
   }
 }
 
@@ -144,16 +245,35 @@ static prop_value read_prop(prop_parse_state *state, demogobbler_sendprop *prop)
   return value;
 }
 
+static void write_props_prot4(bitwriter* thisptr, struct write_packetentities_args args, const ent_update* update) {
+  const serverclass_data* data = args.entity_state->class_datas + update->ent->datatable_id;
+
+  if(args.version->game != l4d) {
+    bitwriter_write_bit(thisptr, update->new_way);
+  }
+
+  int last_prop_index = -1;
+  for(size_t i=0; i < update->prop_value_array_size; ++i) {
+    int prop_index = update->prop_value_array[i].prop - data->props;
+    demogobbler_bitwriter_write_field_index(thisptr, prop_index, last_prop_index, update->new_way);
+    last_prop_index = prop_index;
+    write_prop(thisptr, update->prop_value_array[i]);
+  }
+
+  demogobbler_bitwriter_write_field_index(thisptr, -1, last_prop_index, update->new_way);
+}
+
 static void parse_props_prot4(prop_parse_state *state) {
   parser *thisptr = state->thisptr;
   bitstream *stream = state->stream;
   edict *ent = state->ent;
   serverclass_data *datas = demogobbler_estate_serverclass_data(thisptr, ent->datatable_id);
   int i = -1;
-  bool new_way = thisptr->demo_version.game != l4d && bitstream_read_bit(state->stream);
+  bool new_way = thisptr->demo_version.game != l4d && bitstream_read_bit(state->stream); // 1560
+  state->new_way = new_way;
 
   while (true) {
-    i = bitstream_read_field_index(state->stream, i, new_way);
+    i = bitstream_read_field_index(state->stream, i, new_way); // 1576
 
     if (i < -1 || i >= (int)datas->prop_count) {
       thisptr->error = true;
@@ -166,6 +286,20 @@ static void parse_props_prot4(prop_parse_state *state) {
     prop_value value = read_prop(state, datas->props + i);
     demogobbler_va_push_back(&state->prop_array, &value);
   }
+}
+
+static void write_props_old(bitwriter* thisptr, struct write_packetentities_args args, const ent_update* update) {
+  const serverclass_data* data = args.entity_state->class_datas + update->ent->datatable_id;
+  int old_prop_index = -1;
+  for(size_t i=0; i < update->prop_value_array_size; ++i) {
+    bitwriter_write_bit(thisptr, true);
+    int prop_index = update->prop_value_array[i].prop - data->props;
+    uint32_t diffy = prop_index - (old_prop_index + 1);
+    old_prop_index = prop_index;
+    demogobbler_bitwriter_write_ubitvar(thisptr, diffy);
+    write_prop(thisptr, update->prop_value_array[i]);
+  }
+  bitwriter_write_bit(thisptr, false);
 }
 
 static void parse_props_old(prop_parse_state *state) {
@@ -189,6 +323,14 @@ static void parse_props_old(prop_parse_state *state) {
   }
 }
 
+static void write_props(bitwriter* thisptr, struct write_packetentities_args args, const ent_update* update) {
+  if(args.version->demo_protocol == 4) {
+    write_props_prot4(thisptr, args, update);
+  } else {
+    write_props_old(thisptr, args, update);
+  }
+}
+
 static void parse_props(prop_parse_state *state, edict *ent, size_t index) {
   state->ent = ent;
   ent_update *update = state->output.ent_updates + index;
@@ -196,6 +338,7 @@ static void parse_props(prop_parse_state *state, edict *ent, size_t index) {
   demo_version_data *demo_version = &state->thisptr->demo_version;
   if (demo_version->demo_protocol == 4) {
     parse_props_prot4(state);
+    update->new_way = state->new_way;
   } else {
     parse_props_old(state);
   }
@@ -206,16 +349,6 @@ static void parse_props(prop_parse_state *state, edict *ent, size_t index) {
     update->prop_value_array = demogobbler_arena_allocate(state->a, bytes, alignof(prop_value));
     memcpy(update->prop_value_array, state->prop_array.ptr, bytes);
   }
-}
-
-static int update_old_index(parser *thisptr, int oldI) {
-  edict *ent = thisptr->state.entity_state.edicts + oldI;
-  while (oldI <= MAX_EDICTS && !ent->exists) {
-    ++oldI;
-    ent = thisptr->state.entity_state.edicts + oldI;
-  }
-
-  return oldI;
 }
 
 static void read_explicit_deletes(prop_parse_state *state) {
@@ -241,8 +374,43 @@ static void read_explicit_deletes(prop_parse_state *state) {
     }
 
     state->output.explicit_deletes[index] = delete_index;
+    ++state->output.explicit_deletes_count;
     ++index;
   }
+}
+
+void demogobbler_bitwriter_write_packetentities(bitwriter* thisptr, struct write_packetentities_args args) {
+  unsigned bits = Q_log2(args.entity_state->serverclass_count) + 1;
+  int index = -1;
+  size_t i;
+  for (i = 0; i < args.data.ent_updates_count && !thisptr->error; ++i) {
+    const ent_update* update = args.data.ent_updates  + i;
+    uint32_t diffy = update->ent_index - (index + 1);
+    if(args.version->demo_protocol >= 4) {
+      demogobbler_bitwriter_write_ubitint(thisptr, diffy);
+    } else {
+      demogobbler_bitwriter_write_ubitvar(thisptr, diffy);
+    }
+    index = update->ent_index;
+    bitwriter_write_uint(thisptr, update->update_type, 2);
+
+    if(update->update_type == 0) {
+      write_props(thisptr, args, update);
+    } else if (update->update_type == 2) {
+      bitwriter_write_uint(thisptr, update->ent->datatable_id, bits);
+      bitwriter_write_uint(thisptr, update->ent->handle, HANDLE_BITS);
+      write_props(thisptr, args, update);
+    }
+  }
+
+  if(args.is_delta && !thisptr->error) {
+    for(size_t i=0; i < args.data.explicit_deletes_count; ++i) {
+      bitwriter_write_bit(thisptr, true);
+      bitwriter_write_uint(thisptr, args.data.explicit_deletes[i], MAX_EDICT_BITS);
+    }
+    bitwriter_write_bit(thisptr, false);
+  }
+
 }
 
 void demogobbler_parse_packetentities(parser *thisptr,
@@ -306,9 +474,8 @@ void demogobbler_parse_packetentities(parser *thisptr,
       parse_props(&state, ent, i); 
     } else if (update_type == 2) {
       // enter pvs
-      unsigned int handle_serial_number_bits = 10;
       ent->datatable_id = bitstream_read_uint(&stream, bits);
-      ent->handle = demogobbler_bitstream_read_uint(&stream, handle_serial_number_bits);
+      ent->handle = bitstream_read_uint(&stream, HANDLE_BITS);
       ent->exists = true;
 
       if (ent->datatable_id >= thisptr->state.entity_state.serverclass_count) {
@@ -342,6 +509,11 @@ void demogobbler_parse_packetentities(parser *thisptr,
 end:;
 
   demogobbler_va_free(&state.prop_array);
+
+  if(stream.bitsize > stream.bitoffset) {
+    thisptr->error = true;
+    thisptr->error_message = "Did not read all bits from svc_packetentities\n";
+  }
 
   if (stream.overflow && !thisptr->error) {
     thisptr->error = true;

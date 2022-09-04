@@ -25,7 +25,7 @@ static truth_state get_truth_state(bitwriter* writer, unsigned int bits) {
     out.has_truth = true;
     out.truth = bitstream_create(writer->truth_data, writer->truth_size_bits);
     out.written = bitstream_create(writer->ptr, writer->bitsize);
-    bitstream_advance(&out.truth, writer->bitoffset - bits);
+    bitstream_advance(&out.truth, writer->bitoffset - bits + writer->truth_data_offset);
     bitstream_advance(&out.written, writer->bitoffset - bits);
     out.truth.bitsize = out.truth.bitoffset + bits;
     out.written.bitsize = out.written.bitoffset + bits;
@@ -50,7 +50,7 @@ static void ground_truth_check(bitwriter *thisptr, unsigned int bits) {
         break;
       }
 
-      bits_left = demogobbler_bitstream_bits_left(&state.truth);
+      bits_left = MAX(demogobbler_bitstream_bits_left(&state.truth), demogobbler_bitstream_bits_left(&state.written));
     }
   }
 }
@@ -95,6 +95,7 @@ void __attribute__((no_sanitize("address"))) demogobbler_bitwriter_write_bit(bit
 void __attribute__((no_sanitize("address"))) demogobbler_bitwriter_write_bits(bitwriter *thisptr, const void *_src, unsigned int bits) {
   CHECK_SIZE();
   unsigned int src_offset = 0;
+  unsigned int requested_bits = bits;
   while (bits > 0) {
     int dest_byte_offset = thisptr->bitoffset & 0x7;
     int src_byte_offset = src_offset & 0x7;
@@ -121,7 +122,7 @@ void __attribute__((no_sanitize("address"))) demogobbler_bitwriter_write_bits(bi
   }
 
 #ifdef GROUND_TRUTH_CHECK
-  ground_truth_check(thisptr, bits);
+  ground_truth_check(thisptr, requested_bits);
 #endif
 }
 
@@ -294,6 +295,7 @@ void demogobbler_bitwriter_write_field_index(bitwriter* thisptr, int32_t new_ind
   if(new_way) {
     if(diff == 0) {
       bitwriter_write_bit(thisptr, true);
+      return;
     }
     else {
       bitwriter_write_bit(thisptr, false);
@@ -303,6 +305,7 @@ void demogobbler_bitwriter_write_field_index(bitwriter* thisptr, int32_t new_ind
   if(new_way && diff < 8) {
     bitwriter_write_bit(thisptr, true);
     bitwriter_write_uint(thisptr, diff, 3);
+    return;
   } else {
     if(new_way) {
       bitwriter_write_bit(thisptr, false);
@@ -365,6 +368,27 @@ void demogobbler_bitwriter_write_ubitint(bitwriter *thisptr, uint32_t value) {
   if(bits_to_write > 0) {
     value >>= 4;
     bitwriter_write_uint(thisptr, value, bits_to_write);
+  }
+}
+
+
+void demogobbler_bitwriter_write_ubitvar(bitwriter *thisptr, uint32_t value) {
+  const uint32_t case_0_max = (1 << 4) - 1;
+  const uint32_t case_1_max = (1 << 8) - 1;
+  const uint32_t case_2_max = (1 << 12) - 1;
+
+  if(value <= case_0_max) {
+    bitwriter_write_uint(thisptr, 0, 2);
+    bitwriter_write_uint(thisptr, value, 4);
+  } else if (value <= case_1_max) {
+    bitwriter_write_uint(thisptr, 1, 2);
+    bitwriter_write_uint(thisptr, value, 8);
+  } else if (value <= case_2_max) {
+    bitwriter_write_uint(thisptr, 2, 2);
+    bitwriter_write_uint(thisptr, value, 12);
+  } else {
+    bitwriter_write_uint(thisptr, 3, 2);
+    bitwriter_write_uint(thisptr, value, 32);
   }
 }
 

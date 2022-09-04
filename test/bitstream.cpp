@@ -464,6 +464,25 @@ TEST(BitstreamPlusWriter, UBitInt) {
   bitwriter_free(&writer);
 }
 
+TEST(BitstreamPlusWriter, UBitVar) {
+  const size_t max = 10000;
+  srand(0);
+  bitwriter writer;
+  bitwriter_init(&writer, 1);
+  for (size_t i = 0; i < max; ++i) {
+    demogobbler_bitwriter_write_ubitvar(&writer, rand());
+  }
+
+  bitstream stream = bitstream_create(writer.ptr, writer.bitsize);
+  srand(0);
+
+  for (size_t i = 0; i < max; ++i) {
+    EXPECT_EQ(rand(), demogobbler_bitstream_read_ubitvar(&stream));
+  }
+
+  bitwriter_free(&writer);
+}
+
 struct rng_bitcellcoord {
   bool is_int;
   bool lp;

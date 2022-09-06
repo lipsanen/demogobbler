@@ -1,5 +1,6 @@
 #include "demogobbler_arena.h"
 #include "utils.h"
+#include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -97,6 +98,30 @@ void* FUN_ATTRIBUTE demogobbler_arena_allocate(arena* a, uint32_t size, uint32_t
 
   struct demogobbler_arena_block* ptr = find_block_with_memory(a, size, alignment);
   return allocate(ptr, size, alignment);
+}
+
+
+void* demogobbler_arena_reallocate(arena* a, void* _ptr, uint32_t prev_size, uint32_t size, uint32_t alignment) {
+  if(_ptr == NULL || a->blocks == NULL) {
+    return demogobbler_arena_allocate(a, size, alignment);
+  }
+
+  struct demogobbler_arena_block* blk_ptr = &a->blocks[a->current_block];
+  uint8_t* previous = (uint8_t*)blk_ptr->data + blk_ptr->bytes_used - prev_size;
+  uint8_t* ptr = _ptr;
+  uint32_t bytes_left_in_block = blk_ptr->total_bytes - blk_ptr->bytes_used + prev_size;
+
+  if(previous == ptr && bytes_left_in_block >= size) {
+    blk_ptr->bytes_used -= prev_size;
+    void* new_arr = demogobbler_arena_allocate(a, size, alignment);
+    assert(new_arr == _ptr); // in-place allocation
+    return new_arr;
+  } else {
+    void* new_arr = demogobbler_arena_allocate(a, size, alignment);
+    assert(new_arr != _ptr);
+    memcpy(new_arr, _ptr, prev_size);  // Not in-place
+    return new_arr;
+  }
 }
 
 void FUN_ATTRIBUTE demogobbler_arena_free(arena* a) {

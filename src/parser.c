@@ -329,34 +329,25 @@ void _parse_stop(parser *thisptr) {
   if (thisptr->m_settings.stop_handler) {
     demogobbler_stop message;
 
-    const int bytes_per_read = 4096;
+    const size_t bytes_per_read = 4096;
     size_t bytes = 0;
+    size_t bytes_reserved = 0;
     size_t bytesReadIt;
-    // The dangerous alligator still lives here
-    // Switch this to use temp_arena after realloc is implemented for it
-    // After that can remove the stack allocator from existence
-    allocator alligator;
-
-    enum { STACK_SIZE = 1 << 13 };
-    uint64_t buffer[STACK_SIZE / sizeof(uint64_t)];
-    allocator_init(&alligator, buffer, sizeof(buffer));
-
-    blk block = allocator_alloc(&alligator, bytes_per_read);
+    void* ptr = NULL;
 
     do {
-      if (bytes + bytes_per_read > block.size) {
-        block = allocator_realloc(&alligator, block, bytes + bytes_per_read);
-      }
+      size_t new_reserve_size = bytes_reserved + bytes_per_read;
+      ptr = demogobbler_arena_reallocate(&thisptr->memory_arena, ptr, bytes_reserved, new_reserve_size, 1);
+      bytes_reserved = new_reserve_size;
 
       bytesReadIt =
-          filereader_readdata(thisreader, (uint8_t *)block.address + bytes, bytes_per_read);
+          filereader_readdata(thisreader, (uint8_t *)ptr + bytes, bytes_per_read);
       bytes += bytesReadIt;
     } while (bytesReadIt == bytes_per_read);
     message.size_bytes = bytes;
-    message.data = block.address;
+    message.data = ptr;
 
     thisptr->m_settings.stop_handler(&thisptr->state, &message);
-    allocator_dealloc(&alligator, block);
   }
 }
 

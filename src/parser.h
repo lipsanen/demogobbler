@@ -5,7 +5,6 @@
 #include "demogobbler.h"
 #include "filereader.h"
 #include "parser.h"
-#include "stackalloc.h"
 #include "stdbool.h"
 #include "stdio.h"
 

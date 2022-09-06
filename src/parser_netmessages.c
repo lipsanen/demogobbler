@@ -32,6 +32,11 @@
     thisptr->m_settings.packet_net_message_handler(&thisptr->state, message);
 #endif
 
+typedef struct {
+  void* address;
+  size_t size;
+} blk;
+
 static void handle_net_nop(parser *thisptr, bitstream *stream, packet_net_message *message,
                            blk scrap) {
   SEND_MESSAGE();

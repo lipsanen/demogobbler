@@ -31,6 +31,52 @@ TEST(Arena, AutoExpandWorks) {
   demogobbler_arena_free(&a);
 }
 
+
+TEST(Arena, ReallocWorks) {
+  arena a = demogobbler_arena_create(8);
+  uint8_t* ptr = (uint8_t*)demogobbler_arena_allocate(&a, 8, 1);
+
+  for(size_t i=0; i < 8; ++i) {
+    ptr[i] = i;
+  }
+
+
+  uint8_t* newptr = (uint8_t*)demogobbler_arena_reallocate(&a, ptr, 8, 16, 1);
+  EXPECT_NE(newptr, ptr);
+
+  for(size_t i=0; i < 8; ++i) {
+    EXPECT_EQ(ptr[i], i);
+  }
+
+  for(size_t i=8; i < 16; ++i) {
+    ptr[i] = i;
+  }
+
+  demogobbler_arena_free(&a);
+}
+
+TEST(Arena, ReallocWorksInPlace) {
+  arena a = demogobbler_arena_create(16);
+  uint8_t* ptr = (uint8_t*)demogobbler_arena_allocate(&a, 8, 1);
+
+  for(size_t i=0; i < 8; ++i) {
+    ptr[i] = i;
+  }
+
+  uint8_t* newptr = (uint8_t*)demogobbler_arena_reallocate(&a, ptr, 8, 16, 1);
+  EXPECT_EQ(newptr, ptr);
+
+  for(size_t i=0; i < 8; ++i) {
+    EXPECT_EQ(ptr[i], i);
+  }
+
+  for(size_t i=8; i < 16; ++i) {
+    ptr[i] = i;
+  }
+
+  demogobbler_arena_free(&a);
+}
+
 TEST(Arena, ClearWorks) {
   arena a = demogobbler_arena_create(4096);
   const int COUNT = 100000;

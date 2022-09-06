@@ -308,7 +308,7 @@ struct demogobbler_packet_net_message {
   unsigned int _mtype : 6;
   bool last_message : 1;
 #ifdef DEBUG
-  int64_t offset;
+  uint32_t offset;
 #endif
 
   union {

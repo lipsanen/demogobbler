@@ -5,4 +5,4 @@
 #include "bitstream_impl.h"
 #endif
 
-static inline void ISO_C_forbibs_an_empty_translation_unit() {}
+static inline void ISO_C_forbids_an_empty_translation_unit() {}

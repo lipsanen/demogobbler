@@ -17,14 +17,14 @@ extern "C" {
 
 struct demogobbler_bitwriter {
   uint8_t *ptr;
-  int64_t bitsize;
-  int64_t bitoffset;
+  uint32_t bitsize;
+  uint32_t bitoffset;
   bool error;
   char* error_message;
 #ifdef GROUND_TRUTH_CHECK
   void* truth_data;
-  size_t truth_data_offset;
-  size_t truth_size_bits;
+  uint32_t truth_data_offset;
+  uint32_t truth_size_bits;
 #endif
 };
 
@@ -39,7 +39,7 @@ struct write_packetentities_args {
 
 typedef struct write_packetentities_args write_packetentities_args;
 
-void demogobbler_bitwriter_init(bitwriter *thisptr, size_t initial_size_bits);
+void demogobbler_bitwriter_init(bitwriter *thisptr, uint32_t initial_size_bits);
 int64_t demogobbler_bitwriter_get_available_bits(bitwriter *thisptr);
 void demogobbler_bitwriter_write_bit(bitwriter *thisptr, bool value);
 void demogobbler_bitwriter_write_bitcoord(bitwriter *thisptr, bitcoord value);

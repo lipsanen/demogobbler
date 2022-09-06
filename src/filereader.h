@@ -8,10 +8,10 @@
 
 struct filereader {
   void *buffer;
-  size_t buffer_size;
-  int64_t ufile_offset;
-  int64_t ibytes_available;
-  int32_t ibuffer_offset;
+  uint32_t buffer_size;
+  uint32_t ufile_offset;
+  uint32_t ibytes_available;
+  uint32_t ibuffer_offset;
   bool eof;
   void *stream;
   input_interface input_funcs;
@@ -21,15 +21,15 @@ typedef struct filereader filereader;
 
 void filereader_init(filereader *thisptr, void* buffer, size_t buffer_size, void* stream, input_interface funcs);
 void filereader_readchunk(filereader *reader);
-size_t filereader_readdata(filereader *thisptr, void *buffer, int bytes);
+uint32_t filereader_readdata(filereader *thisptr, void *buffer, int bytes);
 void filereader_skipbytes(filereader *thisptr, int bytes);
 void filereader_skipto(filereader *thisptr, uint64_t offset);
-int64_t filereader_current_position(filereader *thisptr);
+uint32_t filereader_current_position(filereader *thisptr);
 
 static inline int32_t filereader_readint32(filereader *thisptr)
 {
   int32_t val;
-  int64_t bytesLeftInBuffer = (thisptr->ibytes_available - thisptr->ibuffer_offset);
+  uint32_t bytesLeftInBuffer = (thisptr->ibytes_available - thisptr->ibuffer_offset);
   
   // If enough bytes in buffer, take fast track
   if(bytesLeftInBuffer >= 4)
@@ -49,7 +49,7 @@ static inline int32_t filereader_readint32(filereader *thisptr)
 static inline uint8_t filereader_readbyte(filereader *thisptr)
 {
   uint8_t val;
-  int64_t bytesLeftInBuffer = (thisptr->ibytes_available - thisptr->ibuffer_offset);
+  uint32_t bytesLeftInBuffer = (thisptr->ibytes_available - thisptr->ibuffer_offset);
   
   // If enough bytes in buffer, take fast track
   if(bytesLeftInBuffer >= 1)
@@ -68,7 +68,7 @@ static inline uint8_t filereader_readbyte(filereader *thisptr)
 
 static inline float filereader_readfloat(filereader *thisptr) {
   float val;
-  int64_t bytesLeftInBuffer = (thisptr->ibytes_available - thisptr->ibuffer_offset);
+  uint32_t bytesLeftInBuffer = (thisptr->ibytes_available - thisptr->ibuffer_offset);
 
   // If enough bytes in buffer, take fast track
   if(bytesLeftInBuffer >= 4)

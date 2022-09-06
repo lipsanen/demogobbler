@@ -10,13 +10,12 @@ extern "C" {
 
 struct demogobbler_bitstream {
   void *data;
-  int64_t bitsize;
-  int64_t bitoffset;
-  bool overflow;
+  uint32_t bitsize;
+  uint32_t bitoffset;
   uint64_t buffered;
-  unsigned int buffered_bits;
   uint8_t* buffered_address;
-  uint64_t buffered_bytes_read;
+  uint32_t buffered_bytes_read;
+  bool overflow;
 };
 
 typedef struct demogobbler_bitstream bitstream;

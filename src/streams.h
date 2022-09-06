@@ -12,7 +12,7 @@ struct buffer_stream
 {
   void* buffer;
   size_t size;
-  int64_t offset;
+  uint32_t offset;
 };
 
 typedef struct buffer_stream buffer_stream;

@@ -30,8 +30,8 @@ void parser_init(parser *thisptr, demogobbler_settings *settings) {
   thisptr->state.client_state = settings->client_state;
   thisptr->m_settings = *settings;
 
-  const size_t INITIAL_SIZE = 1 << 15;
-  const size_t INITIAL_TEMP_SIZE = 1 << 20;
+  const size_t INITIAL_SIZE = 1 << 17;
+  const size_t INITIAL_TEMP_SIZE = 1 << 17;
   // Does lazy allocation, only allocates stuff if requested
   thisptr->memory_arena = demogobbler_arena_create(INITIAL_SIZE); 
   thisptr->temp_arena = demogobbler_arena_create(INITIAL_TEMP_SIZE);
@@ -40,7 +40,7 @@ void parser_init(parser *thisptr, demogobbler_settings *settings) {
 void parser_parse(parser *thisptr, void *stream, input_interface input) {
   if (stream) {
     enum { FILE_BUFFER_SIZE = 1 << 15 };
-    uint64_t buffer[FILE_BUFFER_SIZE / sizeof(uint64_t)];
+    uint8_t buffer[FILE_BUFFER_SIZE / sizeof(uint8_t)];
     filereader_init(thisreader, buffer, sizeof(buffer), stream, input);
     _parse_header(thisptr);
     _parser_mainloop(thisptr);

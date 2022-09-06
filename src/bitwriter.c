@@ -3,7 +3,7 @@
 #include "utils.h"
 #include <string.h>
 
-void demogobbler_bitwriter_init(bitwriter *thisptr, size_t initial_size_bits) {
+void demogobbler_bitwriter_init(bitwriter *thisptr, uint32_t initial_size_bits) {
   memset(thisptr, 0, sizeof(*thisptr));
   initial_size_bits += initial_size_bits & 0x7;
   thisptr->ptr = malloc(initial_size_bits / 8 + 1);
@@ -95,7 +95,9 @@ void __attribute__((no_sanitize("address"))) demogobbler_bitwriter_write_bit(bit
 void __attribute__((no_sanitize("address"))) demogobbler_bitwriter_write_bits(bitwriter *thisptr, const void *_src, unsigned int bits) {
   CHECK_SIZE();
   unsigned int src_offset = 0;
+#ifdef GROUND_TRUTH_CHECK
   unsigned int requested_bits = bits;
+#endif
   while (bits > 0) {
     int dest_byte_offset = thisptr->bitoffset & 0x7;
     int src_byte_offset = src_offset & 0x7;

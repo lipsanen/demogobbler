@@ -276,7 +276,7 @@ static void print_vec2(demogobbler_sendprop *prop, prop_value_inner value) {
   printf(")");
 }
 
-static void print_string(prop_value_inner value) { printf("%s", value.str_val); }
+static void print_string(prop_value_inner value) { printf("%s", value.str_val->str); }
 
 static void print_array(demogobbler_sendprop *prop, prop_value_inner value) {
   printf("ARRAY: [");

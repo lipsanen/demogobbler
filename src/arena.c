@@ -4,7 +4,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-arena demogobbler_arena_create(uint32_t first_block_size) {
+// Turn this macro on for more readable profiler output
+#define FUN_ATTRIBUTE //__attribute__((noinline))
+
+arena FUN_ATTRIBUTE demogobbler_arena_create(uint32_t first_block_size) {
   arena out;
   memset(&out, 0, sizeof(arena));
   out.first_block_size = first_block_size;
@@ -12,25 +15,19 @@ arena demogobbler_arena_create(uint32_t first_block_size) {
   return out;
 }
 
-
-void demogobbler_arena_clear(arena* a) {
+void FUN_ATTRIBUTE demogobbler_arena_clear(arena* a) {
   for(size_t i=0; i < a->block_count; ++i) {
     a->blocks[i].bytes_used = 0;
   }
   a->current_block = 0;
 }
 
-static size_t block_bytes_left(struct demogobbler_arena_block* block, uint32_t size, uint32_t alignment) {
-  if(block == NULL) {
-    return 0;
-  }
-  else {
-    size_t inc = alignment_loss(block->bytes_used, alignment);
-    return block->total_bytes - (block->bytes_used + inc);
-  }
+static size_t FUN_ATTRIBUTE block_bytes_left(struct demogobbler_arena_block block, uint32_t size, uint32_t alignment) {
+  size_t inc = alignment_loss(block.bytes_used, alignment);
+  return block.total_bytes - (block.bytes_used + inc);
 }
 
-static struct demogobbler_arena_block* get_last_block(arena* a) {
+static struct demogobbler_arena_block* FUN_ATTRIBUTE get_last_block(arena* a) {
   if(a->block_count == 0) {
     return NULL;
   }
@@ -39,14 +36,14 @@ static struct demogobbler_arena_block* get_last_block(arena* a) {
   }
 }
 
-static void allocate_new_block(arena* a, uint32_t requested_size) {
+static void FUN_ATTRIBUTE allocate_new_block(arena* a, uint32_t requested_size) {
   size_t allocated_size;
   if(a->block_count == 0) {
     allocated_size = a->first_block_size;
   }
   else {
     struct demogobbler_arena_block* ptr = get_last_block(a);
-    allocated_size = ptr->total_bytes * 2; // Double the size for the next block
+    allocated_size = ptr->total_bytes; // Double the size for the next block
   }
 
   allocated_size = MAX(1, allocated_size); // Allocate at least 1 byte
@@ -70,42 +67,30 @@ static void allocate_new_block(arena* a, uint32_t requested_size) {
   ptr->total_bytes = allocated_size;
 }
 
-static struct demogobbler_arena_block* find_block_with_memory(arena* a, uint32_t requested_size, uint32_t alignment) {
-  struct demogobbler_arena_block* ptr;
-
+static struct demogobbler_arena_block* FUN_ATTRIBUTE find_block_with_memory(arena* a, uint32_t requested_size, uint32_t alignment) {
   if(a->block_count == 0) {
     allocate_new_block(a, requested_size);
   }
 
-  ptr = &a->blocks[a->current_block];
-
-  while(block_bytes_left(ptr, requested_size, alignment) < requested_size) {
+  while(block_bytes_left(a->blocks[a->current_block], requested_size, alignment) < requested_size) {
     ++a->current_block;
     if(a->current_block >= a->block_count) {
       allocate_new_block(a, requested_size);
-      return &a->blocks[a->current_block];
+      break;
     }
-    ptr = &a->blocks[a->current_block];
   }
 
-  return ptr;
+  return &a->blocks[a->current_block];
 }
 
-static void* allocate(struct demogobbler_arena_block* block, uint32_t size, uint32_t alignment) {
+static void* FUN_ATTRIBUTE allocate(struct demogobbler_arena_block* block, uint32_t size, uint32_t alignment) {
   size_t increment = alignment_loss(block->bytes_used, alignment);
-  size_t allocation_size = size + increment; // size_t here in case overflow
-
-  if(block->data == NULL || allocation_size > block->total_bytes - block->bytes_used) { 
-    return NULL;
-  }
-  else {
-    void* out = (uint8_t*)block->data + block->bytes_used + increment;
-    block->bytes_used += size + increment;
-    return out;
-  }
+  void* out = (uint8_t*)block->data + block->bytes_used + increment;
+  block->bytes_used += size + increment;
+  return out;
 }
 
-void* demogobbler_arena_allocate(arena* a, uint32_t size, uint32_t alignment) {
+void* FUN_ATTRIBUTE demogobbler_arena_allocate(arena* a, uint32_t size, uint32_t alignment) {
   if(size == 0) {
     return NULL;
   }
@@ -114,7 +99,7 @@ void* demogobbler_arena_allocate(arena* a, uint32_t size, uint32_t alignment) {
   return allocate(ptr, size, alignment);
 }
 
-void demogobbler_arena_free(arena* a) {
+void FUN_ATTRIBUTE demogobbler_arena_free(arena* a) {
   for(size_t i=0; i < a->block_count; ++i) {
     free(a->blocks[i].data);
   }

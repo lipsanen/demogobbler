@@ -6,8 +6,11 @@
 #include <stdio.h>
 #include <string.h>
 
+// Turn this macro on for more readable profiler output
+#define FUN_ATTRIBUTE //__attribute__((noinline))
+
 // This rounds up
-static inline uint64_t get_size_in_bytes(uint64_t bits) {
+static inline uint32_t FUN_ATTRIBUTE get_size_in_bytes(uint32_t bits) {
   if (bits & 0x7) {
     return bits / 8 + 1;
   } else {
@@ -15,9 +18,9 @@ static inline uint64_t get_size_in_bytes(uint64_t bits) {
   }
 }
 
-static inline unsigned int buffered_bits(bitstream *thisptr) {
+static inline unsigned int FUN_ATTRIBUTE buffered_bits(bitstream *thisptr) {
   uint8_t *cur_address = (uint8_t *)thisptr->data + thisptr->bitoffset / 8;
-  uint64_t difference = (cur_address - thisptr->buffered_address);
+  uint32_t difference = (cur_address - thisptr->buffered_address);
 
   if (cur_address < thisptr->buffered_address || difference >= 8) {
     return 0;
@@ -26,36 +29,33 @@ static inline unsigned int buffered_bits(bitstream *thisptr) {
   }
 }
 
-static inline void __attribute__((no_sanitize("address"))) fetch_ubit(bitstream *thisptr) {
-  if (thisptr->bitoffset >= thisptr->bitsize) {
+static inline void __attribute__((no_sanitize("address"))) FUN_ATTRIBUTE fetch_ubit(bitstream *thisptr) {
+  if (thisptr->bitoffset >= thisptr->bitsize || thisptr->overflow) {
     thisptr->buffered = 0;
-    thisptr->buffered_bits = 64;
     thisptr->buffered_address = NULL;
     return;
   }
 
   uint64_t val = 0;
-  thisptr->buffered_address = (uint8_t *)thisptr->data + thisptr->bitoffset / 8;
-  uint64_t end_byte = get_size_in_bytes(thisptr->bitsize);
-  thisptr->buffered_bytes_read = end_byte - thisptr->bitoffset / 8;
+  thisptr->buffered_address = (uint8_t *)thisptr->data + (thisptr->bitoffset >> 3);
+  uint32_t end_byte = get_size_in_bytes(thisptr->bitsize);
+  thisptr->buffered_bytes_read = end_byte - (thisptr->bitoffset >> 3);
   thisptr->buffered_bytes_read = MIN(thisptr->buffered_bytes_read, 8);
 
-  for (int i = 0; i < thisptr->buffered_bytes_read; ++i) {
+  for (size_t i = 0; i < thisptr->buffered_bytes_read; ++i) {
     val |= ((uint64_t)thisptr->buffered_address[i]) << (8 * i);
   }
 
   thisptr->buffered = val;
-  thisptr->buffered_bits = thisptr->buffered_bytes_read * 8;
 
-  int64_t byte_offset = thisptr->bitoffset & 0x7;
+  uint32_t byte_offset = thisptr->bitoffset & 0x7;
 
   if (byte_offset != 0) {
     thisptr->buffered >>= byte_offset;
-    thisptr->buffered_bits -= byte_offset;
   }
 }
 
-BITSTREAM_PREAMBLE bitstream demogobbler_bitstream_create(void *data, size_t size) {
+BITSTREAM_PREAMBLE bitstream FUN_ATTRIBUTE demogobbler_bitstream_create(void *data, size_t size) {
   bitstream stream;
   memset(&stream, 0, sizeof(bitstream));
   stream.data = data;
@@ -65,25 +65,17 @@ BITSTREAM_PREAMBLE bitstream demogobbler_bitstream_create(void *data, size_t siz
   return stream;
 }
 
-BITSTREAM_PREAMBLE void demogobbler_bitstream_advance(bitstream *thisptr, unsigned int bits) {
-  int64_t diff = thisptr->bitsize - thisptr->bitoffset;
+BITSTREAM_PREAMBLE void FUN_ATTRIBUTE demogobbler_bitstream_advance(bitstream *thisptr, unsigned int bits) {
+  thisptr->bitoffset += bits;
+  thisptr->buffered >>= bits;
 
-  if (bits > diff) {
+  if (thisptr->bitoffset > thisptr->bitsize) {
     thisptr->bitoffset = thisptr->bitsize;
     thisptr->overflow = true;
-  } else {
-    thisptr->bitoffset = bits + thisptr->bitoffset;
-    if (bits > thisptr->buffered_bits) {
-      thisptr->buffered = 0;
-      thisptr->buffered_bits = 0;
-    } else {
-      thisptr->buffered_bits -= bits;
-      thisptr->buffered >>= bits;
-    }
   }
 }
 
-BITSTREAM_PREAMBLE bitstream demogobbler_bitstream_fork_and_advance(bitstream *stream, unsigned int bits) {
+BITSTREAM_PREAMBLE bitstream FUN_ATTRIBUTE demogobbler_bitstream_fork_and_advance(bitstream *stream, unsigned int bits) {
   bitstream output;
 
   memset(&output, 0, sizeof(output));
@@ -96,8 +88,7 @@ BITSTREAM_PREAMBLE bitstream demogobbler_bitstream_fork_and_advance(bitstream *s
   return output;
 }
 
-static inline uint64_t __attribute__((no_sanitize("address")))
-read_ubit(bitstream *thisptr, unsigned requested_bits) {
+static inline uint64_t FUN_ATTRIBUTE read_ubit_slow(bitstream *thisptr, unsigned requested_bits) {
   if (thisptr->overflow) {
     return 0;
   }
@@ -139,7 +130,31 @@ read_ubit(bitstream *thisptr, unsigned requested_bits) {
   return rval;
 }
 
-BITSTREAM_PREAMBLE void demogobbler_bitstream_read_fixed_string(bitstream *thisptr, void *_dest, size_t bytes) {
+static inline uint64_t FUN_ATTRIBUTE __attribute__((no_sanitize("address")))
+read_ubit(bitstream *thisptr, unsigned requested_bits) {
+  if(requested_bits > 56 || thisptr->overflow) {
+    return read_ubit_slow(thisptr, requested_bits);
+  }
+
+  if (buffered_bits(thisptr) < requested_bits) {
+    fetch_ubit(thisptr);
+  }
+
+  uint64_t rval = thisptr->buffered << (64 - requested_bits);
+  rval >>= (64 - requested_bits);
+
+  thisptr->bitoffset += requested_bits;
+  thisptr->buffered >>= requested_bits;
+
+  if(thisptr->bitoffset <= thisptr->bitsize) {
+    return rval;
+  } else {
+    thisptr->overflow = true;
+    return 0;
+  }
+}
+
+BITSTREAM_PREAMBLE void FUN_ATTRIBUTE demogobbler_bitstream_read_fixed_string(bitstream *thisptr, void *_dest, size_t bytes) {
   uint8_t *dest = (uint8_t *)_dest;
 
   for (size_t i = 0; i < bytes; ++i) {
@@ -149,7 +164,7 @@ BITSTREAM_PREAMBLE void demogobbler_bitstream_read_fixed_string(bitstream *thisp
   }
 }
 
-BITSTREAM_PREAMBLE bool __attribute__((no_sanitize("address"))) demogobbler_bitstream_read_bit(bitstream *thisptr) {
+BITSTREAM_PREAMBLE bool FUN_ATTRIBUTE __attribute__((no_sanitize("address"))) demogobbler_bitstream_read_bit(bitstream *thisptr) {
   if (thisptr->overflow || thisptr->bitoffset >= thisptr->bitsize) {
     thisptr->overflow = true;
     return false;
@@ -157,24 +172,24 @@ BITSTREAM_PREAMBLE bool __attribute__((no_sanitize("address"))) demogobbler_bits
 
   uint8_t MASKS[] = {0x1, 0x2, 0x4, 0x8, 0x10, 0x20, 0x40, 0x80};
 
-  uint8_t *ptr = (uint8_t *)thisptr->data + thisptr->bitoffset / 8;
+  uint8_t *ptr = (uint8_t *)thisptr->data + (thisptr->bitoffset >> 3);
   int offset_alignment = thisptr->bitoffset & 0x7;
   bitstream_advance(thisptr, 1);
 
   return *ptr & MASKS[offset_alignment];
 }
 
-BITSTREAM_PREAMBLE uint64_t demogobbler_bitstream_read_uint(bitstream *thisptr, unsigned int bits) {
+BITSTREAM_PREAMBLE uint64_t FUN_ATTRIBUTE demogobbler_bitstream_read_uint(bitstream *thisptr, unsigned int bits) {
   return read_ubit(thisptr, bits);
 }
 
-BITSTREAM_PREAMBLE int64_t demogobbler_bitstream_read_sint(bitstream *thisptr, unsigned int bits) {
+BITSTREAM_PREAMBLE int64_t FUN_ATTRIBUTE demogobbler_bitstream_read_sint(bitstream *thisptr, unsigned int bits) {
   int64_t n_ret = demogobbler_bitstream_read_uint(thisptr, bits);
   // Sign magic
   return (n_ret << (64 - bits)) >> (64 - bits);
 }
 
-BITSTREAM_PREAMBLE float demogobbler_bitstream_read_float(bitstream *thisptr) {
+BITSTREAM_PREAMBLE float FUN_ATTRIBUTE demogobbler_bitstream_read_float(bitstream *thisptr) {
   union result {
     uint32_t uint;
     float res;
@@ -185,7 +200,7 @@ BITSTREAM_PREAMBLE float demogobbler_bitstream_read_float(bitstream *thisptr) {
   return out.res;
 }
 
-BITSTREAM_PREAMBLE size_t demogobbler_bitstream_read_cstring(bitstream *thisptr, char *dest, size_t max_bytes) {
+BITSTREAM_PREAMBLE size_t FUN_ATTRIBUTE demogobbler_bitstream_read_cstring(bitstream *thisptr, char *dest, size_t max_bytes) {
   size_t i;
   bool overflow = true;
   for (i = 0; i < max_bytes; ++i) {
@@ -207,7 +222,7 @@ BITSTREAM_PREAMBLE size_t demogobbler_bitstream_read_cstring(bitstream *thisptr,
   return i;
 }
 
-BITSTREAM_PREAMBLE bitangle_vector demogobbler_bitstream_read_bitvector(bitstream *thisptr, unsigned int bits) {
+BITSTREAM_PREAMBLE bitangle_vector FUN_ATTRIBUTE demogobbler_bitstream_read_bitvector(bitstream *thisptr, unsigned int bits) {
   bitangle_vector out;
   out.x = bitstream_read_uint(thisptr, bits);
   out.y = bitstream_read_uint(thisptr, bits);
@@ -216,7 +231,7 @@ BITSTREAM_PREAMBLE bitangle_vector demogobbler_bitstream_read_bitvector(bitstrea
   return out;
 }
 
-BITSTREAM_PREAMBLE bitcoord_vector demogobbler_bitstream_read_coordvector(bitstream *thisptr) {
+BITSTREAM_PREAMBLE bitcoord_vector FUN_ATTRIBUTE demogobbler_bitstream_read_coordvector(bitstream *thisptr) {
   bitcoord_vector out;
   memset(&out, 0, sizeof(out));
   out.x.exists = bitstream_read_uint(thisptr, 1);
@@ -232,7 +247,47 @@ BITSTREAM_PREAMBLE bitcoord_vector demogobbler_bitstream_read_coordvector(bitstr
   return out;
 }
 
-BITSTREAM_PREAMBLE bitcoord demogobbler_bitstream_read_bitcoord(bitstream *thisptr) {
+BITSTREAM_PREAMBLE bitcoord FUN_ATTRIBUTE demogobbler_bitstream_read_bitcoord(bitstream *thisptr) {
+#if 1
+  bitcoord out;
+  memset(&out, 0, sizeof(out));
+  out.exists = true;
+
+  const uint32_t bits = COORD_INTEGER_BITS + COORD_FRACTIONAL_BITS + 3;
+  unsigned int bits_left = buffered_bits(thisptr);
+  if(bits > bits_left) {
+    fetch_ubit(thisptr);
+  }
+
+  uint64_t val = thisptr->buffered;
+  unsigned bits_used = 2;
+
+  out.has_int = (val & 0x1) != 0;
+  out.has_frac = (val & 0x2) != 0;
+
+  if (out.has_int || out.has_frac) {
+    out.sign = (val & 0x4) != 0;
+    val >>= 3;
+    bits_used = 3;
+
+    if(out.has_int) {
+      const unsigned mask = ((1 << COORD_INTEGER_BITS) - 1);
+      out.int_value = val & mask;
+      val >>= COORD_INTEGER_BITS;
+      bits_used += COORD_INTEGER_BITS;
+    }
+    if(out.has_frac) {
+      const unsigned mask = ((1 << COORD_FRACTIONAL_BITS) - 1);
+      out.frac_value = val & mask;
+      bits_used += COORD_FRACTIONAL_BITS;
+    }
+  }
+
+  bitstream_advance(thisptr, bits_used);
+
+  return out;
+#else
+  // Old slow code
   bitcoord out;
   memset(&out, 0, sizeof(out));
   out.exists = true;
@@ -248,13 +303,14 @@ BITSTREAM_PREAMBLE bitcoord demogobbler_bitstream_read_bitcoord(bitstream *thisp
   }
 
   return out;
+#endif
 }
 
-BITSTREAM_PREAMBLE uint32_t demogobbler_bitstream_read_uint32(bitstream *thisptr) {
+BITSTREAM_PREAMBLE uint32_t FUN_ATTRIBUTE demogobbler_bitstream_read_uint32(bitstream *thisptr) {
   return demogobbler_bitstream_read_uint(thisptr, 32);
 }
 
-BITSTREAM_PREAMBLE uint32_t demogobbler_bitstream_read_varuint32(bitstream *thisptr) {
+BITSTREAM_PREAMBLE uint32_t FUN_ATTRIBUTE demogobbler_bitstream_read_varuint32(bitstream *thisptr) {
   uint32_t result = 0;
   for (int i = 0; i < 5; i++) {
     uint32_t b = demogobbler_bitstream_read_uint(thisptr, 8);
@@ -265,11 +321,11 @@ BITSTREAM_PREAMBLE uint32_t demogobbler_bitstream_read_varuint32(bitstream *this
   return result;
 }
 
-BITSTREAM_PREAMBLE int32_t demogobbler_bitstream_read_sint32(bitstream *thisptr) {
+BITSTREAM_PREAMBLE int32_t FUN_ATTRIBUTE demogobbler_bitstream_read_sint32(bitstream *thisptr) {
   return demogobbler_bitstream_read_sint(thisptr, 32);
 }
 
-BITSTREAM_PREAMBLE uint32_t demogobbler_bitstream_read_ubitint(bitstream *thisptr) {
+BITSTREAM_PREAMBLE uint32_t FUN_ATTRIBUTE demogobbler_bitstream_read_ubitint(bitstream *thisptr) {
   uint32_t ret = bitstream_read_uint(thisptr, 4);
   uint32_t num = bitstream_read_uint(thisptr, 2);
   uint32_t add = 0;
@@ -291,7 +347,35 @@ BITSTREAM_PREAMBLE uint32_t demogobbler_bitstream_read_ubitint(bitstream *thispt
   return ret | (add << 4);
 }
 
-BITSTREAM_PREAMBLE uint32_t demogobbler_bitstream_read_ubitvar(bitstream* thisptr) {
+BITSTREAM_PREAMBLE uint32_t FUN_ATTRIBUTE demogobbler_bitstream_read_ubitvar(bitstream* thisptr) {
+#if 1
+  if(thisptr->overflow)
+    return 0;
+
+  if(buffered_bits(thisptr) < 34) {
+    fetch_ubit(thisptr);
+  }
+
+  const unsigned int masks[] = {
+    (1 << 4) - 1,
+    (1 << 8) - 1,
+    (1 << 12) - 1,
+    UINT32_MAX
+  };
+
+  const unsigned int bits_per_sel[] = {
+    6, 10, 14, 34
+  };
+
+  uint64_t val = thisptr->buffered;
+  uint32_t sel = val & 0x3;
+
+  uint32_t output = (val >> 2) & masks[sel];
+  bitstream_advance(thisptr, bits_per_sel[sel]);
+
+  return output;
+
+#else
   uint32_t sel = bitstream_read_uint(thisptr, 2);
 
   switch(sel) {
@@ -304,9 +388,10 @@ BITSTREAM_PREAMBLE uint32_t demogobbler_bitstream_read_ubitvar(bitstream* thispt
     default:
       return bitstream_read_uint(thisptr, 32);
   }
+#endif
 }
 
-BITSTREAM_PREAMBLE demogobbler_bitcellcoord demogobbler_bitstream_read_bitcellcoord(bitstream *thisptr, bool is_int,
+BITSTREAM_PREAMBLE demogobbler_bitcellcoord FUN_ATTRIBUTE demogobbler_bitstream_read_bitcellcoord(bitstream *thisptr, bool is_int,
                                                                 bool lp, unsigned bits) {
   demogobbler_bitcellcoord output;
   memset(&output, 0, sizeof(output));
@@ -323,7 +408,7 @@ BITSTREAM_PREAMBLE demogobbler_bitcellcoord demogobbler_bitstream_read_bitcellco
   return output;
 }
 
-BITSTREAM_PREAMBLE demogobbler_bitcoordmp demogobbler_bitstream_read_bitcoordmp(bitstream *thisptr, bool is_int,
+BITSTREAM_PREAMBLE demogobbler_bitcoordmp FUN_ATTRIBUTE demogobbler_bitstream_read_bitcoordmp(bitstream *thisptr, bool is_int,
                                                              bool lp) {
   demogobbler_bitcoordmp output;
   memset(&output, 0, sizeof(output));
@@ -361,7 +446,7 @@ BITSTREAM_PREAMBLE demogobbler_bitcoordmp demogobbler_bitstream_read_bitcoordmp(
   return output;
 }
 
-BITSTREAM_PREAMBLE demogobbler_bitnormal demogobbler_bitstream_read_bitnormal(bitstream *thisptr) {
+BITSTREAM_PREAMBLE demogobbler_bitnormal FUN_ATTRIBUTE demogobbler_bitstream_read_bitnormal(bitstream *thisptr) {
   demogobbler_bitnormal output;
   memset(&output, 0, sizeof(output));
   const size_t frac_bits = 11;
@@ -371,7 +456,7 @@ BITSTREAM_PREAMBLE demogobbler_bitnormal demogobbler_bitstream_read_bitnormal(bi
   return output;
 }
 
-BITSTREAM_PREAMBLE int32_t demogobbler_bitstream_read_field_index(bitstream *thisptr, int32_t last_index, bool new_way) {
+BITSTREAM_PREAMBLE int32_t FUN_ATTRIBUTE demogobbler_bitstream_read_field_index(bitstream *thisptr, int32_t last_index, bool new_way) {
   if(new_way && bitstream_read_bit(thisptr))
     return last_index + 1;
   

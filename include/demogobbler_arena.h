@@ -19,9 +19,9 @@ struct demogobbler_arena_block {
 // The arena lazily allocates memory
 typedef struct {
   struct demogobbler_arena_block* blocks;
-  size_t block_count;
-  size_t first_block_size;
-  size_t current_block;
+  uint32_t block_count;
+  uint32_t first_block_size;
+  uint32_t current_block;
 } arena;
 
 

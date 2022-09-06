@@ -18,7 +18,7 @@ void filereader_readchunk(filereader *thisptr) {
   thisptr->ufile_offset += rval;
 }
 
-int64_t filereader_bytesleftinbuffer(filereader *thisptr) {
+uint32_t filereader_bytesleftinbuffer(filereader *thisptr) {
   if (thisptr->ibytes_available < thisptr->ibuffer_offset) {
     return 0;
   } else {
@@ -34,14 +34,14 @@ void filereader_init(filereader *thisptr, void* buffer, size_t buffer_size, void
   thisptr->input_funcs = funcs;
 }
 
-size_t filereader_readdata(filereader *thisptr, void *buffer, int bytes) {
+uint32_t filereader_readdata(filereader *thisptr, void *buffer, int bytes) {
   char *dest = buffer;
   int bytesLeftToRead = bytes;
   size_t totalBytesRead = 0;
 
   do {
     char *src = (char *)thisptr->buffer + thisptr->ibuffer_offset;
-    int64_t bytesLeftInBuffer = (thisptr->ibytes_available - thisptr->ibuffer_offset);
+    uint32_t bytesLeftInBuffer = (thisptr->ibytes_available - thisptr->ibuffer_offset);
     int bytesRead = MIN(bytesLeftToRead, bytesLeftInBuffer);
 
     if (bytesRead > 0) {
@@ -67,7 +67,7 @@ void filereader_skipbytes(filereader *thisptr, int bytes) {
     return;
   }
 
-  int64_t bytesLeftInBuffer = (thisptr->ibytes_available - thisptr->ibuffer_offset);
+  uint64_t bytesLeftInBuffer = (thisptr->ibytes_available - thisptr->ibuffer_offset);
 
   if (bytes < bytesLeftInBuffer) {
     thisptr->ibuffer_offset += bytes;
@@ -84,7 +84,7 @@ void filereader_skipto(filereader *thisptr, uint64_t offset) {
   filereader_skipbytes(thisptr, offset - curOffset);
 }
 
-int64_t filereader_current_position(filereader *thisptr) {
-  int64_t bytesLeftInBuffer = (thisptr->ibytes_available - thisptr->ibuffer_offset);
+uint32_t filereader_current_position(filereader *thisptr) {
+  uint32_t bytesLeftInBuffer = (thisptr->ibytes_available - thisptr->ibuffer_offset);
   return thisptr->ufile_offset - bytesLeftInBuffer;
 }

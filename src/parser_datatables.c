@@ -343,7 +343,7 @@ void parse_datatables(parser *thisptr, demogobbler_datatables *input) {
   arena *memory_arena;
 
   if (thisptr->m_settings.store_ents) {
-    memory_arena = &thisptr->memory_arena;
+    memory_arena = &thisptr->permanent_arena;
   } else {
     memory_arena = &thisptr->temp_arena;
   }

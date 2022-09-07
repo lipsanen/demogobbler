@@ -267,7 +267,7 @@ static void parse_serverclass(parser *thisptr, size_t i) {
   CHECK_ERR();
 
   entstate_ptr->class_datas[i].props = demogobbler_arena_allocate(
-      &thisptr->memory_arena, sizeof(demogobbler_sendprop) * data.max_props,
+      &thisptr->permanent_arena, sizeof(demogobbler_sendprop) * data.max_props,
       alignof(demogobbler_sendprop));
   entstate_ptr->class_datas[i].prop_count = 0;
   entstate_ptr->class_datas[i].dt_name = (entstate_ptr->sendtables + data.dt_index)->name;
@@ -282,7 +282,7 @@ end:;
 void demogobbler_parser_init_estate(parser *thisptr) {
   estate *entstate_ptr = &thisptr->state.entity_state;
   if(entstate_ptr->edicts == NULL) {
-    entstate_ptr->edicts = demogobbler_arena_allocate(&thisptr->memory_arena,
+    entstate_ptr->edicts = demogobbler_arena_allocate(&thisptr->permanent_arena,
                                                       sizeof(edict) * MAX_EDICTS, alignof(edict));
   }
   memset(entstate_ptr->edicts, 0, sizeof(edict) * MAX_EDICTS);
@@ -298,7 +298,7 @@ void demogobbler_parser_init_estate(parser *thisptr) {
   }
   size_t array_size = sizeof(serverclass_data) * entstate_ptr->serverclass_count;
   entstate_ptr->class_datas =
-      demogobbler_arena_allocate(&thisptr->memory_arena, array_size, alignof(serverclass_data));
+      demogobbler_arena_allocate(&thisptr->permanent_arena, array_size, alignof(serverclass_data));
   memset(entstate_ptr->class_datas, 0, array_size);
 
   if (thisptr->m_settings.flattened_props_handler) {

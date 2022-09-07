@@ -33,7 +33,7 @@ void parser_init(parser *thisptr, demogobbler_settings *settings) {
   const size_t INITIAL_SIZE = 1 << 17;
   const size_t INITIAL_TEMP_SIZE = 1 << 17;
   // Does lazy allocation, only allocates stuff if requested
-  thisptr->memory_arena = demogobbler_arena_create(INITIAL_SIZE); 
+  thisptr->permanent_arena = demogobbler_arena_create(INITIAL_SIZE); 
   thisptr->temp_arena = demogobbler_arena_create(INITIAL_TEMP_SIZE);
 }
 
@@ -145,7 +145,7 @@ bool _parse_anymessage(parser *thisptr) {
 }
 
 static void parser_free_state(parser* thisptr) {
-  demogobbler_arena_free(&thisptr->memory_arena);
+  demogobbler_arena_free(&thisptr->permanent_arena);
   demogobbler_arena_free(&thisptr->temp_arena);
   demogobbler_hashtable_free(&thisptr->state.entity_state.dt_hashtable);
   demogobbler_hashtable_free(&thisptr->state.entity_state.dts_with_excludes);
@@ -337,7 +337,7 @@ void _parse_stop(parser *thisptr) {
 
     do {
       size_t new_reserve_size = bytes_reserved + bytes_per_read;
-      ptr = demogobbler_arena_reallocate(&thisptr->memory_arena, ptr, bytes_reserved, new_reserve_size, 1);
+      ptr = demogobbler_arena_reallocate(&thisptr->temp_arena, ptr, bytes_reserved, new_reserve_size, 1);
       bytes_reserved = new_reserve_size;
 
       bytesReadIt =

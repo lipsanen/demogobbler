@@ -106,14 +106,16 @@ static void write_net_stringcmd(bitwriter *writer, demo_version_data *version,
 static void handle_net_setconvar(parser *thisptr, bitstream *stream, packet_net_message *message,
                                  blk* scrap) {
   // Reserve space on stack for maximum amount of convars
-  struct demogobbler_net_setconvar_convar convars[256];
   struct demogobbler_net_setconvar *ptr = &message->message_net_setconvar;
-  ptr->convars = convars;
   ptr->count = bitstream_read_uint(stream, 8);
+  ptr->convars = demogobbler_arena_allocate(
+      &thisptr->temp_arena, sizeof(struct demogobbler_net_setconvar_convar) * ptr->count,
+      alignof(struct demogobbler_net_setconvar_convar));
   for (size_t i = 0; i < message->message_net_setconvar.count; ++i) {
-    COPY_STRING(convars[i].name);
-    COPY_STRING(convars[i].value);
+    COPY_STRING(ptr->convars[i].name);
+    COPY_STRING(ptr->convars[i].value);
   }
+
   SEND_MESSAGE();
 }
 
@@ -893,9 +895,11 @@ void demogobbler_bitwriter_write_netmessage(bitwriter *writer, demo_version_data
 #undef DECLARE_SWITCH_STATEMENT
 }
 
-static vector_array init_netmsg_array() {
+static vector_array init_netmsg_array(arena* a) {
+  const size_t initial_size = sizeof(packet_net_message) * 32;
+  void* ptr = demogobbler_arena_allocate(a, initial_size, alignof(packet_net_message));
   vector_array arr = demogobbler_va_create_(
-      NULL, 0, sizeof(packet_net_message), alignof(packet_net_message));
+      ptr, initial_size, sizeof(packet_net_message), alignof(packet_net_message));
 
   return arr;
 }
@@ -914,7 +918,7 @@ void parse_netmessages(parser *thisptr, demogobbler_packet* packet) {
   scrap_blk.size = size;
   unsigned int bits = thisptr->demo_version.netmessage_type_bits;
 
-  vector_array packet_arr = init_netmsg_array(&thisptr->memory_arena);
+  vector_array packet_arr = init_netmsg_array(&thisptr->temp_arena);
 
   while (demogobbler_bitstream_bits_left(&stream) > bits && !thisptr->error && !stream.overflow) {
     if (scrap_blk.address == NULL) {

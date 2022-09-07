@@ -45,11 +45,11 @@ TEST(Arena, ReallocWorks) {
   EXPECT_NE(newptr, ptr);
 
   for(size_t i=0; i < 8; ++i) {
-    EXPECT_EQ(ptr[i], i);
+    EXPECT_EQ(newptr[i], i);
   }
 
   for(size_t i=8; i < 16; ++i) {
-    ptr[i] = i;
+    newptr[i] = i;
   }
 
   demogobbler_arena_free(&a);

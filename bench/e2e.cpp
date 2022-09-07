@@ -43,7 +43,7 @@ static void testdemos_packet_only(benchmark::State &state) {
   get_bytes(state);
 }
 
-static void packet_netmessage_handler(parser_state*, demogobbler_packet_net_message* message) {}
+static void packet_parsed_handler(parser_state*, packet_parsed* message) {}
 
 static void testdemos_parse_everything(benchmark::State &state) {
   demogobbler_settings settings;
@@ -58,7 +58,7 @@ static void testdemos_parse_everything(benchmark::State &state) {
   settings.stringtables_handler = stringtables_handler;
   settings.synctick_handler = synctick_handler;
   settings.usercmd_handler = usercmd_handler;
-  settings.packet_net_message_handler = packet_netmessage_handler;
+  settings.packet_parsed_handler = packet_parsed_handler;
   settings.store_ents = true;
   auto demos = get_test_demos();
 

@@ -39,12 +39,6 @@ static inline size_t alignment_loss(size_t bytes_allocated, size_t alignment) {
   }
 }
 
-#define dynamic_array_add demogobbler_dynamic_array_add
-#define dynamic_array_free demogobbler_dynamic_array_free
-#define dynamic_array_init demogobbler_dynamic_array_init
-#define dynamic_array_get demogobbler_dynamic_array_get
-#define dynamic_array_offset demogobbler_dynamic_array_offset
-
 unsigned demogobbler_bits_required(unsigned i);
 unsigned int highest_bit_index(unsigned int number);
 int Q_log2(int val);

@@ -51,11 +51,12 @@ typedef struct demogobbler_cmdinfo demogobbler_cmdinfo;
 
 // Optimization, read the cmdinfo bit as a uin32_t array instead of picking the individual words out
 // Should be fine I think, but I'll check that the size and alignment match here just in case
+// Assumes little endian I suppose but probably so does many other parts of this codebase
 static_assert(sizeof(struct demogobbler_cmdinfo_raw) == sizeof(demogobbler_cmdinfo), "Bad length in cmdinfo_raw");
 static_assert(alignof(struct demogobbler_cmdinfo_raw) == 4, "Bad alignment in cmdinfo_raw");
 static_assert(alignof(struct demogobbler_cmdinfo_raw) == alignof(demogobbler_cmdinfo), "Bad alignment in cmdinfo_raw");
 
-typedef struct {
+struct demogobbler_packet {
   demogobbler_message_preamble preamble;
   union {
     struct demogobbler_cmdinfo_raw cmdinfo_raw[4];
@@ -66,7 +67,9 @@ typedef struct {
   int32_t out_sequence;
   int32_t size_bytes;
   void *data;
-} demogobbler_packet;
+};
+
+typedef struct demogobbler_packet demogobbler_packet;
 
 struct demogobbler_consolecmd {
   demogobbler_message_preamble preamble;

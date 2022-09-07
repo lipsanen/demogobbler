@@ -114,33 +114,34 @@ void handle_usercmd(parser_state *_state, demogobbler_usercmd *message) {
   CHECK_ERROR();
 }
 
-void netmessage_handler(parser_state *_state, packet_net_message *message) {
+static void packet_parsed_handler(parser_state *_state, packet_parsed* parsed) {
   writer_state *state = (writer_state *)_state->client_state;
 
-  if(message->mtype == svc_serverinfo) {
-    auto* ptr = &message->message_svc_serverinfo;
-    ptr->network_protocol = state->demo_writer.version.network_protocol;
-  }
-
-  demogobbler_bitwriter_write_netmessage(&state->message_bitwriter, &state->demo_writer.version,
-                                         message);
-  CHECK_ERROR();
-
-  if (message->last_message) {
-    unsigned int message_type_bits = state->demo_writer.version.netmessage_type_bits;
-    unsigned int bits_remaining_in_last_byte = 8 - (state->message_bitwriter.bitoffset & 0x7);
-
-    // Add a noop to the end if we have enough space
-    if (bits_remaining_in_last_byte >= message_type_bits) {
-      packet_net_message noop;
-      noop.mtype = net_nop;
-      demogobbler_bitwriter_write_netmessage(&state->message_bitwriter, &state->demo_writer.version,
-                                             &noop);
+  for(size_t i=0; i < parsed->message_count; ++i) {
+    packet_net_message* message = &parsed->messages[i];
+    if(message->mtype == svc_serverinfo) {
+      auto* ptr = &message->message_svc_serverinfo;
+      ptr->network_protocol = state->demo_writer.version.network_protocol;
     }
-  
-    state->write_packet();
+
+    demogobbler_bitwriter_write_netmessage(&state->message_bitwriter, &state->demo_writer.version,
+                                          message);
     CHECK_ERROR();
   }
+
+  unsigned int message_type_bits = state->demo_writer.version.netmessage_type_bits;
+  unsigned int bits_remaining_in_last_byte = 8 - (state->message_bitwriter.bitoffset & 0x7);
+
+  // Add a noop to the end if we have enough space
+  if (bits_remaining_in_last_byte >= message_type_bits) {
+    packet_net_message noop;
+    noop.mtype = net_nop;
+    demogobbler_bitwriter_write_netmessage(&state->message_bitwriter, &state->demo_writer.version,
+                                          &noop);
+  }
+
+  state->write_packet();
+  CHECK_ERROR();
 
   if (state->message_bitwriter.error) {
     fprintf(stderr, "Got error, exiting program: %s\n", state->message_bitwriter.error_message);
@@ -167,7 +168,7 @@ int main(int argc, char **argv) {
   settings.stringtables_handler = handle_stringtables;
   settings.synctick_handler = handle_synctick;
   settings.usercmd_handler = handle_usercmd;
-  settings.packet_net_message_handler = netmessage_handler;
+  settings.packet_parsed_handler = packet_parsed_handler;
   settings.client_state = &writer;
 
   demogobbler_parse_file(&settings, argv[1]);

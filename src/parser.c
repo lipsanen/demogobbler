@@ -168,7 +168,7 @@ void _parser_mainloop(parser *thisptr) {
   if (settings->name##_handler)                                                                    \
     should_parse = true;
 
-  NULL_CHECK(packet_net_message);
+  NULL_CHECK(packet_parsed);
   NULL_CHECK(consolecmd);
   NULL_CHECK(customdata);
   NULL_CHECK(datatables);
@@ -185,7 +185,7 @@ void _parser_mainloop(parser *thisptr) {
     thisptr->parse_netmessages = true;
   }
 
-  if(settings->packet_net_message_handler) {
+  if(settings->packet_parsed_handler) {
     thisptr->parse_netmessages = true;
   }
 

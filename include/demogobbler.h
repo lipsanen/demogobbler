@@ -26,13 +26,12 @@ typedef void (*func_demogobbler_handle_demo_version)(parser_state *state,
                                                      demo_version_data version);
 typedef void (*func_demogobbler_handle_header)(parser_state *state, demogobbler_header *header);
 typedef void (*func_demogobbler_handle_packet)(parser_state *state, demogobbler_packet *ptr);
+typedef void (*func_demogobbler_handle_packet_parsed)(parser_state *state, packet_parsed *ptr);
 typedef void (*func_demogobbler_handle_synctick)(parser_state *state, demogobbler_synctick *ptr);
 typedef void (*func_demogobbler_handle_stop)(parser_state *state, demogobbler_stop *ptr);
 typedef void (*func_demogobbler_handle_stringtables)(parser_state *state,
                                                      demogobbler_stringtables *header);
 typedef void (*func_demogobbler_handle_usercmd)(parser_state *state, demogobbler_usercmd *ptr);
-typedef void (*func_demogobbler_handle_packet_net_message)(parser_state *state,
-                                                           packet_net_message *message);
 typedef void (*func_demogobbler_handle_datatables_parsed)(parser_state *state,
                                                            demogobbler_datatables_parsed *message);
 typedef void (*func_demogobbler_handle_packetentities_parsed)(parser_state *state,
@@ -49,11 +48,11 @@ struct demogobbler_settings {
   func_demogobbler_handle_entity_state_init flattened_props_handler; // Called after parsing prop flattening stuff
   func_demogobbler_handle_header header_handler;
   func_demogobbler_handle_packet packet_handler;
+  func_demogobbler_handle_packet_parsed packet_parsed_handler;
   func_demogobbler_handle_synctick synctick_handler;
   func_demogobbler_handle_stop stop_handler;
   func_demogobbler_handle_stringtables stringtables_handler;
   func_demogobbler_handle_usercmd usercmd_handler;
-  func_demogobbler_handle_packet_net_message packet_net_message_handler;
   bool store_ents;
   void *client_state;
 };

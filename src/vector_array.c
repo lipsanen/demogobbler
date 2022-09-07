@@ -1,6 +1,7 @@
 #include "vector_array.h"
 #include "utils.h"
 #include <stddef.h>
+#include <stdio.h>
 #include <string.h>
 
 static size_t find_smallest_power_of_two_that_is_bigger(size_t value) {
@@ -20,6 +21,7 @@ vector_array demogobbler_va_create_(void *ptr, uint32_t ptr_bytes, uint32_t byte
   ptr_bytes -= loss;
 
   if (ptr_bytes > 0) {
+    out.allocated_by_malloc = false;
     out.ptr = (uint8_t *)ptr + loss;
     out.ptr_bytes = ptr_bytes;
   }
@@ -28,7 +30,7 @@ vector_array demogobbler_va_create_(void *ptr, uint32_t ptr_bytes, uint32_t byte
   return out;
 }
 
-bool demogobbler_va_push_back(vector_array *thisptr, void *src) {
+void* demogobbler_va_push_back_empty(vector_array *thisptr) {
   uint32_t new_size = (thisptr->count_elements + 1) * thisptr->bytes_per_element;
   if (new_size > thisptr->ptr_bytes) {
     uint32_t new_allocation_size = find_smallest_power_of_two_that_is_bigger(new_size);
@@ -37,8 +39,9 @@ bool demogobbler_va_push_back(vector_array *thisptr, void *src) {
       void *new_array = malloc(new_allocation_size);
 
       if (!new_array) {
-        return false;
+        return NULL;
       }
+      thisptr->ptr_bytes = new_allocation_size;
       // Null pointer may be passed to create
       if (thisptr->ptr) {
         memcpy(new_array, thisptr->ptr,
@@ -49,13 +52,18 @@ bool demogobbler_va_push_back(vector_array *thisptr, void *src) {
     } else {
       void *new_array = realloc(thisptr->ptr, new_allocation_size);
       if (!new_array) {
-        return false;
+        return NULL;
       }
+      thisptr->ptr_bytes = new_allocation_size;
       thisptr->ptr = new_array;
     }
   }
   thisptr->count_elements = thisptr->count_elements + 1;
-  uint8_t *index_ptr = (uint8_t *)thisptr->ptr + (new_size - thisptr->bytes_per_element);
+  return demogobbler_va_indexptr(thisptr, thisptr->count_elements - 1);
+}
+
+bool demogobbler_va_push_back(vector_array *thisptr, void *src) {
+  void* index_ptr = demogobbler_va_push_back_empty(thisptr);
   memcpy(index_ptr, src, thisptr->bytes_per_element);
 
   return true;

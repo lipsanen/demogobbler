@@ -13,6 +13,7 @@ typedef struct {
 
 vector_array demogobbler_va_create_(void *ptr, uint32_t ptr_bytes, uint32_t bytes_per_element,
                                     uint32_t alignment);
+void* demogobbler_va_push_back_empty(vector_array *thisptr); // Add new element without copying
 bool demogobbler_va_push_back(vector_array *thisptr, void *src); // Add new element
 void demogobbler_va_clear(vector_array *thisptr);                // Clear but dont deallocate
 void demogobbler_va_free(vector_array *thisptr);                 // Frees the memory used

@@ -41,6 +41,8 @@ void print_netmessages(parser_state* a, packet_net_message* message)
 {
 }
 
+void print_parsed_packet(parser_state* a, packet_parsed* message) {}
+
 int main(int argc, char **argv) {
   if (argc <= 2) {
     printf("Usage: perftest <filepath> <iterations>\n");
@@ -61,7 +63,7 @@ int main(int argc, char **argv) {
     settings.stringtables_handler = print_stringtables;
     settings.synctick_handler = print_synctick;
     settings.usercmd_handler = print_usercmd;
-    settings.packet_net_message_handler = print_netmessages;
+    settings.packet_parsed_handler = print_parsed_packet;
     settings.store_ents = true;
 ;
     demogobbler_parse_file(&settings, argv[1]);

@@ -79,8 +79,6 @@ void print_usercmd(parser_state *a, demogobbler_usercmd *message) {
   PRINT_MESSAGE_PREAMBLE(usercmd);
 }
 
-void print_netmessage(parser_state *a, packet_net_message *message) {}
-
 static const char *message_type_name(demogobbler_sendproptype proptype) {
 
   switch (proptype) {
@@ -365,7 +363,6 @@ int main(int argc, char **argv) {
   settings.stringtables_handler = print_stringtables;
   settings.synctick_handler = print_synctick;
   settings.usercmd_handler = print_usercmd;
-  settings.packet_net_message_handler = print_netmessage;
   settings.packetentities_parsed_handler = print_packetentities_parsed;
   settings.client_state = &dump;
 

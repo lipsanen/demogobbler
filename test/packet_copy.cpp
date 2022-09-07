@@ -27,26 +27,6 @@ struct packet_copy_tester {
     current_data_size = 32768;
     current_data = malloc(current_data_size);
   }
-
-  void verify_last_packet_size() {
-    if(current_data && !this->error) {
-      int64_t bit_diff = this->packet_bits - this->writer.bitoffset;
-
-      // There might be a few padding bits missing from the end, but otherwise report size error
-      if (bit_diff < 0 || bit_diff > 6) {
-        EXPECT_EQ(1, 0) << "the packet had the wrong size " << this->packet_bits << " vs. "
-                        << this->writer.bitoffset;
-        error = true;
-      }
-      else {
-        for(int i=0; i < this->packet_bits / 8 - 1; ++i) {
-          uint8_t dest = *((uint8_t*)this->writer.ptr + i);
-          uint8_t src = *((uint8_t*)this->current_data + i);
-          EXPECT_EQ(dest, src) << "manual mem check failed, bug with bitstreams " << dest << " != " << src;
-        }
-      }
-    }
-  }
 };
 
 static void version_handler(parser_state* state, demo_version_data data) {
@@ -54,8 +34,9 @@ static void version_handler(parser_state* state, demo_version_data data) {
   tester->version = data;
 }
 
-static void packet_handler(parser_state* state, demogobbler_packet *packet) {
+static void packet_handler(parser_state* state, packet_parsed *packet_parsed) {
   packet_copy_tester *tester = (packet_copy_tester *)state->client_state;
+  demogobbler_packet* packet = packet_parsed->orig;
 
   if(packet->size_bytes > (int32_t)tester->current_data_size) {
     free(tester->current_data);
@@ -70,29 +51,33 @@ static void packet_handler(parser_state* state, demogobbler_packet *packet) {
   tester->writer.truth_size_bits = packet->size_bytes * 8;
 #endif
   tester->packet_bits = packet->size_bytes * 8;
-}
 
-static void netmessage_handler(parser_state* state, packet_net_message *message) {
-  //printf("handler %d\n", message->mtype);
-  packet_copy_tester *tester = (packet_copy_tester *)state->client_state;
-  if(!tester->error) {
+  for(size_t i=0; i < packet_parsed->message_count; ++i) {
+    packet_net_message *message = &packet_parsed->messages[i];
     demogobbler_bitwriter_write_netmessage(&tester->writer, &tester->version, message);
 
 #ifdef DEBUG
     EXPECT_EQ(tester->writer.bitoffset, message->offset) << "Error writing message of type " << message->mtype;
 #endif
-    
+
     if(tester->writer.error) {
       EXPECT_EQ(tester->writer.error, false) << tester->writer.error_message;
       tester->error = true;
-    }
-
-    tester->last_message = message->mtype;
-
-    if(message->last_message) {
-      tester->verify_last_packet_size();
+      state->error = true;
+      state->error_message = "Copy failed";
     }
   }
+
+  bitwriter_write_bitstream(&tester->writer, &packet_parsed->leftover_bits);
+
+  if(!tester->error) {
+    for(int32_t i=0; i < packet->size_bytes; ++i) {
+      uint8_t dest = *((uint8_t*)tester->writer.ptr + i);
+      uint8_t src = *((uint8_t*)packet->data + i);
+      EXPECT_EQ(dest, src) << "manual mem check failed, bug with bitstreams " << dest << " != " << src;
+    }
+  }
+
 }
 
 static void packet_write_test(const char *filepath) {
@@ -100,8 +85,7 @@ static void packet_write_test(const char *filepath) {
   demogobbler_settings settings;
   demogobbler_settings_init(&settings);
 
-  settings.packet_handler = packet_handler;
-  settings.packet_net_message_handler = netmessage_handler;
+  settings.packet_parsed_handler = packet_handler;
   settings.demo_version_handler = version_handler;
   settings.client_state = &tester;
 

@@ -347,7 +347,16 @@ struct demo_version_data {
 };
 
 typedef struct demo_version_data demo_version_data;
+struct demogobbler_packet;
 
+struct packet_parsed {
+  packet_net_message* messages;
+  uint32_t message_count;
+  bitstream leftover_bits;
+  struct demogobbler_packet* orig;
+};
+
+typedef struct packet_parsed packet_parsed;
 
 #ifdef __cplusplus
 }

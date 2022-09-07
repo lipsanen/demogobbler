@@ -201,7 +201,9 @@ static void write_svc_print(bitwriter *writer, demo_version_data *version,
 
 static void handle_svc_serverinfo(parser *thisptr, bitstream *stream, packet_net_message *message,
                                   blk* scrap) {
-  struct demogobbler_svc_serverinfo *ptr = &message->message_svc_serverinfo;
+  message->message_svc_serverinfo = demogobbler_arena_allocate(&thisptr->temp_arena, sizeof(struct demogobbler_svc_serverinfo),
+  alignof(struct demogobbler_svc_serverinfo));
+  struct demogobbler_svc_serverinfo* ptr = message->message_svc_serverinfo;
   ptr->network_protocol = bitstream_read_uint(stream, 16);
   ptr->server_count = bitstream_read_uint32(stream);
   ptr->is_hltv = bitstream_read_bit(stream);
@@ -251,7 +253,7 @@ static void handle_svc_serverinfo(parser *thisptr, bitstream *stream, packet_net
 
 static void write_svc_serverinfo(bitwriter *writer, demo_version_data *version,
                                  packet_net_message *message) {
-  struct demogobbler_svc_serverinfo *ptr = &message->message_svc_serverinfo;
+  struct demogobbler_svc_serverinfo *ptr = message->message_svc_serverinfo;
 
   bitwriter_write_uint(writer, ptr->network_protocol, 16);
   bitwriter_write_uint32(writer, ptr->server_count);
@@ -932,7 +934,6 @@ void parse_netmessages(parser *thisptr, demogobbler_packet* packet) {
     //fprintf(stderr, "%d : %d\n", type_index, type);
     packet_net_message* message = demogobbler_va_push_back_empty(&packet_arr);
     memset(message, 0, sizeof(packet_net_message));
-    message->_mtype = type_index;
     message->mtype = type;
 
 #define DECLARE_SWITCH_STATEMENT(message_type)                                                     \

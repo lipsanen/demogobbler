@@ -120,7 +120,7 @@ static void packet_parsed_handler(parser_state *_state, packet_parsed* parsed) {
   for(size_t i=0; i < parsed->message_count; ++i) {
     packet_net_message* message = &parsed->messages[i];
     if(message->mtype == svc_serverinfo) {
-      auto* ptr = &message->message_svc_serverinfo;
+      auto* ptr = message->message_svc_serverinfo;
       ptr->network_protocol = state->demo_writer.version.network_protocol;
     }
 

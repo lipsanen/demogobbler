@@ -64,7 +64,7 @@ struct demogobbler_net_disconnect {
 struct demogobbler_net_file {
   const char *filename; // Null terminated
   uint32_t transfer_id; // 32 bit
-  unsigned int file_requested; // 2 bits
+  uint32_t file_requested; // 2 bits
 };
 
 struct demogobbler_net_splitscreen_user {
@@ -92,12 +92,12 @@ struct demogobbler_net_setconvar {
 };
 
 struct demogobbler_net_signonstate {
-  uint8_t signon_state;
+  const char *NE_map_name;
   uint32_t spawn_count;
   uint32_t NE_num_server_players;
   uint32_t NE_map_name_length;
+  uint8_t signon_state;
   bitstream NE_player_network_ids; 
-  const char *NE_map_name;
 };
 
 struct demogobbler_svc_serverinfo {
@@ -152,21 +152,21 @@ struct demogobbler_svc_setpause {
 
 struct demogobbler_svc_create_stringtable {
   const char *name;
+  uint32_t data_length;
+  uint32_t user_data_size;
+  uint32_t user_data_size_bits;
+  uint32_t flags;
   uint16_t max_entries;
   uint16_t num_entries;
-  uint32_t data_length;
-  bool user_data_fixed_size : 1;
-  unsigned int user_data_size : 12;
-  unsigned int user_data_size_bits : 4;
-  unsigned int flags : 2;
+  bool user_data_fixed_size;
   bitstream data;
 };
 
 struct demogobbler_svc_update_stringtable {
-  unsigned int table_id : 5; // ID of the table
+  uint32_t table_id; // ID of the table
   uint32_t changed_entries;
-  unsigned int data_length : 20; // Length of the data
-  bool exists : 1;
+  uint32_t data_length; // Length of the data
+  bool exists;
   bitstream data;
 };
 
@@ -210,79 +210,79 @@ struct demogobbler_svc_crosshair_angle {
 
 struct demogobbler_svc_bsp_decal {
   bitcoord_vector pos;
-  unsigned int decal_texture_index : 9;
-  bool index_bool : 1;
-  unsigned int entity_index : 11;
-  unsigned int model_index : 11;
-  bool lowpriority : 1;
+  uint32_t decal_texture_index;
+  uint32_t entity_index;
+  uint32_t model_index;
+  bool index_bool;
+  bool lowpriority;
 };
 
 struct demogobbler_svc_user_message {
   uint8_t msg_type; // type of the user message
-  unsigned int length; // specifies the length for the void* buffer in bits
+  uint32_t length; // specifies the length for the void* buffer in bits
   bitstream data;
 };
 
 struct demogobbler_svc_entity_message {
-  unsigned int entity_index;
-  unsigned int class_id;
-  unsigned int length;
+  uint32_t entity_index;
+  uint32_t class_id;
+  uint32_t length;
   bitstream data;
 };
 
 struct demogobbler_svc_game_event {
-  unsigned int length;
+  uint32_t length;
   bitstream data;
 };
 
 struct demogobbler_svc_packet_entities {
-  unsigned int max_entries;
-  bool is_delta;
+  uint32_t max_entries;
   int32_t delta_from;
-  bool base_line;
-  unsigned int updated_entries;
-  unsigned int data_length;
+  uint32_t updated_entries;
+  uint32_t data_length;
   bool update_baseline;
+  bool base_line;
+  bool is_delta;
   bitstream data;
 };
 
 struct demogobbler_svc_splitscreen {
-  bool remove_user : 1;
-  unsigned int data_length : 11;
+  uint32_t data_length;
+  bool remove_user;
   bitstream data;
 };
 
 struct demogobbler_svc_temp_entities {
   uint8_t num_entries;
-  unsigned int data_length;
+  uint32_t data_length;
   bitstream data;
 };
 
 struct demogobbler_svc_prefetch {
-  unsigned int sound_index;
+  uint32_t sound_index;
 };
 
 struct demogobbler_svc_menu {
-  unsigned int menu_type;
+  uint32_t menu_type;
   uint32_t data_length;
   bitstream data;
 };
 
 struct demogobbler_game_event_descriptor_key {
   const char *key_value;
-  unsigned int type : 3;
+  uint32_t type;
 };
 
 struct demogobbler_game_event_descriptor {
-  unsigned int event_id : 9;
+  uint32_t event_id;
   const char *name;
   size_t key_count;
   struct demogobbler_game_event_descriptor_key *keys;
 };
 
 struct demogobbler_svc_game_event_list {
-  unsigned int events : 9;
-  unsigned int length : 20;
+  uint32_t events;
+  uint32_t length;
   bitstream data; // Add game event descriptor array here later on
 };
 
@@ -301,18 +301,49 @@ struct demogobbler_svc_paintmap_data {
   bitstream data;
 };
 
-#define DECLARE_MESSAGE_IN_UNION(message) struct demogobbler_##message message_##message;
+#define DECLARE_MESSAGE_IN_UNION(message) struct demogobbler_##message message_##message
 
 struct demogobbler_packet_net_message {
   net_message_type mtype;
-  unsigned int _mtype : 6;
-  bool last_message : 1;
 #ifdef DEBUG
   uint32_t offset;
 #endif
 
   union {
-    DEMOGOBBLER_MACRO_ALL_MESSAGES(DECLARE_MESSAGE_IN_UNION)
+    DECLARE_MESSAGE_IN_UNION(net_nop);
+    DECLARE_MESSAGE_IN_UNION(net_disconnect);
+    DECLARE_MESSAGE_IN_UNION(net_file);
+    DECLARE_MESSAGE_IN_UNION(net_tick);
+    DECLARE_MESSAGE_IN_UNION(net_stringcmd);
+    DECLARE_MESSAGE_IN_UNION(net_setconvar);
+    DECLARE_MESSAGE_IN_UNION(net_signonstate);
+    DECLARE_MESSAGE_IN_UNION(net_splitscreen_user);
+    DECLARE_MESSAGE_IN_UNION(svc_print);
+    struct demogobbler_svc_serverinfo* message_svc_serverinfo;
+    DECLARE_MESSAGE_IN_UNION(svc_sendtable);
+    DECLARE_MESSAGE_IN_UNION(svc_classinfo);
+    DECLARE_MESSAGE_IN_UNION(svc_setpause);
+    DECLARE_MESSAGE_IN_UNION(svc_create_stringtable);
+    DECLARE_MESSAGE_IN_UNION(svc_update_stringtable);
+    DECLARE_MESSAGE_IN_UNION(svc_voice_init);
+    DECLARE_MESSAGE_IN_UNION(svc_voice_data);
+    DECLARE_MESSAGE_IN_UNION(svc_sounds);
+    DECLARE_MESSAGE_IN_UNION(svc_setview);
+    DECLARE_MESSAGE_IN_UNION(svc_fixangle);
+    DECLARE_MESSAGE_IN_UNION(svc_crosshair_angle);
+    DECLARE_MESSAGE_IN_UNION(svc_bsp_decal);
+    DECLARE_MESSAGE_IN_UNION(svc_user_message);
+    DECLARE_MESSAGE_IN_UNION(svc_entity_message);
+    DECLARE_MESSAGE_IN_UNION(svc_game_event);
+    DECLARE_MESSAGE_IN_UNION(svc_packet_entities);
+    DECLARE_MESSAGE_IN_UNION(svc_splitscreen);
+    DECLARE_MESSAGE_IN_UNION(svc_temp_entities);
+    DECLARE_MESSAGE_IN_UNION(svc_prefetch);
+    DECLARE_MESSAGE_IN_UNION(svc_menu);
+    DECLARE_MESSAGE_IN_UNION(svc_game_event_list);
+    DECLARE_MESSAGE_IN_UNION(svc_get_cvar_value);
+    DECLARE_MESSAGE_IN_UNION(svc_cmd_key_values);
+    DECLARE_MESSAGE_IN_UNION(svc_paintmap_data);
   };
 };
 

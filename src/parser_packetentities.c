@@ -351,32 +351,50 @@ static void parse_props(prop_parse_state *state, edict *ent, size_t index) {
   }
 }
 
-static void read_explicit_deletes(prop_parse_state *state) {
-  int max_updates = (state->stream->bitsize - state->stream->bitoffset) / (1 + MAX_EDICT_BITS);
-
-  if (max_updates >= 0) {
-    size_t bytes = sizeof(int) * max_updates;
+static void read_explicit_deletes(prop_parse_state *state, bool new_logic) {
+  if(new_logic) {
+    int32_t nbase = -1;
+    uint32_t ncount = bitstream_read_ubitint(state->stream);
+    uint32_t bytes = sizeof(int32_t) * ncount;
     state->output.explicit_deletes = demogobbler_arena_allocate(state->a, bytes, alignof(int));
-    memset(state->output.explicit_deletes, 0, bytes);
-  }
+    state->output.explicit_deletes_count = ncount;
 
-  int index = 0;
+    for(uint32_t i=0; i < ncount; ++i) {
+      int32_t ndelta = bitstream_read_ubitint(state->stream);
+      int32_t nslot = nbase + ndelta;
+      state->output.explicit_deletes[i] = nslot;
+      nbase = nslot;
+    }
+  } else {
+    int index = 0;
+    int max_updates = (state->stream->bitsize - state->stream->bitoffset) / (1 + MAX_EDICT_BITS);
 
-  while (bitstream_read_bit(state->stream)) {
-    unsigned delete_index = bitstream_read_uint(state->stream, MAX_EDICT_BITS);
-    edict *ent = state->thisptr->state.entity_state.edicts + delete_index;
-    memset(ent, 0, sizeof(edict));
-
-    if (index >= max_updates) {
-      state->thisptr->error = true;
-      state->thisptr->error_message = "Had more explicit deletes than expected";
-      break;
+    if (max_updates >= 0) {
+      size_t bytes = sizeof(int) * max_updates;
+      state->output.explicit_deletes = demogobbler_arena_allocate(state->a, bytes, alignof(int));
+      memset(state->output.explicit_deletes, 0, bytes);
     }
 
-    state->output.explicit_deletes[index] = delete_index;
-    ++state->output.explicit_deletes_count;
-    ++index;
+    while (bitstream_read_bit(state->stream)) {
+      unsigned delete_index = bitstream_read_uint(state->stream, MAX_EDICT_BITS);
+      edict *ent = state->thisptr->state.entity_state.edicts + delete_index;
+      memset(ent, 0, sizeof(edict));
+
+      if (index >= max_updates) {
+        state->thisptr->error = true;
+        state->thisptr->error_message = "Had more explicit deletes than expected";
+        break;
+      }
+
+      state->output.explicit_deletes[index] = delete_index;
+      ++state->output.explicit_deletes_count;
+      ++index;
+    }
   }
+}
+
+static bool game_has_new_deletes(const demo_version_data* version) {
+  return version->game == l4d2 && version->l4d2_version >= 2091;
 }
 
 void demogobbler_bitwriter_write_packetentities(bitwriter* thisptr, struct write_packetentities_args args) {
@@ -404,13 +422,22 @@ void demogobbler_bitwriter_write_packetentities(bitwriter* thisptr, struct write
   }
 
   if(args.is_delta && !thisptr->error) {
-    for(size_t i=0; i < args.data.explicit_deletes_count; ++i) {
-      bitwriter_write_bit(thisptr, true);
-      bitwriter_write_uint(thisptr, args.data.explicit_deletes[i], MAX_EDICT_BITS);
+    if(game_has_new_deletes(args.version)) {
+      demogobbler_bitwriter_write_ubitint(thisptr, args.data.explicit_deletes_count);
+      int32_t nbase = -1;
+      for(size_t i=0; i < args.data.explicit_deletes_count; ++i) {
+        int32_t delta = args.data.explicit_deletes[i] - nbase;
+        demogobbler_bitwriter_write_ubitint(thisptr, delta);
+        nbase = args.data.explicit_deletes[i];
+      }
+    } else {
+      for(size_t i=0; i < args.data.explicit_deletes_count; ++i) {
+        bitwriter_write_bit(thisptr, true);
+        bitwriter_write_uint(thisptr, args.data.explicit_deletes[i], MAX_EDICT_BITS);
+      }
+      bitwriter_write_bit(thisptr, false);
     }
-    bitwriter_write_bit(thisptr, false);
   }
-
 }
 
 void demogobbler_parse_packetentities(parser *thisptr,
@@ -471,7 +498,7 @@ void demogobbler_parse_packetentities(parser *thisptr,
 
     if (update_type == 0) {
       // delta
-      parse_props(&state, ent, i); 
+      parse_props(&state, ent, i);
     } else if (update_type == 2) {
       // enter pvs
       ent->datatable_id = bitstream_read_uint(&stream, bits);
@@ -495,10 +522,15 @@ void demogobbler_parse_packetentities(parser *thisptr,
   }
 
   if (message->is_delta && !thisptr->error && !stream.overflow) {
-    read_explicit_deletes(&state);
+    bool new_deletes = thisptr->demo_version.game == l4d2 && thisptr->demo_version.l4d2_version >= 2091;
+    read_explicit_deletes(&state, new_deletes);
   }
 
+#ifdef DEMOGOBBLER_UNSAFE
+  if (thisptr->m_settings.packetentities_parsed_handler) {
+#else
   if (!thisptr->error && !stream.overflow && thisptr->m_settings.packetentities_parsed_handler) {
+#endif
     svc_packetentities_parsed parsed;
     memset(&parsed, 0, sizeof(parsed));
     parsed.data = state.output;
@@ -527,7 +559,8 @@ end:;
 
   if (thisptr->error) {
 #ifdef DEBUG_BREAK_PROP
-    fprintf(stderr, "Failed at %d\n", CURRENT_DEBUG_INDEX);
+    printf("Failed at %d, %u / %u bits parsed, error %s\n", CURRENT_DEBUG_INDEX, stream.bitoffset - message->data.bitoffset, message->data_length, thisptr->error_message);
+    thisptr->error = false;
 #endif
   }
 }

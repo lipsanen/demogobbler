@@ -826,15 +826,17 @@ static void write_svc_splitscreen(bitwriter *writer, demo_version_data *version,
 
 static void handle_svc_paintmap_data(parser *thisptr, bitstream *stream,
                                      packet_net_message *message, blk* scrap) {
-  thisptr->error = true;
-  thisptr->error_message = "svc_paintmap_data parsing is not implemented";
+  struct demogobbler_svc_paintmap_data *ptr = &message->message_svc_paintmap_data;
+  ptr->data_length = bitstream_read_uint32(stream);
+  ptr->data = bitstream_fork_and_advance(stream, ptr->data_length);
   SEND_MESSAGE();
 }
 
 static void write_svc_paintmap_data(bitwriter *writer, demo_version_data *version,
                                     packet_net_message *message) {
-  writer->error = true;
-  writer->error_message = "Writing not implemented for svc_paintmap_data";
+  struct demogobbler_svc_paintmap_data *ptr = &message->message_svc_paintmap_data;
+  bitwriter_write_uint32(writer, ptr->data_length);
+  bitwriter_write_bitstream(writer, &ptr->data);
 }
 
 static void handle_svc_cmd_key_values(parser *thisptr, bitstream *stream,

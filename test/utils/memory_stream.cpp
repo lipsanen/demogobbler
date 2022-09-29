@@ -103,15 +103,17 @@ std::size_t memory_stream_write(void* s, const void* src, size_t bytes)
   auto dest = stream->get_ptr();
   memcpy(dest, src, bytes);
 
-  if(stream->ground_truth)
+  if(stream->ground_truth && stream->agrees)
   {
     if(stream->offset + bytes > stream->ground_truth->file_size) {
+      stream->agrees = false;
       EXPECT_TRUE(false) << "Write out of bounds for ground truth";
     }
     else
     {
       auto comparison_ptr = (uint8_t*)stream->ground_truth->buffer + stream->offset;
       if(memcmp(dest, comparison_ptr, bytes) != 0) {
+        stream->agrees = false;
         EXPECT_TRUE(false) << "Memory did not match";
       }
     }

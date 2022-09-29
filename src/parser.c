@@ -387,9 +387,13 @@ void _parse_usercmd(parser *thisptr) {
   message.cmd = filereader_readint32(thisreader);
   message.size_bytes = filereader_readint32(thisreader);
 
-  if (thisptr->m_settings.usercmd_handler && message.size_bytes > 0) {
-    void* block = demogobbler_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
-    READ_MESSAGE_DATA();
+  if (thisptr->m_settings.usercmd_handler) {
+    if(message.size_bytes > 0) {
+      void* block = demogobbler_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
+      READ_MESSAGE_DATA();
+    } else {
+      message.data = NULL;
+    }
     if (!thisptr->error) {
       thisptr->m_settings.usercmd_handler(&thisptr->state, &message);
     }

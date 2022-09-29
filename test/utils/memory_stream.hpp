@@ -8,6 +8,7 @@ struct memory_stream
   size_t buffer_size = 0;
   size_t file_size = 0;
   void* buffer = nullptr;
+  bool agrees = true;
   memory_stream* ground_truth = nullptr;
 
   void* get_ptr();

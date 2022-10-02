@@ -302,7 +302,6 @@ void demogobbler_write_datatables_parsed(writer *thisptr,
 
   if (bit_in_byte_offset != 0) {
     bytes += 1;
-#ifdef GROUND_TRUTH_CHECK
     if (datatables->_raw_buffer && bytes == datatables->_raw_buffer_bytes) {
       // If we are exactly at the same number of bytes, copy the last bits out of the buffer to
       // ensure bit for bit equality
@@ -313,7 +312,6 @@ void demogobbler_write_datatables_parsed(writer *thisptr,
       unsigned int value = bitstream_read_uint(&stream, bits_left);
       bitwriter_write_uint(&writer, value, bits_left);
     }
-#endif
   }
 
   if (writer.error && !thisptr->error) {

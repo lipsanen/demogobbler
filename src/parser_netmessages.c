@@ -909,6 +909,12 @@ static vector_array init_netmsg_array(arena* a) {
 }
 
 void parse_netmessages(parser *thisptr, demogobbler_packet* packet) {
+#ifdef DEBUG
+  #define MAX_HISTORY 256
+  net_message_type type_history[MAX_HISTORY];
+  size_t history_index = 0;
+#endif
+
   void* data = packet->data;
   size_t size = packet->size_bytes;
   bitstream stream = demogobbler_bitstream_create(data, size * 8);
@@ -933,6 +939,15 @@ void parse_netmessages(parser *thisptr, demogobbler_packet* packet) {
 
     unsigned int type_index = bitstream_read_uint(&stream, bits);
     net_message_type type = version_get_message_type(thisptr, type_index);
+
+#ifdef DEBUG
+  if(history_index < MAX_HISTORY)
+  {
+    type_history[history_index] = type;
+    ++history_index;
+  }
+#endif
+
     //fprintf(stderr, "%d : %d\n", type_index, type);
     packet_net_message* message = demogobbler_va_push_back_empty(&packet_arr);
     memset(message, 0, sizeof(packet_net_message));
@@ -980,4 +995,17 @@ void parse_netmessages(parser *thisptr, demogobbler_packet* packet) {
 
   // fprintf(stderr, "packet end:\n");
   demogobbler_va_free(&packet_arr);
+
+#ifdef DEBUG
+  if(thisptr->error)
+  {
+    fprintf(stderr, "netmessages before error: ");
+    for(size_t i=0; i < history_index; ++i)
+    {
+      fprintf(stderr, "%d ", type_history[i]);
+    }
+    fprintf(stderr, "\n");
+  }
+#endif
+
 }

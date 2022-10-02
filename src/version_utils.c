@@ -209,9 +209,10 @@ static void get_svc_prefetch_bits(demo_version_data *version) {
 }
 
 static void get_model_index_bits(demo_version_data *version) {
-  // Some tf2 parsers report this as 13 bits?
   if (version->game == l4d2 && version->l4d2_version >= 2203) {
     version->model_index_bits = 12;
+  } else if (version->game == steampipe) {
+    version->model_index_bits = 13;
   } else {
     version->model_index_bits = 11;
   }

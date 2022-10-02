@@ -438,7 +438,8 @@ TEST(BitstreamPlusWriter, BitNormal) {
 
       bitstream stream = bitstream_create(writer.ptr, writer.bitsize);
       demogobbler_bitnormal output = demogobbler_bitstream_read_bitnormal(&stream);
-      ASSERT_EQ(memcmp(&normal, &output, sizeof(output)), 0);
+      ASSERT_EQ(normal.frac, output.frac);
+      ASSERT_EQ(normal.sign, output.sign);
       ASSERT_EQ(stream.bitoffset, writer.bitoffset);
       bitwriter_free(&writer);
     }
@@ -553,7 +554,7 @@ rng_bitcoordmp get_random_bitcoordmp() {
     } else {
       output.value.frac_val = rand () % (1 << FRAC_BITS);
     }
-  }
+  } 
 
   return output;
 }
@@ -584,8 +585,14 @@ TEST(BitstreamPlusWriter, BitCellCoord) {
   bitwriter_free(&writer);
 }
 
+bool demogobbler_bitcoordmp_eq(demogobbler_bitcoordmp lhs, demogobbler_bitcoordmp rhs)
+{
+  return lhs.frac_val == rhs.frac_val && lhs.inbounds == rhs.inbounds && lhs.int_has_val == rhs.int_has_val
+  && lhs.int_val == rhs.int_val && lhs.sign == rhs.sign;
+}
+
 TEST(BitstreamPlusWriter, BitCoordMp) {
-  const size_t max = 10000;
+  const size_t max = 1;
   srand(0);
   bitwriter writer;
   bitwriter_init(&writer, 1);
@@ -599,9 +606,14 @@ TEST(BitstreamPlusWriter, BitCoordMp) {
 
   for (size_t i = 0; i < max; ++i) {
     rng_bitcoordmp value = get_random_bitcoordmp();
+    demogobbler_bitcoordmp value1 = value.value;
     demogobbler_bitcoordmp value2 =
         demogobbler_bitstream_read_bitcoordmp(&stream, value.is_int, value.lp);
-    EXPECT_EQ(memcmp(&value.value, &value2, sizeof(demogobbler_bitcoordmp)), 0) << "Error on iteration " << i;
+
+    bool eq = demogobbler_bitcoordmp_eq(value1, value2);
+    EXPECT_EQ(eq, true) << "Error on iteration " << i;
+    if(!eq)
+      break;
   }
 
   EXPECT_EQ(stream.bitoffset, writer.bitoffset);

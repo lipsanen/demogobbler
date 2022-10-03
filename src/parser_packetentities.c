@@ -525,6 +525,7 @@ void demogobbler_parse_packetentities(parser *thisptr,
     read_explicit_deletes(&state, new_deletes);
   }
 
+end:;
 #ifdef DEMOGOBBLER_UNSAFE
   if (thisptr->m_settings.packetentities_parsed_handler) {
 #else
@@ -536,8 +537,6 @@ void demogobbler_parse_packetentities(parser *thisptr,
     parsed.orig = message;
     thisptr->m_settings.packetentities_parsed_handler(&thisptr->state, &parsed);
   }
-
-end:;
 
   demogobbler_va_free(&state.prop_array);
 

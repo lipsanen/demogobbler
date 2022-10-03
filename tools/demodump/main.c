@@ -309,7 +309,8 @@ static void print_inner_prop_value(demogobbler_sendprop *prop, prop_value_inner 
 
 static void print_prop_value(prop_value *value) {
   demogobbler_sendprop *prop = value->prop;
-  printf("\t%s = ", value->prop->name);
+  const char *prop_name = get_prop_name(prop);
+  printf("\t%s = ", prop_name);
   print_inner_prop_value(prop, value->value);
   printf("\n");
 }

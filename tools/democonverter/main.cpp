@@ -8,7 +8,7 @@
 struct writer_state {
   demogobbler_writer demo_writer;
   bitwriter message_bitwriter;
-  demogobbler_packet current_packet;
+  demogobbler_header transplant_header;
 
   ~writer_state() {
     demogobbler_writer_free(&this->demo_writer);
@@ -26,21 +26,6 @@ struct writer_state {
 
     bitwriter_init(&this->message_bitwriter, 1 << 18);
   }
-
-  void write_packet() {
-    // This has to be assigned here, as it could get moved due to being realloced while being
-    // written to
-    this->current_packet.data = this->message_bitwriter.ptr;
-    int32_t size = this->message_bitwriter.bitoffset / 8;
-
-    if ((this->message_bitwriter.bitoffset & 0x7) != 0) {
-      size += 1;
-    }
-
-    this->current_packet.size_bytes = size;
-
-    demogobbler_write_packet(&this->demo_writer, &this->current_packet);
-  }
 };
 
 #define CHECK_ERROR()                                                                              \
@@ -50,18 +35,13 @@ struct writer_state {
   }
 
 void handle_header(parser_state *_state, demogobbler_header *header) {
-  printf("Enter data for conversion target, empty for default value\n");
   writer_state *state = (writer_state *)_state->client_state;
-  std::string temp;
-  printf("Network protocol [%d]: ", header->net_protocol);
-  std::getline(std::cin, temp);
-
-  if (!temp.empty()) {
-    header->net_protocol = std::atoi(temp.c_str());
-  }
-
-  state->demo_writer.version = demogobbler_get_demo_version(header);
-  demogobbler_write_header(&state->demo_writer, header);
+  demogobbler_header temp = *header;
+  // Copy the demo protocol/net protocol and game dir from transplant
+  temp.demo_protocol = state->transplant_header.demo_protocol;
+  temp.net_protocol = state->transplant_header.net_protocol;
+  memcpy(temp.game_directory, state->transplant_header.game_directory, 260);
+  demogobbler_write_header(&state->demo_writer, &temp);
   CHECK_ERROR();
 }
 
@@ -82,14 +62,6 @@ void handle_datatables(parser_state *_state, demogobbler_datatables *message) {
   demogobbler_write_datatables(&state->demo_writer, message);
   CHECK_ERROR();
 }
-
-void handle_packet(parser_state *_state, demogobbler_packet *message) {
-  writer_state *state = (writer_state *)_state->client_state;
-  memcpy(&state->current_packet, message, sizeof(state->current_packet));
-  state->message_bitwriter.bitoffset = 0;
-  //  We finish this later on
-}
-
 void handle_stringtables(parser_state *_state, demogobbler_stringtables *message) {
   writer_state *state = (writer_state *)_state->client_state;
   demogobbler_write_stringtables(&state->demo_writer, message);
@@ -123,39 +95,60 @@ static void packet_parsed_handler(parser_state *_state, packet_parsed* parsed) {
       auto* ptr = message->message_svc_serverinfo;
       ptr->network_protocol = state->demo_writer.version.network_protocol;
     }
-
-    demogobbler_bitwriter_write_netmessage(&state->message_bitwriter, &state->demo_writer.version,
-                                          message);
-    CHECK_ERROR();
   }
 
-  unsigned int message_type_bits = state->demo_writer.version.netmessage_type_bits;
-  unsigned int bits_remaining_in_last_byte = 8 - (state->message_bitwriter.bitoffset & 0x7);
+  demogobbler_write_packet_parsed(&state->demo_writer, parsed);
+}
 
-  // Add a noop to the end if we have enough space
-  if (bits_remaining_in_last_byte >= message_type_bits) {
-    packet_net_message noop;
-    noop.mtype = net_nop;
-    demogobbler_bitwriter_write_netmessage(&state->message_bitwriter, &state->demo_writer.version,
-                                          &noop);
-  }
+struct version_header_stuff
+{
+  demo_version_data version_data;
+  demogobbler_header header;
+};
 
-  state->write_packet();
-  CHECK_ERROR();
+static void version_handle_demo_version(parser_state* state, demo_version_data version)
+{
+  version_header_stuff* ptr = (version_header_stuff*)state->client_state;
+  ptr->version_data = version;
+}
 
-  if (state->message_bitwriter.error) {
-    fprintf(stderr, "Got error, exiting program: %s\n", state->message_bitwriter.error_message);
+static void version_handle_header(parser_state* state, demogobbler_header* header)
+{
+  version_header_stuff* ptr = (version_header_stuff*)state->client_state;
+  ptr->header = *header;
+}
+
+static version_header_stuff get_demo_version(char* example_path)
+{
+  version_header_stuff data;
+  demogobbler_settings settings;
+  demogobbler_settings_init(&settings);
+  settings.client_state = &data;
+  settings.demo_version_handler = version_handle_demo_version;
+  settings.header_handler = version_handle_header;
+
+  demogobbler_parse_result result = demogobbler_parse_file(&settings, example_path);
+
+  if(result.error)
+  {
+    fprintf(stderr, "Error parsing example demo: %s\n", result.error_message);
     exit(1);
   }
+
+  return data;
 }
 
 int main(int argc, char **argv) {
-  if (argc <= 2) {
-    printf("Usage: democonverter <input file> <output file>\n");
+  if (argc <= 3) {
+    printf("Usage: democonverter <example file> <input file> <output file>\n");
     return 0;
   }
 
-  writer_state writer(argv[2]);
+  version_header_stuff data = get_demo_version(argv[1]);
+
+  writer_state writer(argv[3]);
+  writer.demo_writer.version = data.version_data;
+  writer.transplant_header = data.header;
 
   demogobbler_settings settings;
   demogobbler_settings_init(&settings);
@@ -163,7 +156,6 @@ int main(int argc, char **argv) {
   settings.customdata_handler = handle_customdata;
   settings.datatables_handler = handle_datatables;
   settings.header_handler = handle_header;
-  settings.packet_handler = handle_packet;
   settings.stop_handler = handle_stop;
   settings.stringtables_handler = handle_stringtables;
   settings.synctick_handler = handle_synctick;
@@ -171,7 +163,7 @@ int main(int argc, char **argv) {
   settings.packet_parsed_handler = packet_parsed_handler;
   settings.client_state = &writer;
 
-  demogobbler_parse_file(&settings, argv[1]);
+  demogobbler_parse_file(&settings, argv[2]);
   demogobbler_writer_close(&writer.demo_writer);
 
   return 0;

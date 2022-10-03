@@ -23,6 +23,11 @@ void handle_datatables_parsed(parser_state* state, demogobbler_datatables_parsed
   demogobbler_write_datatables_parsed((writer*)state->client_state, datatables);
 }
 
+void handle_packet_parsed(parser_state* state, packet_parsed* message) {
+  demogobbler_write_packet_parsed((writer*)state->client_state, message);
+}
+
+
 void handle_version(parser_state* state, demo_version_data version)
 {
   ((writer*)state->client_state)->version = version;

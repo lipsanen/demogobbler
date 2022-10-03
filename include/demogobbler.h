@@ -5,6 +5,7 @@ extern "C" {
 #endif
 
 #include "demogobbler_io.h"
+#include "demogobbler_bitwriter.h"
 #include "demogobbler_datatable_types.h"
 #include "demogobbler_entity_types.h"
 #include "demogobbler_parser_types.h"
@@ -83,6 +84,7 @@ struct demogobbler_writer {
   bool error;
   bool _custom_stream;
   demo_version_data version;
+  struct demogobbler_bitwriter bitwriter;
 };
 
 typedef struct demogobbler_writer writer;
@@ -97,6 +99,7 @@ void demogobbler_write_datatables(writer *thisptr, demogobbler_datatables *messa
 void demogobbler_write_datatables_parsed(writer* thisptr, demogobbler_datatables_parsed* datatables);
 void demogobbler_write_header(writer *thisptr, demogobbler_header *message);
 void demogobbler_write_packet(writer *thisptr, demogobbler_packet *message);
+void demogobbler_write_packet_parsed(writer *thisptr, packet_parsed *message);
 void demogobbler_write_preamble(writer* thisptr, demogobbler_message_preamble preamble);
 void demogobbler_write_synctick(writer *thisptr, demogobbler_synctick *message);
 void demogobbler_write_stop(writer *thisptr, demogobbler_stop *message);

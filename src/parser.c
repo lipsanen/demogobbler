@@ -185,7 +185,13 @@ void _parser_mainloop(parser *thisptr) {
     thisptr->parse_netmessages = true;
   }
 
+  if(!thisptr->demo_version.l4d2_version_finalized && settings->demo_version_handler)
+  {
+    should_parse = true;
+  }
+
   if(settings->packet_parsed_handler) {
+    should_parse = true;
     thisptr->parse_netmessages = true;
   }
 
@@ -282,7 +288,8 @@ void _parse_datatables(parser *thisptr) {
 }
 
 static void _parse_cmdinfo(parser *thisptr, demogobbler_packet *packet, size_t i) {
-  if (thisptr->m_settings.packet_handler) {
+  bool should_parse_netmessages = !thisptr->demo_version.l4d2_version_finalized || thisptr->parse_netmessages;
+  if (thisptr->m_settings.packet_handler || should_parse_netmessages) {
     filereader_readdata(thisreader, packet->cmdinfo_raw[i].data,
                         sizeof(packet->cmdinfo_raw[i].data));
   } else {
@@ -295,6 +302,7 @@ void _parse_packet(parser *thisptr, enum demogobbler_type type) {
   message.preamble.type = message.preamble.converted_type = type;
   PARSE_PREAMBLE();
   message.cmdinfo_size = thisptr->demo_version.cmdinfo_size;
+  bool should_parse_netmessages = !thisptr->demo_version.l4d2_version_finalized || thisptr->parse_netmessages;
 
   for (int i = 0; i < message.cmdinfo_size; ++i) {
     _parse_cmdinfo(thisptr, &message, i);
@@ -304,7 +312,7 @@ void _parse_packet(parser *thisptr, enum demogobbler_type type) {
   message.out_sequence = filereader_readint32(thisreader);
   message.size_bytes = _parser_read_length(thisptr);
 
-  if ((thisptr->m_settings.packet_handler || thisptr->parse_netmessages) &&
+  if ((thisptr->m_settings.packet_handler || should_parse_netmessages) &&
       message.size_bytes > 0) {
     void* block = demogobbler_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
     READ_MESSAGE_DATA();
@@ -314,7 +322,7 @@ void _parse_packet(parser *thisptr, enum demogobbler_type type) {
         thisptr->m_settings.packet_handler(&thisptr->state, &message);
       }
 
-      if (thisptr->parse_netmessages) {
+      if (should_parse_netmessages) {
         parse_netmessages(thisptr, &message);
       }
     }

@@ -16,6 +16,13 @@ typedef struct {
   size_t baseclass_index;
 } propdata;
 
+typedef struct {
+  estate_init_args args;
+  estate *entity_state;
+  const char *error_message;
+  bool error;
+} estate_init_state;
+
 static void add_baseclass(propdata *data, size_t dt_index) {
   ++data->baseclass_count;
 
@@ -54,17 +61,16 @@ static bool is_prop_excluded(propdata *data, demogobbler_sendtable *table,
   return demogobbler_pes_has(&data->excluded_props, table, prop);
 }
 
-static void create_dt_hashtable(parser *thisptr) {
-  estate *entstate_ptr = &thisptr->state.entity_state;
-  demogobbler_sendtable *sendtables = entstate_ptr->sendtables;
-  const size_t sendtable_count = entstate_ptr->sendtable_count;
+static void create_dt_hashtable(estate_init_state *thisptr) {
+  demogobbler_sendtable *sendtables = thisptr->entity_state->sendtables;
+  const size_t sendtable_count = thisptr->entity_state->sendtable_count;
   const float FILL_RATE = 0.9f;
   const size_t buckets = (size_t)(sendtable_count / FILL_RATE);
 
-  if(entstate_ptr->dt_hashtable.arr != NULL) {
-    demogobbler_hashtable_clear(&entstate_ptr->dt_hashtable);
+  if (thisptr->entity_state->dt_hashtable.arr != NULL) {
+    demogobbler_hashtable_clear(&thisptr->entity_state->dt_hashtable);
   } else {
-    entstate_ptr->dt_hashtable = demogobbler_hashtable_create(buckets);
+    thisptr->entity_state->dt_hashtable = demogobbler_hashtable_create(buckets);
   }
 
   for (size_t i = 0; i < sendtable_count && !thisptr->error; ++i) {
@@ -72,18 +78,19 @@ static void create_dt_hashtable(parser *thisptr) {
     entry.str = sendtables[i].name;
     entry.value = i;
 
-    if (!demogobbler_hashtable_insert(&entstate_ptr->dt_hashtable, entry)) {
+    if (!demogobbler_hashtable_insert(&thisptr->entity_state->dt_hashtable, entry)) {
       thisptr->error = true;
       thisptr->error_message = "Hashtable collision with datatable names or ran out of space";
     }
   }
 }
 
-static size_t get_baseclass(parser *thisptr, propdata *data, demogobbler_sendprop *prop) {
-  estate *entstate_ptr = &thisptr->state.entity_state;
-  demogobbler_sendtable *sendtables = entstate_ptr->sendtables;
+static size_t get_baseclass(estate_init_state *thisptr, propdata *data,
+                            demogobbler_sendprop *prop) {
+  demogobbler_sendtable *sendtables = thisptr->entity_state->sendtables;
   if (prop->baseclass == NULL) {
-    hashtable_entry entry = demogobbler_hashtable_get(&entstate_ptr->dt_hashtable, prop->dtname);
+    hashtable_entry entry =
+        demogobbler_hashtable_get(&thisptr->entity_state->dt_hashtable, prop->dtname);
 
     if (entry.str == NULL) {
       // No entry found
@@ -96,9 +103,8 @@ static size_t get_baseclass(parser *thisptr, propdata *data, demogobbler_sendpro
   return prop->baseclass - sendtables;
 }
 
-static void gather_excludes(parser *thisptr, propdata *data, size_t datatable_index) {
-  estate *entstate_ptr = &thisptr->state.entity_state;
-  demogobbler_sendtable *table = entstate_ptr->sendtables + datatable_index;
+static void gather_excludes(estate_init_state *thisptr, propdata *data, size_t datatable_index) {
+  demogobbler_sendtable *table = thisptr->entity_state->sendtables + datatable_index;
 
   for (size_t prop_index = 0; prop_index < table->prop_count; ++prop_index) {
     demogobbler_sendprop *prop = table->props + prop_index;
@@ -111,7 +117,7 @@ static void gather_excludes(parser *thisptr, propdata *data, size_t datatable_in
 
       gather_excludes(thisptr, data, baseclass_index);
     } else if (prop->flag_exclude) {
-      if (!add_exclude(data, prop, &thisptr->temp_arena)) {
+      if (!add_exclude(data, prop, thisptr->args.memory_arena)) {
         thisptr->error = true;
         thisptr->error_message = "Was unable to add exclude";
       }
@@ -119,9 +125,8 @@ static void gather_excludes(parser *thisptr, propdata *data, size_t datatable_in
   }
 }
 
-static void gather_propdata(parser *thisptr, propdata *data, size_t datatable_index) {
-  estate *entstate_ptr = &thisptr->state.entity_state;
-  demogobbler_sendtable *sendtables = entstate_ptr->sendtables;
+static void gather_propdata(estate_init_state *thisptr, propdata *data, size_t datatable_index) {
+  demogobbler_sendtable *sendtables = thisptr->entity_state->sendtables;
   demogobbler_sendtable *table = sendtables + datatable_index;
   bool table_has_excludes = does_datatable_have_excludes(data, table);
 
@@ -157,8 +162,8 @@ static uint8_t get_priority_protocol4(demogobbler_sendprop *prop) {
     return prop->priority;
 }
 
-static void sort_props(parser *thisptr, serverclass_data *class_data) {
-  if (thisptr->demo_version.demo_protocol >= 4 && thisptr->demo_version.game != l4d) {
+static void sort_props(estate_init_state *thisptr, serverclass_data *class_data) {
+  if (thisptr->args.version_data->demo_protocol >= 4 && thisptr->args.version_data->game != l4d) {
     bool priorities[256];
     memset(priorities, 0, sizeof(priorities));
 
@@ -202,9 +207,9 @@ static void sort_props(parser *thisptr, serverclass_data *class_data) {
   }
 }
 
-static void iterate_props(parser *thisptr, propdata *data, demogobbler_sendtable *table) {
+static void iterate_props(estate_init_state *thisptr, propdata *data,
+                          demogobbler_sendtable *table) {
   bool table_has_excludes = does_datatable_have_excludes(data, table);
-  estate *entstate_ptr = &thisptr->state.entity_state;
   for (size_t prop_index = 0; prop_index < table->prop_count; ++prop_index) {
     demogobbler_sendprop *prop = table->props + prop_index;
     if (prop->proptype == sendproptype_datatable) {
@@ -213,19 +218,19 @@ static void iterate_props(parser *thisptr, propdata *data, demogobbler_sendtable
     } else if (!prop->flag_exclude && !prop->flag_insidearray) {
       bool prop_excluded = table_has_excludes && is_prop_excluded(data, table, prop);
       if (!prop_excluded) {
-        size_t flattenedprop_index = entstate_ptr->class_datas[data->serverclass_index].prop_count;
+        size_t flattenedprop_index =
+            thisptr->entity_state->class_datas[data->serverclass_index].prop_count;
         demogobbler_sendprop *dest =
-            entstate_ptr->class_datas[data->serverclass_index].props + flattenedprop_index;
+            thisptr->entity_state->class_datas[data->serverclass_index].props + flattenedprop_index;
         memcpy(dest, prop, sizeof(demogobbler_sendprop));
-        ++entstate_ptr->class_datas[data->serverclass_index].prop_count;
+        ++thisptr->entity_state->class_datas[data->serverclass_index].prop_count;
       }
     }
   }
 }
 
-static void gather_props(parser *thisptr, propdata *data) {
-  estate *entstate_ptr = &thisptr->state.entity_state;
-  demogobbler_sendtable *sendtables = entstate_ptr->sendtables;
+static void gather_props(estate_init_state *thisptr, propdata *data) {
+  demogobbler_sendtable *sendtables = thisptr->entity_state->sendtables;
   for (size_t i = 0; i < data->baseclass_count; ++i) {
     uint16_t baseclass_index = get_baseclass_from_array(data, i);
     demogobbler_sendtable *table = sendtables + baseclass_index;
@@ -239,18 +244,17 @@ static void gather_props(parser *thisptr, propdata *data) {
   if (thisptr->error)                                                                              \
   goto end
 
-static void parse_serverclass(parser *thisptr, size_t i) {
-  estate *entstate_ptr = &thisptr->state.entity_state;
+static void parse_serverclass(estate_init_state *thisptr, size_t i) {
   // Reset iteration state
   propdata data;
   memset(&data, 0, sizeof(propdata));
-  data.excluded_props = thisptr->state.entity_state.excluded_props;
-  data.dts_with_excludes = thisptr->state.entity_state.dts_with_excludes;
+  data.excluded_props = thisptr->entity_state->excluded_props;
+  data.dts_with_excludes = thisptr->entity_state->dts_with_excludes;
   data.serverclass_index = i;
 
-  demogobbler_serverclass *cls = entstate_ptr->serverclasses + i;
+  demogobbler_serverclass *cls = thisptr->entity_state->serverclasses + i;
   hashtable_entry entry =
-      demogobbler_hashtable_get(&entstate_ptr->dt_hashtable, cls->datatable_name);
+      demogobbler_hashtable_get(&thisptr->entity_state->dt_hashtable, cls->datatable_name);
   data.dt_index = entry.value;
 
   if (entry.str == NULL) {
@@ -266,56 +270,95 @@ static void parse_serverclass(parser *thisptr, size_t i) {
   gather_propdata(thisptr, &data, data.dt_index);
   CHECK_ERR();
 
-  entstate_ptr->class_datas[i].props = demogobbler_arena_allocate(
-      &thisptr->permanent_arena, sizeof(demogobbler_sendprop) * data.max_props,
+  thisptr->entity_state->class_datas[i].props = demogobbler_arena_allocate(
+      thisptr->args.memory_arena, sizeof(demogobbler_sendprop) * data.max_props,
       alignof(demogobbler_sendprop));
-  entstate_ptr->class_datas[i].prop_count = 0;
-  entstate_ptr->class_datas[i].dt_name = (entstate_ptr->sendtables + data.dt_index)->name;
+  thisptr->entity_state->class_datas[i].prop_count = 0;
+  thisptr->entity_state->class_datas[i].dt_name =
+      (thisptr->entity_state->sendtables + data.dt_index)->name;
 
   gather_props(thisptr, &data);
   CHECK_ERR();
-  sort_props(thisptr, entstate_ptr->class_datas + i);
+  sort_props(thisptr, thisptr->entity_state->class_datas + i);
   CHECK_ERR();
 end:;
 }
 
-void demogobbler_parser_init_estate(parser *thisptr) {
-  estate *entstate_ptr = &thisptr->state.entity_state;
-  if(entstate_ptr->edicts == NULL) {
-    entstate_ptr->edicts = demogobbler_arena_allocate(&thisptr->permanent_arena,
-                                                      sizeof(edict) * MAX_EDICTS, alignof(edict));
-  }
-  memset(entstate_ptr->edicts, 0, sizeof(edict) * MAX_EDICTS);
-  create_dt_hashtable(thisptr);
+demogobbler_parse_result demogobbler_estate_init(estate *thisptr, estate_init_args args) {
+  thisptr->sendtables = args.message->sendtables;
+  thisptr->serverclasses = args.message->serverclasses;
+  thisptr->serverclass_count = args.message->serverclass_count;
+  thisptr->sendtable_count = args.message->sendtable_count;
 
-  CHECK_ERR();
-
-  if(entstate_ptr->excluded_props.arr == NULL) {
-    entstate_ptr->excluded_props = demogobbler_pes_create(256);
+  if (thisptr->edicts == NULL) {
+    thisptr->edicts =
+        demogobbler_arena_allocate(args.memory_arena, sizeof(edict) * MAX_EDICTS, alignof(edict));
   }
-  if(entstate_ptr->dts_with_excludes.arr == NULL) {
-    entstate_ptr->dts_with_excludes = demogobbler_hashtable_create(256);
-  }
-  size_t array_size = sizeof(serverclass_data) * entstate_ptr->serverclass_count;
-  entstate_ptr->class_datas =
-      demogobbler_arena_allocate(&thisptr->permanent_arena, array_size, alignof(serverclass_data));
-  memset(entstate_ptr->class_datas, 0, array_size);
+  memset(thisptr->edicts, 0, sizeof(edict) * MAX_EDICTS);
 
-  if (thisptr->m_settings.flattened_props_handler) {
-    for (size_t i = 0; i < entstate_ptr->serverclass_count; ++i) {
-      parse_serverclass(thisptr, i);
+  estate_init_state state;
+  memset(&state, 0, sizeof(state));
+  state.args = args;
+  state.entity_state = thisptr;
+
+  create_dt_hashtable(&state);
+
+  if (!state.error) {
+    if (thisptr->excluded_props.arr == NULL) {
+      thisptr->excluded_props = demogobbler_pes_create(256);
     }
+    if (thisptr->dts_with_excludes.arr == NULL) {
+      thisptr->dts_with_excludes = demogobbler_hashtable_create(256);
+    }
+    size_t array_size = sizeof(serverclass_data) * thisptr->serverclass_count;
+    thisptr->class_datas =
+        demogobbler_arena_allocate(args.memory_arena, array_size, alignof(serverclass_data));
+    memset(thisptr->class_datas, 0, array_size);
+
+    if (args.flatten_datatables) {
+      for (size_t i = 0; i < thisptr->serverclass_count; ++i) {
+        parse_serverclass(&state, i);
+      }
+    }
+  }
+
+  demogobbler_parse_result result;
+  result.error = state.error;
+  result.error_message = state.error_message;
+
+  return result;
+}
+
+void demogobbler_parser_init_estate(parser *thisptr, demogobbler_datatables_parsed *message) {
+  estate_init_args args;
+  args.flatten_datatables = thisptr->m_settings.flattened_props_handler != NULL;
+  args.memory_arena = &thisptr->permanent_arena;
+  args.message = message;
+  args.version_data = &thisptr->demo_version;
+
+  demogobbler_parse_result result = demogobbler_estate_init(&thisptr->state.entity_state, args);
+
+  if (result.error) {
+    thisptr->error = true;
+    thisptr->error_message = result.error_message;
+  }
+
+  if (!thisptr->error && thisptr->m_settings.flattened_props_handler) {
     thisptr->m_settings.flattened_props_handler(&thisptr->state);
   }
-
-end:;
 }
 
-serverclass_data* demogobbler_estate_serverclass_data(parser* thisptr, size_t index) {
-  estate *entstate_ptr = &thisptr->state.entity_state;
-  if(entstate_ptr->class_datas[index].dt_name == NULL) {
-    parse_serverclass(thisptr, index);
+serverclass_data *demogobbler_estate_serverclass_data(parser *thisptr, size_t index) {
+  estate_init_state state;
+  memset(&state, 0, sizeof(state));
+  state.args.memory_arena = &thisptr->permanent_arena;
+  state.args.version_data = &thisptr->demo_version;
+
+  state.entity_state = &thisptr->state.entity_state;
+
+  if (state.entity_state->class_datas[index].dt_name == NULL) {
+    parse_serverclass(&state, index);
   }
-  
-  return entstate_ptr->class_datas + index;
+
+  return state.entity_state->class_datas + index;
 }

@@ -394,11 +394,7 @@ void parse_datatables(parser *thisptr, demogobbler_datatables *input) {
     if (thisptr->m_settings.datatables_parsed_handler)
       thisptr->m_settings.datatables_parsed_handler(&thisptr->state, &value.output);
     if (thisptr->m_settings.store_ents) {
-      thisptr->state.entity_state.sendtables = value.output.sendtables;
-      thisptr->state.entity_state.serverclasses = value.output.serverclasses;
-      thisptr->state.entity_state.serverclass_count = value.output.serverclass_count;
-      thisptr->state.entity_state.sendtable_count = value.output.sendtable_count;
-      demogobbler_parser_init_estate(thisptr);
+      demogobbler_parser_init_estate(thisptr, &value.output);
       should_free_data = false;
     }
   }

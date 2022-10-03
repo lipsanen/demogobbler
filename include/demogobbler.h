@@ -111,6 +111,16 @@ void demogobbler_writer_free(writer *thisptr);
 demogobbler_datatables_parsed_rval demogobbler_parse_datatables(demo_version_data *state, arena *a,
                                                                 demogobbler_datatables *message);
 
+
+typedef struct {
+  demo_version_data *version_data;
+  arena *memory_arena;
+  demogobbler_datatables_parsed *message;
+  bool flatten_datatables;
+} estate_init_args;
+
+demogobbler_parse_result demogobbler_estate_init(estate *thisptr, estate_init_args args);
+
 #ifdef __cplusplus
 }
 #endif

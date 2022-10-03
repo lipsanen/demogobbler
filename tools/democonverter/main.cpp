@@ -57,9 +57,9 @@ void handle_customdata(parser_state *_state, demogobbler_customdata *message) {
   CHECK_ERROR();
 }
 
-void handle_datatables(parser_state *_state, demogobbler_datatables *message) {
+void handle_datatables_parsed(parser_state *_state, demogobbler_datatables_parsed *message) {
   writer_state *state = (writer_state *)_state->client_state;
-  demogobbler_write_datatables(&state->demo_writer, message);
+  demogobbler_write_datatables_parsed(&state->demo_writer, message);
   CHECK_ERROR();
 }
 void handle_stringtables(parser_state *_state, demogobbler_stringtables *message) {
@@ -154,7 +154,7 @@ int main(int argc, char **argv) {
   demogobbler_settings_init(&settings);
   settings.consolecmd_handler = handle_consolecmd;
   settings.customdata_handler = handle_customdata;
-  settings.datatables_handler = handle_datatables;
+  settings.datatables_parsed_handler = handle_datatables_parsed;
   settings.header_handler = handle_header;
   settings.stop_handler = handle_stop;
   settings.stringtables_handler = handle_stringtables;

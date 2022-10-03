@@ -4,10 +4,11 @@
 extern "C" {
 #endif
 
-#include "demogobbler_io.h"
+#include "demogobbler_arena.h"
 #include "demogobbler_bitwriter.h"
 #include "demogobbler_datatable_types.h"
 #include "demogobbler_entity_types.h"
+#include "demogobbler_io.h"
 #include "demogobbler_parser_types.h"
 #include "header.h"
 #include "packet_netmessages.h"
@@ -106,6 +107,9 @@ void demogobbler_write_stop(writer *thisptr, demogobbler_stop *message);
 void demogobbler_write_stringtables(writer *thisptr, demogobbler_stringtables *message);
 void demogobbler_write_usercmd(writer *thisptr, demogobbler_usercmd *message);
 void demogobbler_writer_free(writer *thisptr);
+
+demogobbler_datatables_parsed_rval demogobbler_parse_datatables(demo_version_data *state, arena *a,
+                                                                demogobbler_datatables *message);
 
 #ifdef __cplusplus
 }

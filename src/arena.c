@@ -131,3 +131,12 @@ void FUN_ATTRIBUTE demogobbler_arena_free(arena* a) {
   free(a->blocks);
   memset(a, 0, sizeof(arena));
 }
+
+void demogobbler_arena_attach(arena* a, void* data, uint32_t size) {
+  ++a->block_count;
+  a->blocks = realloc(a->blocks, sizeof(struct demogobbler_arena_block) * a->block_count);
+  struct demogobbler_arena_block* ptr = get_last_block(a);
+  ptr->data = data;
+  ptr->bytes_used = size;
+  ptr->total_bytes = size;
+}

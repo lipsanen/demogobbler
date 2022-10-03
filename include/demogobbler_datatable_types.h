@@ -99,6 +99,12 @@ typedef struct {
   size_t _raw_buffer_bytes;
 } demogobbler_datatables_parsed;
 
+typedef struct {
+  demogobbler_datatables_parsed output;
+  const char* error_message;
+  bool error;
+} demogobbler_datatables_parsed_rval;
+
 #ifdef __cplusplus
 }
 #endif

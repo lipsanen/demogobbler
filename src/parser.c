@@ -150,7 +150,6 @@ static void parser_free_state(parser* thisptr) {
   demogobbler_hashtable_free(&thisptr->state.entity_state.dt_hashtable);
   demogobbler_hashtable_free(&thisptr->state.entity_state.dts_with_excludes);
   demogobbler_pes_free(&thisptr->state.entity_state.excluded_props);
-  free(thisptr->state.entity_state.sendtables);
 }
 
 #define PARSE_PREAMBLE()                                                                           \

@@ -10,6 +10,7 @@ extern "C" {
 #include "demogobbler_entity_types.h"
 #include "demogobbler_io.h"
 #include "demogobbler_parser_types.h"
+#include "demogobbler_stringtable_types.h"
 #include "header.h"
 #include "packet_netmessages.h"
 #include "packettypes.h"
@@ -33,6 +34,8 @@ typedef void (*func_demogobbler_handle_synctick)(parser_state *state, demogobble
 typedef void (*func_demogobbler_handle_stop)(parser_state *state, demogobbler_stop *ptr);
 typedef void (*func_demogobbler_handle_stringtables)(parser_state *state,
                                                      demogobbler_stringtables *header);
+typedef void (*func_demogobbler_handle_stringtables_parsed)(parser_state *state,
+                                                     demogobbler_stringtables_parsed *message);
 typedef void (*func_demogobbler_handle_usercmd)(parser_state *state, demogobbler_usercmd *ptr);
 typedef void (*func_demogobbler_handle_datatables_parsed)(parser_state *state,
                                                            demogobbler_datatables_parsed *message);
@@ -54,6 +57,7 @@ struct demogobbler_settings {
   func_demogobbler_handle_synctick synctick_handler;
   func_demogobbler_handle_stop stop_handler;
   func_demogobbler_handle_stringtables stringtables_handler;
+  func_demogobbler_handle_stringtables_parsed stringtables_parsed_handler;
   func_demogobbler_handle_usercmd usercmd_handler;
   bool store_ents;
   void *client_state;
@@ -105,12 +109,9 @@ void demogobbler_write_preamble(writer* thisptr, demogobbler_message_preamble pr
 void demogobbler_write_synctick(writer *thisptr, demogobbler_synctick *message);
 void demogobbler_write_stop(writer *thisptr, demogobbler_stop *message);
 void demogobbler_write_stringtables(writer *thisptr, demogobbler_stringtables *message);
+void demogobbler_write_stringtables_parsed(writer *thisptr, demogobbler_stringtables_parsed *message);
 void demogobbler_write_usercmd(writer *thisptr, demogobbler_usercmd *message);
 void demogobbler_writer_free(writer *thisptr);
-
-demogobbler_datatables_parsed_rval demogobbler_parse_datatables(demo_version_data *state, arena *a,
-                                                                demogobbler_datatables *message);
-
 
 typedef struct {
   demo_version_data *version_data;
@@ -119,7 +120,15 @@ typedef struct {
   bool flatten_datatables;
 } estate_init_args;
 
+typedef struct {
+  arena *memory_arena;
+  demogobbler_stringtables *message;
+} stringtable_parse_args;
+
+demogobbler_datatables_parsed_rval demogobbler_parse_datatables(demo_version_data *state, arena *a,
+                                                                demogobbler_datatables *message);
 demogobbler_parse_result demogobbler_estate_init(estate *thisptr, estate_init_args args);
+demogobbler_parse_result demogobbler_parse_stringtables(demogobbler_stringtables_parsed *out, stringtable_parse_args args);
 
 #ifdef __cplusplus
 }

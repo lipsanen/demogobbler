@@ -1,3 +1,4 @@
+#include "arena.h"
 #include "streams.h"
 #include "utils.h"
 #include <stdio.h>
@@ -32,6 +33,7 @@ size_t buffer_stream_read(void* ptr, void* dest, size_t bytes)
   buffer_stream* thisptr = ptr;
   if(bytes >= thisptr->size || bytes < 0)
   {
+    thisptr->overflow = true;
     return 0;
   }
   else
@@ -48,7 +50,39 @@ int buffer_stream_seek(void* ptr, long int offset)
 {
   buffer_stream* thisptr = ptr;
   thisptr->offset += offset;
-  thisptr->offset = CLAMP(0, thisptr->offset, thisptr->size);
+
+  if(thisptr->offset > thisptr->size) {
+    thisptr->overflow = true;
+    thisptr->offset = thisptr->size;
+  }
 
   return 0;
+}
+
+
+uint8_t buffer_stream_read_byte(buffer_stream* thisptr)
+{
+  uint8_t rval;
+  buffer_stream_read(thisptr, &rval, 1);
+  return rval;
+}
+
+uint16_t buffer_stream_read_short(buffer_stream* thisptr)
+{
+  uint16_t rval;
+  buffer_stream_read(thisptr, &rval, 2);
+  return rval;
+}
+
+const char* buffer_stream_read_string(buffer_stream* thisptr)
+{
+  char* start = (char*)thisptr->buffer + thisptr->offset;
+  char* str = start;
+
+  while(*str != '\0' && (str - (char*)thisptr->buffer) < thisptr->size) {
+    ++str;
+  }
+
+  thisptr->offset = str - (char*)thisptr->buffer;
+  return start;
 }

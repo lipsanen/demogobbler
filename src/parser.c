@@ -6,6 +6,7 @@
 #include "packettypes.h"
 #include "parser_datatables.h"
 #include "parser_netmessages.h"
+#include "parser_stringtables.h"
 #include "utils.h"
 #include "version_utils.h"
 #include <stddef.h>
@@ -33,7 +34,7 @@ void parser_init(parser *thisptr, demogobbler_settings *settings) {
   const size_t INITIAL_SIZE = 1 << 17;
   const size_t INITIAL_TEMP_SIZE = 1 << 17;
   // Does lazy allocation, only allocates stuff if requested
-  thisptr->permanent_arena = demogobbler_arena_create(INITIAL_SIZE); 
+  thisptr->permanent_arena = demogobbler_arena_create(INITIAL_SIZE);
   thisptr->temp_arena = demogobbler_arena_create(INITIAL_TEMP_SIZE);
 }
 
@@ -144,7 +145,7 @@ bool _parse_anymessage(parser *thisptr) {
          !thisptr->error; // Return false when done parsing demo, or when at eof
 }
 
-static void parser_free_state(parser* thisptr) {
+static void parser_free_state(parser *thisptr) {
   demogobbler_arena_free(&thisptr->permanent_arena);
   demogobbler_arena_free(&thisptr->temp_arena);
   demogobbler_hashtable_free(&thisptr->state.entity_state.dt_hashtable);
@@ -178,18 +179,18 @@ void _parser_mainloop(parser *thisptr) {
   NULL_CHECK(stringtables);
   NULL_CHECK(usercmd);
 
-  if (settings->flattened_props_handler || settings->store_ents || settings->packetentities_parsed_handler) {
+  if (settings->flattened_props_handler || settings->store_ents ||
+      settings->packetentities_parsed_handler) {
     settings->store_ents = true; // Entity state init handler => we should store ents
     should_parse = true;
     thisptr->parse_netmessages = true;
   }
 
-  if(!thisptr->demo_version.l4d2_version_finalized && settings->demo_version_handler)
-  {
+  if (!thisptr->demo_version.l4d2_version_finalized && settings->demo_version_handler) {
     should_parse = true;
   }
 
-  if(settings->packet_parsed_handler) {
+  if (settings->packet_parsed_handler) {
     should_parse = true;
     thisptr->parse_netmessages = true;
   }
@@ -206,12 +207,12 @@ void _parser_mainloop(parser *thisptr) {
 
 #define READ_MESSAGE_DATA()                                                                        \
   {                                                                                                \
-    size_t read_bytes = filereader_readdata(thisreader, block, message.size_bytes);        \
+    size_t read_bytes = filereader_readdata(thisreader, block, message.size_bytes);                \
     if (read_bytes != message.size_bytes) {                                                        \
       thisptr->error = true;                                                                       \
       thisptr->error_message = "Message could not be read fully, reached end of file.";            \
     }                                                                                              \
-    message.data = block;                                                                  \
+    message.data = block;                                                                          \
   }
 
 void _parse_consolecmd(parser *thisptr) {
@@ -223,7 +224,7 @@ void _parse_consolecmd(parser *thisptr) {
   if (message.size_bytes > 0) {
     ;
     if (thisptr->m_settings.consolecmd_handler) {
-      void* block = demogobbler_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
+      void *block = demogobbler_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
       READ_MESSAGE_DATA();
 
       if (!thisptr->error) {
@@ -249,7 +250,7 @@ void _parse_customdata(parser *thisptr) {
   message.size_bytes = _parser_read_length(thisptr);
 
   if (thisptr->m_settings.customdata_handler && message.size_bytes > 0) {
-    void* block = demogobbler_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
+    void *block = demogobbler_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
     READ_MESSAGE_DATA();
     if (!thisptr->error) {
       thisptr->m_settings.customdata_handler(&thisptr->state, &message);
@@ -271,7 +272,7 @@ void _parse_datatables(parser *thisptr) {
                                thisptr->m_settings.store_ents;
 
   if (has_datatable_handler && message.size_bytes > 0) {
-    void* block = demogobbler_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
+    void *block = demogobbler_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
     READ_MESSAGE_DATA();
     if (!thisptr->error) {
 
@@ -287,7 +288,8 @@ void _parse_datatables(parser *thisptr) {
 }
 
 static void _parse_cmdinfo(parser *thisptr, demogobbler_packet *packet, size_t i) {
-  bool should_parse_netmessages = !thisptr->demo_version.l4d2_version_finalized || thisptr->parse_netmessages;
+  bool should_parse_netmessages =
+      !thisptr->demo_version.l4d2_version_finalized || thisptr->parse_netmessages;
   if (thisptr->m_settings.packet_handler || should_parse_netmessages) {
     filereader_readdata(thisreader, packet->cmdinfo_raw[i].data,
                         sizeof(packet->cmdinfo_raw[i].data));
@@ -301,7 +303,8 @@ void _parse_packet(parser *thisptr, enum demogobbler_type type) {
   message.preamble.type = message.preamble.converted_type = type;
   PARSE_PREAMBLE();
   message.cmdinfo_size = thisptr->demo_version.cmdinfo_size;
-  bool should_parse_netmessages = !thisptr->demo_version.l4d2_version_finalized || thisptr->parse_netmessages;
+  bool should_parse_netmessages =
+      !thisptr->demo_version.l4d2_version_finalized || thisptr->parse_netmessages;
 
   for (int i = 0; i < message.cmdinfo_size; ++i) {
     _parse_cmdinfo(thisptr, &message, i);
@@ -311,9 +314,8 @@ void _parse_packet(parser *thisptr, enum demogobbler_type type) {
   message.out_sequence = filereader_readint32(thisreader);
   message.size_bytes = _parser_read_length(thisptr);
 
-  if ((thisptr->m_settings.packet_handler || should_parse_netmessages) &&
-      message.size_bytes > 0) {
-    void* block = demogobbler_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
+  if ((thisptr->m_settings.packet_handler || should_parse_netmessages) && message.size_bytes > 0) {
+    void *block = demogobbler_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
     READ_MESSAGE_DATA();
     if (!thisptr->error) {
 
@@ -340,15 +342,15 @@ void _parse_stop(parser *thisptr) {
     size_t bytes = 0;
     size_t bytes_reserved = 0;
     size_t bytesReadIt;
-    void* ptr = NULL;
+    void *ptr = NULL;
 
     do {
       size_t new_reserve_size = bytes_reserved + bytes_per_read;
-      ptr = demogobbler_arena_reallocate(&thisptr->temp_arena, ptr, bytes_reserved, new_reserve_size, 1);
+      ptr = demogobbler_arena_reallocate(&thisptr->temp_arena, ptr, bytes_reserved,
+                                         new_reserve_size, 1);
       bytes_reserved = new_reserve_size;
 
-      bytesReadIt =
-          filereader_readdata(thisreader, (uint8_t *)ptr + bytes, bytes_per_read);
+      bytesReadIt = filereader_readdata(thisreader, (uint8_t *)ptr + bytes, bytes_per_read);
       bytes += bytesReadIt;
     } while (bytesReadIt == bytes_per_read);
     message.size_bytes = bytes;
@@ -364,12 +366,18 @@ void _parse_stringtables(parser *thisptr, int32_t type) {
   message.preamble.converted_type = demogobbler_type_stringtables;
   PARSE_PREAMBLE();
   message.size_bytes = _parser_read_length(thisptr);
+  bool should_parse =
+      thisptr->m_settings.stringtables_parsed_handler || thisptr->m_settings.stringtables_handler;
 
-  if (thisptr->m_settings.stringtables_handler && message.size_bytes > 0) {
-    void* block = demogobbler_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
+  if (should_parse && message.size_bytes > 0) {
+    void *block = demogobbler_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
     READ_MESSAGE_DATA();
     if (!thisptr->error) {
-      thisptr->m_settings.stringtables_handler(&thisptr->state, &message);
+      if(thisptr->m_settings.stringtables_handler)
+        thisptr->m_settings.stringtables_handler(&thisptr->state, &message);
+      if(thisptr->m_settings.stringtables_parsed_handler) {
+        demogobbler_parser_parse_stringtables(thisptr, &message);
+      }
     }
   } else {
     filereader_skipbytes(thisreader, message.size_bytes);
@@ -395,8 +403,8 @@ void _parse_usercmd(parser *thisptr) {
   message.size_bytes = filereader_readint32(thisreader);
 
   if (thisptr->m_settings.usercmd_handler) {
-    if(message.size_bytes > 0) {
-      void* block = demogobbler_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
+    if (message.size_bytes > 0) {
+      void *block = demogobbler_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
       READ_MESSAGE_DATA();
     } else {
       message.data = NULL;

@@ -65,8 +65,25 @@ void print_packet(parser_state *a, demogobbler_packet *message) {
   printf("Messages:\n");
 }
 
-void print_stringtables(parser_state *a, demogobbler_stringtables *message) {
-  PRINT_MESSAGE_PREAMBLE(stringtables);
+void print_stringtables_parsed(parser_state *a, demogobbler_stringtables_parsed *message) {
+  printf("Stringtables, Tick %d, Slot %d\n", message->orig.preamble.tick, message->orig.preamble.slot);
+
+  for(size_t i=0; i < message->tables_count; ++i) {
+    stringtable* table = message->tables + i;
+    printf("\t[%lu] %s entries:\n", i, table->table_name);
+    for(size_t u=0; u < table->entries_count; ++u) {
+      stringtable_entry* entry = table->entries + u;
+      printf("\t\t[%lu] %s - %u bytes\n", u, entry->name, entry->size);
+    }
+
+    if(table->has_classes) {
+      printf("\t[%lu] %s classes:\n", i, table->table_name);
+      for(size_t u=0; u < table->classes_count; ++u) {
+        stringtable_entry* entry = table->classes + u;
+        printf("\t\t[%lu] %s - %u bytes\n", u, entry->name, entry->size);
+      }
+    }
+  }
 }
 
 void print_stop(parser_state *a, demogobbler_stop *message) { printf("stop:\n"); }
@@ -361,7 +378,7 @@ int main(int argc, char **argv) {
   settings.header_handler = print_header;
   settings.packet_handler = print_packet;
   settings.stop_handler = print_stop;
-  settings.stringtables_handler = print_stringtables;
+  settings.stringtables_parsed_handler = print_stringtables_parsed;
   settings.synctick_handler = print_synctick;
   settings.usercmd_handler = print_usercmd;
   settings.packetentities_parsed_handler = print_packetentities_parsed;

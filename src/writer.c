@@ -179,3 +179,27 @@ void demogobbler_writer_free(writer *thisptr) {
   demogobbler_writer_close(thisptr);
   demogobbler_bitwriter_free(&thisptr->bitwriter);
 }
+
+void demogobbler_write_byte(writer* thisptr, uint8_t value) {
+  thisptr->output_funcs.write(thisptr->_stream, &value, 1);
+}
+
+void demogobbler_write_short(writer* thisptr, uint16_t value) {
+  thisptr->output_funcs.write(thisptr->_stream, &value, 2);
+}
+
+void demogobbler_write_int32(writer* thisptr, int32_t value) {
+  thisptr->output_funcs.write(thisptr->_stream, &value, 4);
+}
+
+void demogobbler_write_data(writer* thisptr, void* src, uint32_t bytes) {
+  thisptr->output_funcs.write(thisptr->_stream, src, bytes);
+}
+
+void demogobbler_write_string(writer* thisptr, const char* str) {
+  while(*str) {
+    thisptr->output_funcs.write(thisptr->_stream, str, 1);
+    ++str;
+  }
+  thisptr->output_funcs.write(thisptr->_stream, str, 1);
+}

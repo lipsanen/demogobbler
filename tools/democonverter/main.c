@@ -1,36 +1,35 @@
 #include "demogobbler.h"
 #include "demogobbler_bitwriter.h"
-#include <cstdio>
-#include <cstring>
-#include <iostream>
-#include <string>
+#include <stdio.h>
+#include <string.h>
 
-struct writer_state {
-  demogobbler_writer demo_writer;
+typedef struct {
+  writer demo_writer;
   bitwriter message_bitwriter;
   demogobbler_header transplant_header;
   int32_t stringtable_crc;
   int32_t map_crc;
   char map_md5[16];
   bool overwrite_crc;
+} writer_state;
 
-  ~writer_state() {
-    demogobbler_writer_free(&this->demo_writer);
-    bitwriter_free(&this->message_bitwriter);
-  }
+void writer_state_destruct(writer_state* thisptr) {
+  demogobbler_writer_free(&thisptr->demo_writer);
+  bitwriter_free(&thisptr->message_bitwriter);
+}
 
-  writer_state(const char *filepath) {
-    demogobbler_writer_init(&this->demo_writer);
-    demogobbler_writer_open_file(&this->demo_writer, filepath);
+void writer_state_constructor(writer_state* thisptr, const char* filepath) {
+    demogobbler_writer_init(&thisptr->demo_writer);
+    demogobbler_writer_open_file(&thisptr->demo_writer, filepath);
 
-    if (this->demo_writer.error) {
-      fprintf(stderr, "Error opening file %s: %s", filepath, this->demo_writer.error_message);
+    if (thisptr->demo_writer.error) {
+      fprintf(stderr, "Error opening file %s: %s", filepath, thisptr->demo_writer.error_message);
       exit(1);
     }
 
-    bitwriter_init(&this->message_bitwriter, 1 << 18);
-  }
-};
+    bitwriter_init(&thisptr->message_bitwriter, 1 << 18);
+
+}
 
 #define CHECK_ERROR()                                                                              \
   if (state->demo_writer.error) {                                                                  \
@@ -44,12 +43,14 @@ void handle_header(parser_state *_state, demogobbler_header *header) {
   // Copy the demo protocol/net protocol and game dir from transplant
   temp.demo_protocol = state->transplant_header.demo_protocol;
   temp.net_protocol = state->transplant_header.net_protocol;
+#if 0
   state->overwrite_crc = strcmp(state->transplant_header.map_name, header->map_name) == 0;
   if(state->overwrite_crc) {
     printf("Same map as example demo, CRC correction available\n");
   } else {
     printf("Map is not the same as in the example, cannot fix map CRC\n");
   }
+#endif
 
   memcpy(temp.game_directory, state->transplant_header.game_directory, 260);
   demogobbler_write_header(&state->demo_writer, &temp);
@@ -115,17 +116,19 @@ static void packet_parsed_handler(parser_state *_state, packet_parsed* parsed) {
   for(size_t i=0; i < parsed->message_count; ++i) {
     packet_net_message* message = &parsed->messages[i];
     if(message->mtype == svc_serverinfo) {
-      auto* ptr = message->message_svc_serverinfo;
+      struct demogobbler_svc_serverinfo * ptr = message->message_svc_serverinfo;
+#if 0
       if(state->overwrite_crc) {
         ptr->stringtable_crc = state->stringtable_crc;
         ptr->map_crc = state->map_crc;
         memcpy(ptr->map_md5, state->map_md5, sizeof(ptr->map_md5));
       }
+#endif
       ptr->network_protocol = state->demo_writer.version.network_protocol;
     } else if(message->mtype == svc_packet_entities) {
-      auto* ptr = &message->message_svc_packet_entities;
+      struct demogobbler_svc_packet_entities* ptr = &message->message_svc_packet_entities;
       // Fix the packetentities data
-      memset(&ptr->data, 0, sizeof(demogobbler_bitstream));
+      memset(&ptr->data, 0, sizeof(bitstream));
       ptr->data_length = state->message_bitwriter.bitoffset;
       ptr->data.bitoffset = 0;
       ptr->data.data = state->message_bitwriter.ptr;
@@ -136,13 +139,13 @@ static void packet_parsed_handler(parser_state *_state, packet_parsed* parsed) {
   demogobbler_write_packet_parsed(&state->demo_writer, parsed);
 }
 
-struct version_header_stuff {
+typedef struct {
   demo_version_data version_data;
   demogobbler_header header;
   int32_t stringtable_crc;
   int32_t map_crc;
   char map_md5[16];
-};
+} version_header_stuff;
 
 static void version_handle_demo_version(parser_state* state, demo_version_data version) {
   version_header_stuff* ptr = (version_header_stuff*)state->client_state;
@@ -159,7 +162,7 @@ static void version_handle_packet_parsed(parser_state* state, packet_parsed* par
   for(size_t i=0; i < parsed->message_count; ++i) {
     packet_net_message* message = &parsed->messages[i];
     if(message->mtype == svc_serverinfo) {
-      auto* ptr = message->message_svc_serverinfo;
+      struct demogobbler_svc_serverinfo* ptr = message->message_svc_serverinfo;
       ver->stringtable_crc = ptr->stringtable_crc;
       ver->map_crc = ptr->map_crc;
       memcpy(ver->map_md5, ptr->map_md5, sizeof(ptr->map_md5));
@@ -169,6 +172,7 @@ static void version_handle_packet_parsed(parser_state* state, packet_parsed* par
 
 static version_header_stuff get_demo_version(char* example_path) {
   version_header_stuff data;
+  memset(&data, 0, sizeof(data));
   demogobbler_settings settings;
   demogobbler_settings_init(&settings);
   settings.client_state = &data;
@@ -195,7 +199,8 @@ int main(int argc, char **argv) {
 
   version_header_stuff data = get_demo_version(argv[1]);
 
-  writer_state writer(argv[3]);
+  writer_state writer;
+  writer_state_constructor(&writer, argv[3]);
   writer.stringtable_crc = data.stringtable_crc;
   writer.map_crc = data.map_crc;
   memcpy(writer.map_md5, data.map_md5, sizeof(data.map_md5));

@@ -36,7 +36,7 @@ void print_customdata(parser_state *a, demogobbler_customdata *message) {
   PRINT_MESSAGE_PREAMBLE(customdata);
 }
 
-void print_packet(parser_state *a, demogobbler_packet *message) {
+void print_packet_orig(parser_state *a, demogobbler_packet *message) {
   dump_state *state = a->client_state;
   if (message->preamble.type == demogobbler_type_signon) {
     printf("Signon, Tick %d, Slot %d\n", message->preamble.tick, message->preamble.slot);
@@ -63,6 +63,19 @@ void print_packet(parser_state *a, demogobbler_packet *message) {
 
   printf("In sequence: %d, Out sequence: %d\n", message->in_sequence, message->out_sequence);
   printf("Messages:\n");
+}
+
+void print_packet(parser_state *a, packet_parsed *message) {
+  dump_state *state = a->client_state;
+  print_packet_orig(a, message->orig);
+
+  for(size_t i=0; i < message->message_count; ++i) {
+    packet_net_message *netmsg = message->messages + i;
+    if(netmsg->mtype == svc_create_stringtable) {
+      struct demogobbler_svc_create_stringtable msg = netmsg->message_svc_create_stringtable;
+      printf("\tsvc_create_stringtable %s, %u entries\n", msg.name, msg.num_entries);
+    }
+  }
 }
 
 void print_stringtables_parsed(parser_state *a, demogobbler_stringtables_parsed *message) {
@@ -376,7 +389,7 @@ int main(int argc, char **argv) {
   settings.consolecmd_handler = print_consolecmd;
   settings.customdata_handler = print_customdata;
   settings.header_handler = print_header;
-  settings.packet_handler = print_packet;
+  settings.packet_parsed_handler = print_packet;
   settings.stop_handler = print_stop;
   settings.stringtables_parsed_handler = print_stringtables_parsed;
   settings.synctick_handler = print_synctick;

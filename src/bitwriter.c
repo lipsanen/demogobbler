@@ -190,7 +190,11 @@ void demogobbler_bitwriter_write_coordvector(bitwriter *thisptr, bitcoord_vector
 }
 
 void demogobbler_bitwriter_write_cstring(bitwriter *thisptr, const char *text) {
-  bitwriter_write_bits(thisptr, (void *)text, (strlen(text) + 1) * 8);
+  if(text == NULL) {
+    bitwriter_write_uint(thisptr, 0, 8);
+  } else {
+    bitwriter_write_bits(thisptr, (void *)text, (strlen(text) + 1) * 8);
+  }
 }
 
 void demogobbler_bitwriter_write_float(bitwriter *thisptr, float value) {

@@ -461,7 +461,7 @@ void demogobbler_parse_packetentities(parser *thisptr,
   memset(state.output.ent_updates, 0, ent_update_bytes);
 
   prop_value props_array[64];
-  state.prop_array = demogobbler_va_create(props_array);
+  state.prop_array = demogobbler_va_create(props_array, prop_value);
 
   unsigned bits = Q_log2(thisptr->state.entity_state.serverclass_count) + 1;
 

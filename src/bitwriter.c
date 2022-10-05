@@ -3,6 +3,12 @@
 #include "utils.h"
 #include <string.h>
 
+#ifdef _MSC_VER
+#define NO_ASAN
+#else
+#define NO_ASAN __attribute__((no_sanitize("address")))
+#endif
+
 void demogobbler_bitwriter_init(bitwriter *thisptr, uint32_t initial_size_bits) {
   memset(thisptr, 0, sizeof(*thisptr));
   initial_size_bits += initial_size_bits & 0x7;
@@ -74,7 +80,7 @@ static void bitwriter_allocate_space_if_needed(bitwriter *thisptr, unsigned int 
 
 #define CHECK_SIZE() bitwriter_allocate_space_if_needed(thisptr, bits)
 
-void __attribute__((no_sanitize("address"))) demogobbler_bitwriter_write_bit(bitwriter *thisptr, bool value) {
+void NO_ASAN demogobbler_bitwriter_write_bit(bitwriter *thisptr, bool value) {
   bitwriter_allocate_space_if_needed(thisptr, 1);
   uint8_t MASKS[] = {0x1, 0x2, 0x4, 0x8, 0x10, 0x20, 0x40, 0x80};
   int index = thisptr->bitoffset & 0x7;
@@ -92,7 +98,7 @@ void __attribute__((no_sanitize("address"))) demogobbler_bitwriter_write_bit(bit
 #endif
 }
 
-void __attribute__((no_sanitize("address"))) demogobbler_bitwriter_write_bits(bitwriter *thisptr, const void *_src, unsigned int bits) {
+void NO_ASAN demogobbler_bitwriter_write_bits(bitwriter *thisptr, const void *_src, unsigned int bits) {
   CHECK_SIZE();
   unsigned int src_offset = 0;
 #ifdef GROUND_TRUTH_CHECK

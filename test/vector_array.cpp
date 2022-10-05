@@ -6,7 +6,7 @@ extern "C" {
 
 TEST(vector_array, create) {
   uint32_t array[500];
-  vector_array vec = demogobbler_va_create(array);
+  vector_array vec = demogobbler_va_create(array, uint32_t);
   EXPECT_EQ(vec.allocated_by_malloc, false);
   EXPECT_EQ(vec.bytes_per_element, sizeof(uint32_t));
   EXPECT_EQ(vec.count_elements, 0);
@@ -17,7 +17,7 @@ TEST(vector_array, create) {
 
 TEST(vector_array, push_back) {
   uint32_t array[500];
-  vector_array vec = demogobbler_va_create(array);
+  vector_array vec = demogobbler_va_create(array, uint32_t);
   for(uint32_t i=0; i < 501; ++i)
     demogobbler_va_push_back(&vec, &i);
   
@@ -34,7 +34,7 @@ TEST(vector_array, push_back) {
 
 TEST(vector_array, clear) {
   uint32_t array[500];
-  vector_array vec = demogobbler_va_create(array);
+  vector_array vec = demogobbler_va_create(array, uint32_t);
   for(uint32_t i=0; i < 500; ++i)
     demogobbler_va_push_back(&vec, &i);
   

@@ -1,4 +1,5 @@
 #include "parser_entity_state.h"
+#include "alignof_wrapper.h"
 #include "arena.h"
 #include "hashtable.h"
 #include "utils.h"

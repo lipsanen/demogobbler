@@ -9,6 +9,12 @@
 // Turn this macro on for more readable profiler output
 #define FUN_ATTRIBUTE //__attribute__((noinline))
 
+#ifdef _MSC_VER
+#define NO_ASAN
+#else
+#define NO_ASAN __attribute__((no_sanitize("address"))
+#endif
+
 // This rounds up
 static inline uint32_t FUN_ATTRIBUTE get_size_in_bytes(uint32_t bits) {
   if (bits & 0x7) {
@@ -29,7 +35,7 @@ static inline unsigned int FUN_ATTRIBUTE buffered_bits(bitstream *thisptr) {
   }
 }
 
-static inline void __attribute__((no_sanitize("address"))) FUN_ATTRIBUTE fetch_ubit(bitstream *thisptr) {
+static inline void NO_ASAN FUN_ATTRIBUTE fetch_ubit(bitstream *thisptr) {
   if (thisptr->bitoffset >= thisptr->bitsize || thisptr->overflow) {
     thisptr->buffered = 0;
     thisptr->buffered_address = NULL;
@@ -130,8 +136,7 @@ static inline uint64_t FUN_ATTRIBUTE read_ubit_slow(bitstream *thisptr, unsigned
   return rval;
 }
 
-static inline uint64_t FUN_ATTRIBUTE __attribute__((no_sanitize("address")))
-read_ubit(bitstream *thisptr, unsigned requested_bits) {
+static inline uint64_t FUN_ATTRIBUTE NO_ASAN read_ubit(bitstream *thisptr, unsigned requested_bits) {
   if(requested_bits > 56 || thisptr->overflow) {
     return read_ubit_slow(thisptr, requested_bits);
   }
@@ -164,7 +169,7 @@ BITSTREAM_PREAMBLE void FUN_ATTRIBUTE demogobbler_bitstream_read_fixed_string(bi
   }
 }
 
-BITSTREAM_PREAMBLE bool FUN_ATTRIBUTE __attribute__((no_sanitize("address"))) demogobbler_bitstream_read_bit(bitstream *thisptr) {
+BITSTREAM_PREAMBLE bool FUN_ATTRIBUTE NO_ASAN demogobbler_bitstream_read_bit(bitstream *thisptr) {
   if (thisptr->overflow || thisptr->bitoffset >= thisptr->bitsize) {
     thisptr->overflow = true;
     return false;

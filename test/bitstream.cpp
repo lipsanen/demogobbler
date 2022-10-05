@@ -1,4 +1,4 @@
-#include "demogobbler_bitwriter.h"
+#include "demogobbler/bitwriter.h"
 #include "gtest/gtest.h"
 #include <cmath>
 #include <cstdint>

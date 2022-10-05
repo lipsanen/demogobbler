@@ -5,8 +5,8 @@ extern "C"
 {
 #endif
 
-#include "demogobbler_bitstream.h"
-#include "demogobbler_floats.h"
+#include "demogobbler/bitstream.h"
+#include "demogobbler/floats.h"
 
 // clang-format off
 #define DEMOGOBBLER_MACRO_ALL_MESSAGES(macro) \

@@ -1,6 +1,6 @@
 #include "bitstream.h"
 #include "demogobbler.h"
-#include "demogobbler_bitwriter.h"
+#include "demogobbler/bitwriter.h"
 #include "streams.h"
 #include "utils.h"
 #include "version_utils.h"

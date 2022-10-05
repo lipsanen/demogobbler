@@ -1,6 +1,6 @@
 #pragma once
 
-#include "demogobbler_floats.h"
+#include "demogobbler/floats.h"
 #include <stddef.h>
 
 struct demogobbler_sendprop;

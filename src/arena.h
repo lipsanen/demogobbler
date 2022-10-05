@@ -1,6 +1,6 @@
 #pragma once
 
-#include "demogobbler_arena.h"
+#include "demogobbler/arena.h"
 
 arena demogobbler_arena_create(uint32_t first_block_size);
 void demogobbler_arena_clear(arena* a);

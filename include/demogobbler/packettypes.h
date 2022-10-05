@@ -4,7 +4,7 @@
 extern "C" {
 #endif
 
-#include "demogobbler_vector.h"
+#include "demogobbler/vector.h"
 #include <assert.h>
 #include <stddef.h>
 #include <stdint.h>

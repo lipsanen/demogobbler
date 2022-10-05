@@ -1,4 +1,4 @@
-#include "freddie.h"
+#include "demogobbler/freddie.h"
 #include <stdio.h>
 
 // TODO: This is still completely broken at doesnt work at all

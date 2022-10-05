@@ -3,8 +3,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>
-#include "demogobbler_datatable_types.h"
-#include "demogobbler_entity_types.h"
+#include "demogobbler/datatable_types.h"
+#include "demogobbler/entity_types.h"
 
 hashtable demogobbler_hashtable_create(size_t array_size);
 hashtable_entry demogobbler_hashtable_get(hashtable* thisptr, const char* str);

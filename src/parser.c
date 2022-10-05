@@ -4,7 +4,7 @@
 #include "alignof_wrapper.h"
 #include "filereader.h"
 #include "hashtable.h"
-#include "packettypes.h"
+#include "demogobbler/packettypes.h"
 #include "parser_datatables.h"
 #include "parser_netmessages.h"
 #include "parser_stringtables.h"

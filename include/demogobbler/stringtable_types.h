@@ -4,7 +4,7 @@
 extern "C" {
 #endif
 
-#include "demogobbler_bitstream.h"
+#include "demogobbler/bitstream.h"
 #include "packettypes.h"
 #include <stdint.h>
 

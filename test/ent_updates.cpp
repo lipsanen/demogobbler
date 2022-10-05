@@ -1,5 +1,5 @@
 #include "demogobbler.h"
-#include "demogobbler_bitwriter.h"
+#include "demogobbler/bitwriter.h"
 #include "gtest/gtest.h"
 #include "test_demos.hpp"
 

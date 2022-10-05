@@ -2,8 +2,8 @@
 #include "alignof_wrapper.h"
 #include "arena.h"
 #include "bitstream.h"
-#include "demogobbler_bitwriter.h"
-#include "demogobbler_datatable_types.h"
+#include "demogobbler/bitwriter.h"
+#include "demogobbler/datatable_types.h"
 #include "parser_entity_state.h"
 #include "utils.h"
 #include <string.h>

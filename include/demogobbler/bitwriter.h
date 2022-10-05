@@ -4,11 +4,11 @@
 extern "C" {
 #endif
 
-#include "demogobbler_bitstream.h"
-#include "demogobbler_datatable_types.h"
-#include "demogobbler_entity_types.h"
-#include "demogobbler_parser_types.h"
-#include "demogobbler_vector.h"
+#include "demogobbler/bitstream.h"
+#include "demogobbler/datatable_types.h"
+#include "demogobbler/entity_types.h"
+#include "demogobbler/parser_types.h"
+#include "demogobbler/vector.h"
 #include <stdint.h>
 
 #ifdef DEBUG

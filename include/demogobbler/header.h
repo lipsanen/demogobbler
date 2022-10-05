@@ -4,7 +4,7 @@
 extern "C" {
 #endif
 
-#include "stdint.h"
+#include <stdint.h>
 
 typedef struct demogobbler_header demogobbler_header;
 

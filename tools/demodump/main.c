@@ -1,6 +1,6 @@
 #include "demogobbler.h"
-#include "demogobbler_conversions.h"
-#include "demogobbler_datatable_types.h"
+#include "demogobbler/conversions.h"
+#include "demogobbler/datatable_types.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -66,7 +66,6 @@ void print_packet_orig(parser_state *a, demogobbler_packet *message) {
 }
 
 void print_packet(parser_state *a, packet_parsed *message) {
-  dump_state *state = a->client_state;
   print_packet_orig(a, message->orig);
 
   for(size_t i=0; i < message->message_count; ++i) {

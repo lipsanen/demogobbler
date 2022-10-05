@@ -1,10 +1,10 @@
 #pragma once
 
-#include "demogobbler_io.h"
-#include "packettypes.h"
-#include "stdbool.h"
-#include "stdint.h"
-#include "stdio.h"
+#include "demogobbler/io.h"
+#include "demogobbler/packettypes.h"
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
 
 struct filereader {
   void *buffer;

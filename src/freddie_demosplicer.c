@@ -1,5 +1,5 @@
 #include "demogobbler.h"
-#include "freddie.h"
+#include "demogobbler/freddie.h"
 #include "utils.h"
 #include <stdio.h>
 #include <string.h>

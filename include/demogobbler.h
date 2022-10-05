@@ -4,16 +4,16 @@
 extern "C" {
 #endif
 
-#include "demogobbler_arena.h"
-#include "demogobbler_bitwriter.h"
-#include "demogobbler_datatable_types.h"
-#include "demogobbler_entity_types.h"
-#include "demogobbler_io.h"
-#include "demogobbler_parser_types.h"
-#include "demogobbler_stringtable_types.h"
-#include "header.h"
-#include "packet_netmessages.h"
-#include "packettypes.h"
+#include "demogobbler/arena.h"
+#include "demogobbler/bitwriter.h"
+#include "demogobbler/datatable_types.h"
+#include "demogobbler/entity_types.h"
+#include "demogobbler/io.h"
+#include "demogobbler/parser_types.h"
+#include "demogobbler/stringtable_types.h"
+#include "demogobbler/header.h"
+#include "demogobbler/packet_netmessages.h"
+#include "demogobbler/packettypes.h"
 #include <stdbool.h>
 #include <stdio.h>
 

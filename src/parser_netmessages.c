@@ -1,7 +1,7 @@
 #include "parser_netmessages.h"
 #include "arena.h"
 #include "bitstream.h"
-#include "demogobbler_bitwriter.h"
+#include "demogobbler/bitwriter.h"
 #include "parser_packetentities.h"
 #include "utils.h"
 #include "version_utils.h"

@@ -4,7 +4,7 @@
 extern "C" {
 #endif
 
-#include "packettypes.h"
+#include "demogobbler/packettypes.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>

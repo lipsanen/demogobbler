@@ -1,6 +1,6 @@
 #pragma once
 
-#include "demogobbler_arena.h"
+#include "demogobbler/arena.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>

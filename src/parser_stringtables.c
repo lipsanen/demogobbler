@@ -1,4 +1,5 @@
 #include "parser_stringtables.h"
+#include "alignof_wrapper.h"
 #include "arena.h"
 #include "bitstream.h"
 #include "demogobbler.h"

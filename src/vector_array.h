@@ -1,5 +1,6 @@
 #pragma once
 
+#include "alignof_wrapper.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -20,5 +21,5 @@ void demogobbler_va_free(vector_array *thisptr);                 // Frees the me
 void* demogobbler_va_indexptr(vector_array* thisptr, uint32_t index); // Get ptr to index
 
 // Use for initializing with an array on the stack
-#define demogobbler_va_create(array)                                                               \
-  demogobbler_va_create_(array, sizeof(array), sizeof(*array), alignof(*array))
+#define demogobbler_va_create(array, type)                                                               \
+  demogobbler_va_create_(array, sizeof(array), sizeof(*array), alignof(type))

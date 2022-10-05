@@ -1,6 +1,6 @@
 #include "parser_packetentities.h"
 #include "arena.h"
-#include "bitstream.h"
+#include "demogobbler/bitstream.h"
 #include "demogobbler/bitwriter.h"
 #include "demogobbler/entity_types.h"
 #include "parser_entity_state.h"

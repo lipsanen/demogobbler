@@ -1,6 +1,6 @@
 #include "parser_netmessages.h"
 #include "arena.h"
-#include "bitstream.h"
+#include "demogobbler/bitstream.h"
 #include "demogobbler/bitwriter.h"
 #include "parser_packetentities.h"
 #include "utils.h"

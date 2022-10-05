@@ -5,11 +5,6 @@ if get_option('buildtype').startswith('debug')
   add_project_arguments('-DDEBUG', language : ['c', 'cpp'])
 endif
 
-if host_machine.cpu() != 'wasm32'
-  # Inline bitstream stuff unless we are compiling for webasm
-  add_project_arguments('-DBITSTREAM_INLINED', language : ['c', 'cpp'])
-endif
-
 if (current_c_compiler == 'clang' or current_c_compiler == 'gcc') and host_machine.cpu() != 'wasm32'
   add_project_arguments('-fno-omit-frame-pointer', language : ['c', 'cpp'])
   add_project_arguments('-ggdb', language : ['c', 'cpp'])

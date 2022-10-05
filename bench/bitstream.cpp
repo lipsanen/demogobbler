@@ -1,7 +1,5 @@
 #include "benchmark/benchmark.h"
-extern "C" {
-#include "bitstream.h"
-}
+#include "demogobbler/bitstream.h"
 #include <cstring>
 #include <vector>
 

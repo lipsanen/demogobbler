@@ -1,10 +1,10 @@
+#include "demogobbler/bitstream.h"
 #include "demogobbler/bitwriter.h"
 #include "gtest/gtest.h"
 #include <cmath>
 #include <cstdint>
 
 extern "C" {
-#include "bitstream.h"
 #include "utils.h"
 }
 

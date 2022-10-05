@@ -1,6 +1,8 @@
 #include "demogobbler.h"
 #include "demogobbler/conversions.h"
 #include "demogobbler/datatable_types.h"
+#define XXH_INLINE_ALL
+#include "xxhash.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -25,7 +27,7 @@ struct dump_state {
 typedef struct dump_state dump_state;
 
 #define PRINT_MESSAGE_PREAMBLE(name)                                                               \
-  printf(#name ", Tick %d, Slot %d\n", message->preamble.tick, message->preamble.slot);
+  printf(#name ": Tick %d, Slot %d\n", message->preamble.tick, message->preamble.slot);
 
 void print_consolecmd(parser_state *a, demogobbler_consolecmd *message) {
   PRINT_MESSAGE_PREAMBLE(consolecmd);
@@ -39,9 +41,9 @@ void print_customdata(parser_state *a, demogobbler_customdata *message) {
 void print_packet_orig(parser_state *a, demogobbler_packet *message) {
   dump_state *state = a->client_state;
   if (message->preamble.type == demogobbler_type_signon) {
-    printf("Signon, Tick %d, Slot %d\n", message->preamble.tick, message->preamble.slot);
+    printf("Signon: Tick %d, Slot %d\n", message->preamble.tick, message->preamble.slot);
   } else {
-    printf("Packet, Tick %d, Slot %d\n", message->preamble.tick, message->preamble.slot);
+    printf("Packet: Tick %d, Slot %d\n", message->preamble.tick, message->preamble.slot);
   }
 
   for (int i = 0; i < state->version_data.cmdinfo_size; ++i) {
@@ -72,20 +74,98 @@ void print_packet(parser_state *a, packet_parsed *message) {
     packet_net_message *netmsg = message->messages + i;
     if(netmsg->mtype == svc_create_stringtable) {
       struct demogobbler_svc_create_stringtable msg = netmsg->message_svc_create_stringtable;
-      printf("\tsvc_create_stringtable %s, %u entries\n", msg.name, msg.num_entries);
+      printf("\tsvc_create_stringtable %s, %u entries", msg.name, msg.num_entries);
+    } else if(netmsg->mtype == svc_serverinfo) {
+      struct demogobbler_svc_serverinfo* msg = netmsg->message_svc_serverinfo;
+      printf("\tsvc_serverinfo\n");
+      printf("\t\tClient CRC: %u\n", msg->client_crc);
+      printf("\t\tMap CRC: %u\n", msg->map_crc);
+      printf("\t\tStringtable CRC: %u\n", msg->stringtable_crc);
+    } else if(netmsg->mtype == svc_packet_entities) {
+      printf("\tsvc_packetentities\n");
+    } else if(netmsg->mtype == svc_sounds) {
+      printf("\tsvc_sounds\n");
+    } else if(netmsg->mtype == svc_update_stringtable) {
+      printf("\tsvc_update_stringtable\n");
+    } else if(netmsg->mtype == svc_bsp_decal) {
+      printf("\tsvc_bsp_decal\n");
+    } else if(netmsg->mtype == svc_classinfo) {
+      printf("\tsvc_classinfo\n");
+    } else if(netmsg->mtype == svc_cmd_key_values) {
+      printf("\tsvc_cmd_key_values\n");
+    } else if(netmsg->mtype == svc_crosshair_angle) {
+      printf("\tsvc_crosshair_angle\n");
+    } else if(netmsg->mtype == svc_entity_message) {
+      printf("\tsvc_entity_message\n");
+    } else if(netmsg->mtype == svc_fixangle) {
+      printf("\tsvc_fixangle\n");
+    } else if(netmsg->mtype == svc_game_event) {
+      printf("\tsvc_game_event\n");
+    } else if(netmsg->mtype == svc_game_event_list) {
+      printf("\tsvc_game_event_list\n");
+    } else if(netmsg->mtype == svc_get_cvar_value) {
+      printf("\tsvc_get_cvar_value\n");
+    } else if(netmsg->mtype == svc_menu) {
+      printf("\tsvc_menu\n");
+    } else if(netmsg->mtype == svc_paintmap_data) {
+      printf("\tsvc_paintmap_data\n");
+    } else if(netmsg->mtype == svc_prefetch) {
+      printf("\tsvc_prefetch\n");
+    } else if(netmsg->mtype == svc_setpause) {
+      printf("\tsvc_setpause\n");
+    } else if(netmsg->mtype == svc_setview) {
+      printf("\tsvc_setview\n");
+    } else if(netmsg->mtype == svc_splitscreen) {
+      printf("\tsvc_splitscreen\n");
+    } else if(netmsg->mtype == svc_temp_entities) {
+      printf("\tsvc_temp_entities\n");
+    } else if(netmsg->mtype == svc_user_message) {
+      printf("\tsvc_user_message\n");
+    } else if(netmsg->mtype == svc_voice_data) {
+      printf("\tsvc_voice_data\n");
+    } else if(netmsg->mtype == svc_voice_init) {
+      printf("\tsvc_voice_init\n");
+    } else if(netmsg->mtype == net_disconnect) {
+      printf("\tnet_disconnect\n");
+    } else if(netmsg->mtype == net_file) {
+      printf("\tnet_file\n");
+    } else if(netmsg->mtype == net_nop) {
+      printf("\tnet_nop\n");
+    } else if(netmsg->mtype == net_setconvar) {
+      printf("\tnet_setconvar\n");
+    } else if(netmsg->mtype == net_stringcmd) {
+      printf("\tnet_stringcmd\n");
+    } else if(netmsg->mtype == net_tick) {
+      const float scale = 100000.0f;
+      struct demogobbler_net_tick msg = netmsg->message_net_tick;
+      printf("\tnet_tick time %f dev %f tick %d\n", 
+        msg.host_frame_time / scale, msg.host_frame_time_std_dev / scale, msg.tick);
+    } else if(netmsg->mtype == net_signonstate) {
+      printf("\tnet_signonstate\n");
+    } else if(netmsg->mtype == net_splitscreen_user) {
+      printf("\tnet_splitscreen_user\n");
+    }else {
+      printf("\tunformatted msg %u\n", netmsg->mtype);
     }
   }
 }
 
+
 void print_stringtables_parsed(parser_state *a, demogobbler_stringtables_parsed *message) {
-  printf("Stringtables, Tick %d, Slot %d\n", message->orig.preamble.tick, message->orig.preamble.slot);
+  uint64_t hash = XXH64(message->orig.data, message->orig.size_bytes, 0);
+  printf("Stringtables: Tick %d, Slot %d, Hash 0x%lx\n", message->orig.preamble.tick, message->orig.preamble.slot, hash);
 
   for(size_t i=0; i < message->tables_count; ++i) {
     stringtable* table = message->tables + i;
     printf("\t[%lu] %s entries:\n", i, table->table_name);
     for(size_t u=0; u < table->entries_count; ++u) {
       stringtable_entry* entry = table->entries + u;
-      printf("\t\t[%lu] %s - %u bytes\n", u, entry->name, entry->size);
+      if(entry->size == 1) {
+        uint32_t value = bitstream_read_uint(&entry->data, 8);
+        printf("\t\t[%lu] %s - 0x%x\n", u, entry->name, value);
+      } else {
+        printf("\t\t[%lu] %s - %u bytes\n", u, entry->name, entry->size);
+      }
     }
 
     if(table->has_classes) {
@@ -215,7 +295,8 @@ void print_prop(demogobbler_sendprop *prop) {
 }
 
 void print_datatables_parsed(parser_state *a, demogobbler_datatables_parsed *message) {
-  PRINT_MESSAGE_PREAMBLE(datatables);
+  uint64_t hash = XXH64(message->_raw_buffer, message->_raw_buffer_bytes, 0);
+  printf("Datatables: Tick %d, Slot %d, Hash 0x%lx\n", message->preamble.tick, message->preamble.slot, hash);
 
   for (size_t i = 0; i < message->sendtable_count; ++i) {
     demogobbler_sendtable *table = message->sendtables + i;
@@ -239,7 +320,7 @@ void print_datatables_parsed(parser_state *a, demogobbler_datatables_parsed *mes
 void print_flattened_props(parser_state *state) {
   for (size_t i = 0; i < state->entity_state.serverclass_count; ++i) {
     serverclass_data class_data = state->entity_state.class_datas[i];
-    printf("Sendtable %s, flattened, %lu props\n", class_data.dt_name,
+    printf("Sendtable %s: flattened, %lu props\n", class_data.dt_name,
            class_data.prop_count);
 
     for (size_t u = 0; u < class_data.prop_count; ++u) {

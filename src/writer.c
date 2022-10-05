@@ -1,4 +1,4 @@
-#include "bitstream.h"
+#include "demogobbler/bitstream.h"
 #include "demogobbler.h"
 #include "demogobbler/bitwriter.h"
 #include "streams.h"

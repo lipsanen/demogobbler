@@ -435,8 +435,8 @@ static void print_packetentities_parsed(parser_state *state, svc_packetentities_
     printf("[%lu] Entity %d, update: %s, props %lu\n", i, update->ent_index,
            update_name(update->update_type), update->prop_value_array_size);
     if (update->update_type == 2) {
-      serverclass_data *data = state->entity_state.class_datas + update->ent->datatable_id;
-      printf("Handle %d, datatable %s\n", update->ent->handle, data->dt_name);
+      serverclass_data *data = state->entity_state.class_datas + update->datatable_id;
+      printf("Handle %d, datatable %s\n", update->handle, data->dt_name);
     }
 
     if (update->prop_value_array_size > 0) {

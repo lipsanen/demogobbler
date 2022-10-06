@@ -16,8 +16,8 @@ static int BREAK_INDEX = 20;
 typedef struct {
   parser *thisptr;
   bitstream *stream;
-  edict *ent;
   arena *a;
+  ent_update* update;
   vector_array prop_array;
   packetentities_data output;
   bool new_way;
@@ -245,7 +245,7 @@ static prop_value read_prop(prop_parse_state *state, demogobbler_sendprop *prop)
 }
 
 static void write_props_prot4(bitwriter* thisptr, struct write_packetentities_args args, const ent_update* update) {
-  const serverclass_data* data = args.entity_state->class_datas + update->ent->datatable_id;
+  const serverclass_data* data = args.entity_state->class_datas + update->datatable_id;
 
   if(args.version->game != l4d) {
     bitwriter_write_bit(thisptr, update->new_way);
@@ -265,8 +265,7 @@ static void write_props_prot4(bitwriter* thisptr, struct write_packetentities_ar
 static void parse_props_prot4(prop_parse_state *state) {
   parser *thisptr = state->thisptr;
   bitstream *stream = state->stream;
-  edict *ent = state->ent;
-  serverclass_data *datas = demogobbler_estate_serverclass_data(thisptr, ent->datatable_id);
+  serverclass_data *datas = demogobbler_estate_serverclass_data(thisptr, state->update->datatable_id);
   int i = -1;
   bool new_way = thisptr->demo_version.game != l4d && bitstream_read_bit(state->stream); // 1560
   state->new_way = new_way;
@@ -288,7 +287,7 @@ static void parse_props_prot4(prop_parse_state *state) {
 }
 
 static void write_props_old(bitwriter* thisptr, struct write_packetentities_args args, const ent_update* update) {
-  const serverclass_data* data = args.entity_state->class_datas + update->ent->datatable_id;
+  const serverclass_data* data = args.entity_state->class_datas + update->datatable_id;
   int old_prop_index = -1;
   for(size_t i=0; i < update->prop_value_array_size; ++i) {
     bitwriter_write_bit(thisptr, true);
@@ -303,8 +302,7 @@ static void write_props_old(bitwriter* thisptr, struct write_packetentities_args
 
 static void parse_props_old(prop_parse_state *state) {
   parser *thisptr = state->thisptr;
-  edict *ent = state->ent;
-  serverclass_data *data = demogobbler_estate_serverclass_data(thisptr, ent->datatable_id);
+  serverclass_data *data = demogobbler_estate_serverclass_data(thisptr, state->update->datatable_id);
   int i = -1;
 
   while (bitstream_read_bit(state->stream)) {
@@ -330,23 +328,22 @@ static void write_props(bitwriter* thisptr, struct write_packetentities_args arg
   }
 }
 
-static void parse_props(prop_parse_state *state, edict *ent, size_t index) {
-  state->ent = ent;
-  ent_update *update = state->output.ent_updates + index;
+static void parse_props(prop_parse_state *state, size_t index) {
+  state->update = state->output.ent_updates + index;
   demogobbler_va_clear(&state->prop_array);
   demo_version_data *demo_version = &state->thisptr->demo_version;
   if (demo_version->demo_protocol == 4) {
     parse_props_prot4(state);
-    update->new_way = state->new_way;
+    state->update->new_way = state->new_way;
   } else {
     parse_props_old(state);
   }
 
   if (state->prop_array.count_elements > 0) {
-    update->prop_value_array_size = state->prop_array.count_elements;
+    state->update->prop_value_array_size = state->prop_array.count_elements;
     size_t bytes = sizeof(prop_value) * state->prop_array.count_elements;
-    update->prop_value_array = demogobbler_arena_allocate(state->a, bytes, alignof(prop_value));
-    memcpy(update->prop_value_array, state->prop_array.ptr, bytes);
+    state->update->prop_value_array = demogobbler_arena_allocate(state->a, bytes, alignof(prop_value));
+    memcpy(state->update->prop_value_array, state->prop_array.ptr, bytes);
   }
 }
 
@@ -414,8 +411,8 @@ void demogobbler_bitwriter_write_packetentities(bitwriter* thisptr, struct write
     if(update->update_type == 0) {
       write_props(thisptr, args, update);
     } else if (update->update_type == 2) {
-      bitwriter_write_uint(thisptr, update->ent->datatable_id, bits);
-      bitwriter_write_uint(thisptr, update->ent->handle, HANDLE_BITS);
+      bitwriter_write_uint(thisptr, update->datatable_id, bits);
+      bitwriter_write_uint(thisptr, update->handle, HANDLE_BITS);
       write_props(thisptr, args, update);
     }
   }
@@ -436,6 +433,30 @@ void demogobbler_bitwriter_write_packetentities(bitwriter* thisptr, struct write
       }
       bitwriter_write_bit(thisptr, false);
     }
+  }
+}
+
+void demogobbler_apply_entupdate(estate* entity_state, packetentities_data data) {
+  for(size_t i=0; i < data.ent_updates_count; ++i) {
+    ent_update* update = data.ent_updates + i;
+    edict* ent = entity_state->edicts + update->ent_index;
+    if(update->update_type == 2) {
+      // Enter pvs
+      ent->exists = true;
+      ent->datatable_id = update->datatable_id;
+      ent->handle = update->handle;
+      ent->in_pvs = true;
+    } else if (update->update_type == 1) {
+      // Leave PVS
+      ent->in_pvs = false;
+    } else if (update->update_type == 3) {
+      memset(ent, 0, sizeof(edict));
+    }
+  }
+
+  for(size_t i=0; i < data.explicit_deletes_count; ++i) {
+    edict* ent = entity_state->edicts + data.explicit_deletes[i];
+    memset(ent, 0, sizeof(edict));
   }
 }
 
@@ -474,6 +495,7 @@ void demogobbler_parse_packetentities(parser *thisptr,
   size_t i;
 
   for (i = 0; i < message->updated_entries && !thisptr->error && !stream.overflow; ++i) {
+    ent_update* update = state.output.ent_updates + i;
     newI += 1;
     if (thisptr->demo_version.demo_protocol >= 4) {
       newI += bitstream_read_ubitint(&stream);
@@ -483,40 +505,31 @@ void demogobbler_parse_packetentities(parser *thisptr,
 
     unsigned update_type = bitstream_read_uint(&stream, 2);
 
-    state.output.ent_updates[i].update_type = update_type;
-    state.output.ent_updates[i].ent_index = newI;
+    update->update_type = update_type;
+    update->ent_index = newI;
+    const edict* ent = thisptr->state.entity_state.edicts + newI;
 
     if (newI >= MAX_EDICTS || newI < 0) {
       thisptr->error = true;
       thisptr->error_message = "Illegal entity index";
       goto end;
     }
-
-    edict *ent = thisptr->state.entity_state.edicts + newI;
-    state.output.ent_updates[i].ent = ent;
-
     if (update_type == 0) {
       // delta
-      parse_props(&state, ent, i);
+      update->datatable_id = ent->datatable_id; 
+      parse_props(&state, i);
     } else if (update_type == 2) {
       // enter pvs
-      ent->datatable_id = bitstream_read_uint(&stream, bits);
-      ent->handle = bitstream_read_uint(&stream, HANDLE_BITS);
-      ent->exists = true;
-
-      if (ent->datatable_id >= thisptr->state.entity_state.serverclass_count) {
+      update->datatable_id = bitstream_read_uint(&stream, bits);
+      update->handle = bitstream_read_uint(&stream, HANDLE_BITS);
+  
+      if (update->datatable_id >= thisptr->state.entity_state.serverclass_count) {
         thisptr->error = true;
         thisptr->error_message = "Invalid class ID in svc_packetentities";
         goto end;
       }
 
-      parse_props(&state, ent, i);
-    } else if (update_type == 1) {
-      // Leave PVS
-      ent->in_pvs = false;
-    } else {
-      // Delete
-      memset(ent, 0, sizeof(edict));
+      parse_props(&state, i);
     }
   }
 
@@ -537,6 +550,8 @@ end:;
     parsed.orig = message;
     thisptr->m_settings.packetentities_parsed_handler(&thisptr->state, &parsed);
   }
+
+  demogobbler_apply_entupdate(&thisptr->state.entity_state, state.output);
 
   demogobbler_va_free(&state.prop_array);
 

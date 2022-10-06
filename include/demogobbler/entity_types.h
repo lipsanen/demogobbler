@@ -116,8 +116,9 @@ struct array_value {
 
 typedef struct {
   int ent_index;
+  int datatable_id;
+  int handle;
   size_t update_type;
-  edict* ent;
   prop_value* prop_value_array;
   size_t prop_value_array_size;
   bool new_way;

@@ -24,6 +24,7 @@ typedef struct {
   const char* error_message;
   bool error;
   bool parse_netmessages;
+  entity_parse_scrap ent_scrap;
 } parser;
 
 void parser_init(parser *thisptr, demogobbler_settings *settings);

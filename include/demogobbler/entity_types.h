@@ -49,9 +49,6 @@ typedef struct {
   edict* edicts;
   uint32_t sendtable_count;
   uint32_t serverclass_count;
-  prop_exclude_set excluded_props;
-  hashtable dts_with_excludes;
-  hashtable dt_hashtable;
 } estate;
 
 struct demogobbler_parser_state {

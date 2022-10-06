@@ -20,6 +20,7 @@ typedef struct {
 typedef struct {
   estate_init_args args;
   estate *entity_state;
+  entity_parse_scrap* ent_scrap;
   const char *error_message;
   bool error;
 } estate_init_state;
@@ -68,10 +69,10 @@ static void create_dt_hashtable(estate_init_state *thisptr) {
   const float FILL_RATE = 0.9f;
   const size_t buckets = (size_t)(sendtable_count / FILL_RATE);
 
-  if (thisptr->entity_state->dt_hashtable.arr != NULL) {
-    demogobbler_hashtable_clear(&thisptr->entity_state->dt_hashtable);
+  if (thisptr->ent_scrap->dt_hashtable.arr != NULL) {
+    demogobbler_hashtable_clear(&thisptr->ent_scrap->dt_hashtable);
   } else {
-    thisptr->entity_state->dt_hashtable = demogobbler_hashtable_create(buckets);
+    thisptr->ent_scrap->dt_hashtable = demogobbler_hashtable_create(buckets);
   }
 
   for (size_t i = 0; i < sendtable_count && !thisptr->error; ++i) {
@@ -79,7 +80,7 @@ static void create_dt_hashtable(estate_init_state *thisptr) {
     entry.str = sendtables[i].name;
     entry.value = i;
 
-    if (!demogobbler_hashtable_insert(&thisptr->entity_state->dt_hashtable, entry)) {
+    if (!demogobbler_hashtable_insert(&thisptr->ent_scrap->dt_hashtable, entry)) {
       thisptr->error = true;
       thisptr->error_message = "Hashtable collision with datatable names or ran out of space";
     }
@@ -91,7 +92,7 @@ static size_t get_baseclass(estate_init_state *thisptr, propdata *data,
   demogobbler_sendtable *sendtables = thisptr->entity_state->sendtables;
   if (prop->baseclass == NULL) {
     hashtable_entry entry =
-        demogobbler_hashtable_get(&thisptr->entity_state->dt_hashtable, prop->dtname);
+        demogobbler_hashtable_get(&thisptr->ent_scrap->dt_hashtable, prop->dtname);
 
     if (entry.str == NULL) {
       // No entry found
@@ -249,13 +250,13 @@ static void parse_serverclass(estate_init_state *thisptr, size_t i) {
   // Reset iteration state
   propdata data;
   memset(&data, 0, sizeof(propdata));
-  data.excluded_props = thisptr->entity_state->excluded_props;
-  data.dts_with_excludes = thisptr->entity_state->dts_with_excludes;
+  data.excluded_props = thisptr->ent_scrap->excluded_props;
+  data.dts_with_excludes = thisptr->ent_scrap->dts_with_excludes;
   data.serverclass_index = i;
 
   demogobbler_serverclass *cls = thisptr->entity_state->serverclasses + i;
   hashtable_entry entry =
-      demogobbler_hashtable_get(&thisptr->entity_state->dt_hashtable, cls->datatable_name);
+      demogobbler_hashtable_get(&thisptr->ent_scrap->dt_hashtable, cls->datatable_name);
   data.dt_index = entry.value;
 
   if (entry.str == NULL) {
@@ -285,7 +286,7 @@ static void parse_serverclass(estate_init_state *thisptr, size_t i) {
 end:;
 }
 
-demogobbler_parse_result demogobbler_estate_init(estate *thisptr, estate_init_args args) {
+demogobbler_parse_result demogobbler_estate_init(estate *thisptr, entity_parse_scrap* scrap, estate_init_args args) {
   thisptr->sendtables = args.message->sendtables;
   thisptr->serverclasses = args.message->serverclasses;
   thisptr->serverclass_count = args.message->serverclass_count;
@@ -301,15 +302,16 @@ demogobbler_parse_result demogobbler_estate_init(estate *thisptr, estate_init_ar
   memset(&state, 0, sizeof(state));
   state.args = args;
   state.entity_state = thisptr;
+  state.ent_scrap = scrap;
 
   create_dt_hashtable(&state);
 
   if (!state.error) {
-    if (thisptr->excluded_props.arr == NULL) {
-      thisptr->excluded_props = demogobbler_pes_create(256);
+    if (scrap->excluded_props.arr == NULL) {
+      scrap->excluded_props = demogobbler_pes_create(256);
     }
-    if (thisptr->dts_with_excludes.arr == NULL) {
-      thisptr->dts_with_excludes = demogobbler_hashtable_create(256);
+    if (scrap->dts_with_excludes.arr == NULL) {
+      scrap->dts_with_excludes = demogobbler_hashtable_create(256);
     }
     size_t array_size = sizeof(serverclass_data) * thisptr->serverclass_count;
     thisptr->class_datas =
@@ -337,7 +339,7 @@ void demogobbler_parser_init_estate(parser *thisptr, demogobbler_datatables_pars
   args.message = message;
   args.version_data = &thisptr->demo_version;
 
-  demogobbler_parse_result result = demogobbler_estate_init(&thisptr->state.entity_state, args);
+  demogobbler_parse_result result = demogobbler_estate_init(&thisptr->state.entity_state, &thisptr->ent_scrap, args);
 
   if (result.error) {
     thisptr->error = true;
@@ -354,6 +356,7 @@ serverclass_data *demogobbler_estate_serverclass_data(parser *thisptr, size_t in
   memset(&state, 0, sizeof(state));
   state.args.memory_arena = &thisptr->permanent_arena;
   state.args.version_data = &thisptr->demo_version;
+  state.ent_scrap = &thisptr->ent_scrap;
 
   state.entity_state = &thisptr->state.entity_state;
 

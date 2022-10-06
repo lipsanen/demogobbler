@@ -125,9 +125,15 @@ typedef struct {
   demogobbler_stringtables *message;
 } stringtable_parse_args;
 
+typedef struct {
+  prop_exclude_set excluded_props;
+  hashtable dts_with_excludes;
+  hashtable dt_hashtable;
+} entity_parse_scrap;
+
 demogobbler_datatables_parsed_rval demogobbler_parse_datatables(demo_version_data *state, arena *a,
                                                                 demogobbler_datatables *message);
-demogobbler_parse_result demogobbler_estate_init(estate *thisptr, estate_init_args args);
+demogobbler_parse_result demogobbler_estate_init(estate *thisptr, entity_parse_scrap* scrap, estate_init_args args);
 demogobbler_parse_result demogobbler_parse_stringtables(demogobbler_stringtables_parsed *out, stringtable_parse_args args);
 
 #ifdef __cplusplus

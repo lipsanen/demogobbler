@@ -157,9 +157,9 @@ bool _parse_anymessage(parser *thisptr) {
 static void parser_free_state(parser *thisptr) {
   demogobbler_arena_free(&thisptr->permanent_arena);
   demogobbler_arena_free(&thisptr->temp_arena);
-  demogobbler_hashtable_free(&thisptr->state.entity_state.dt_hashtable);
-  demogobbler_hashtable_free(&thisptr->state.entity_state.dts_with_excludes);
-  demogobbler_pes_free(&thisptr->state.entity_state.excluded_props);
+  demogobbler_hashtable_free(&thisptr->ent_scrap.dt_hashtable);
+  demogobbler_hashtable_free(&thisptr->ent_scrap.dts_with_excludes);
+  demogobbler_pes_free(&thisptr->ent_scrap.excluded_props);
 }
 
 #define PARSE_PREAMBLE()                                                                           \

@@ -373,8 +373,6 @@ static void read_explicit_deletes(prop_parse_state *state, bool new_logic) {
 
     while (bitstream_read_bit(state->stream)) {
       unsigned delete_index = bitstream_read_uint(state->stream, MAX_EDICT_BITS);
-      edict *ent = state->thisptr->state.entity_state.edicts + delete_index;
-      memset(ent, 0, sizeof(edict));
 
       if (index >= max_updates) {
         state->thisptr->error = true;
@@ -433,30 +431,6 @@ void demogobbler_bitwriter_write_packetentities(bitwriter* thisptr, struct write
       }
       bitwriter_write_bit(thisptr, false);
     }
-  }
-}
-
-void demogobbler_apply_entupdate(estate* entity_state, packetentities_data data) {
-  for(size_t i=0; i < data.ent_updates_count; ++i) {
-    ent_update* update = data.ent_updates + i;
-    edict* ent = entity_state->edicts + update->ent_index;
-    if(update->update_type == 2) {
-      // Enter pvs
-      ent->exists = true;
-      ent->datatable_id = update->datatable_id;
-      ent->handle = update->handle;
-      ent->in_pvs = true;
-    } else if (update->update_type == 1) {
-      // Leave PVS
-      ent->in_pvs = false;
-    } else if (update->update_type == 3) {
-      memset(ent, 0, sizeof(edict));
-    }
-  }
-
-  for(size_t i=0; i < data.explicit_deletes_count; ++i) {
-    edict* ent = entity_state->edicts + data.explicit_deletes[i];
-    memset(ent, 0, sizeof(edict));
   }
 }
 
@@ -551,7 +525,7 @@ end:;
     thisptr->m_settings.packetentities_parsed_handler(&thisptr->state, &parsed);
   }
 
-  demogobbler_apply_entupdate(&thisptr->state.entity_state, state.output);
+  demogobbler_estate_update(&thisptr->state.entity_state, &state.output);
 
   demogobbler_va_free(&state.prop_array);
 

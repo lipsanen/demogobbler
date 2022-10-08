@@ -60,6 +60,7 @@ static void testdemos_parse_everything(benchmark::State &state) {
   settings.usercmd_handler = usercmd_handler;
   settings.packet_parsed_handler = packet_parsed_handler;
   settings.store_ents = true;
+  settings.store_props = true;
   auto demos = get_test_demos();
 
   for (auto _ : state) {

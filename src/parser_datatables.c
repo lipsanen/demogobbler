@@ -387,20 +387,27 @@ demogobbler_datatables_parsed_rval demogobbler_parse_datatables(demo_version_dat
 }
 
 void parse_datatables(parser *thisptr, demogobbler_datatables *input) {
-  arena *memory_arena = thisptr->m_settings.store_ents ? &thisptr->permanent_arena : &thisptr->temp_arena;
+  arena *memory_arena;
+  bool init_entity_state;
+  if(thisptr->state.entity_state.edicts == NULL && thisptr->m_settings.store_ents) {
+    memory_arena = &thisptr->state.entity_state.memory_arena;
+    init_entity_state = false;
+  } else {
+    memory_arena = &thisptr->temp_arena;
+    init_entity_state = true;
+  }
+
   demogobbler_datatables_parsed_rval value = demogobbler_parse_datatables(&thisptr->demo_version, memory_arena, input);
-  bool should_free_data = true;
 
   if (!value.error) {
     if (thisptr->m_settings.datatables_parsed_handler)
       thisptr->m_settings.datatables_parsed_handler(&thisptr->state, &value.output);
-    if (thisptr->m_settings.store_ents) {
+    if (!init_entity_state) {
       demogobbler_parser_init_estate(thisptr, &value.output);
-      should_free_data = false;
     }
   }
 
-  if (should_free_data) {
+  if (init_entity_state) {
     demogobbler_arena_free(memory_arena);
   }
 }

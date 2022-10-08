@@ -43,7 +43,7 @@ void parser_init(parser *thisptr, demogobbler_settings *settings) {
   const size_t INITIAL_SIZE = 1 << 17;
   const size_t INITIAL_TEMP_SIZE = 1 << 17;
   // Does lazy allocation, only allocates stuff if requested
-  thisptr->permanent_arena = demogobbler_arena_create(INITIAL_SIZE);
+  thisptr->state.entity_state.memory_arena = demogobbler_arena_create(INITIAL_SIZE);
   thisptr->temp_arena = demogobbler_arena_create(INITIAL_TEMP_SIZE);
 }
 
@@ -155,11 +155,11 @@ bool _parse_anymessage(parser *thisptr) {
 }
 
 static void parser_free_state(parser *thisptr) {
-  demogobbler_arena_free(&thisptr->permanent_arena);
   demogobbler_arena_free(&thisptr->temp_arena);
   demogobbler_hashtable_free(&thisptr->ent_scrap.dt_hashtable);
   demogobbler_hashtable_free(&thisptr->ent_scrap.dts_with_excludes);
   demogobbler_pes_free(&thisptr->ent_scrap.excluded_props);
+  demogobbler_estate_free(&thisptr->state.entity_state);
 }
 
 #define PARSE_PREAMBLE()                                                                           \
@@ -187,6 +187,10 @@ void _parser_mainloop(parser *thisptr) {
   NULL_CHECK(stop);
   NULL_CHECK(stringtables);
   NULL_CHECK(usercmd);
+
+  if(settings->store_props) {
+    settings->store_ents = true;
+  }
 
   if (settings->flattened_props_handler || settings->store_ents ||
       settings->packetentities_parsed_handler) {

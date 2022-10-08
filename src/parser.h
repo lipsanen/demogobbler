@@ -15,7 +15,6 @@
 extern int CURRENT_DEBUG_INDEX;
 
 typedef struct {
-  arena permanent_arena;
   parser_state state;
   demogobbler_settings m_settings;
   filereader m_reader;

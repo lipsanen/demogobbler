@@ -1,5 +1,6 @@
 #pragma once
 
+#include "demogobbler/arena.h"
 #include "demogobbler/floats.h"
 #include <stddef.h>
 
@@ -28,35 +29,6 @@ typedef struct {
   size_t max_items;
   size_t item_count;
 } prop_exclude_set;
-
-typedef struct {
-  int handle;
-  int datatable_id;
-  bool in_pvs;
-  bool exists;
-} edict;
-
-typedef struct {
-  struct demogobbler_sendprop *props;
-  size_t prop_count;
-  const char* dt_name;
-} serverclass_data;
-
-typedef struct {
-  serverclass_data* class_datas;
-  struct demogobbler_sendtable* sendtables;
-  struct demogobbler_serverclass* serverclasses;
-  edict* edicts;
-  uint32_t sendtable_count;
-  uint32_t serverclass_count;
-} estate;
-
-struct demogobbler_parser_state {
-  void *client_state;
-  estate entity_state;
-  const char *error_message;
-  bool error;
-};
 
 struct array_value;
 struct vector2_value;
@@ -132,3 +104,44 @@ typedef struct {
   packetentities_data data;
   struct demogobbler_svc_packet_entities* orig;
 } svc_packetentities_parsed;
+
+struct ent_prop;
+typedef struct ent_prop ent_prop;
+
+struct ent_prop {
+  prop_value value;
+  ent_prop* next;
+};
+
+typedef struct {
+  int handle;
+  int datatable_id;
+  bool in_pvs;
+  bool exists;
+  bool explicitly_deleted;
+  ent_prop* values;
+} edict;
+
+typedef struct {
+  struct demogobbler_sendprop *props;
+  size_t prop_count;
+  const char* dt_name;
+} serverclass_data;
+
+typedef struct {
+  serverclass_data* class_datas;
+  struct demogobbler_sendtable* sendtables;
+  struct demogobbler_serverclass* serverclasses;
+  edict* edicts;
+  uint32_t sendtable_count;
+  uint32_t serverclass_count;
+  arena memory_arena;
+  bool should_store_props;
+} estate;
+
+struct demogobbler_parser_state {
+  void *client_state;
+  estate entity_state;
+  const char *error_message;
+  bool error;
+};

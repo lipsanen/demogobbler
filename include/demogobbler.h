@@ -60,6 +60,7 @@ struct demogobbler_settings {
   func_demogobbler_handle_stringtables_parsed stringtables_parsed_handler;
   func_demogobbler_handle_usercmd usercmd_handler;
   bool store_ents;
+  bool store_props;
   void *client_state;
 };
 
@@ -115,9 +116,9 @@ void demogobbler_writer_free(writer *thisptr);
 
 typedef struct {
   demo_version_data *version_data;
-  arena *memory_arena;
   demogobbler_datatables_parsed *message;
   bool flatten_datatables;
+  bool should_store_props;
 } estate_init_args;
 
 typedef struct {
@@ -135,6 +136,8 @@ demogobbler_datatables_parsed_rval demogobbler_parse_datatables(demo_version_dat
                                                                 demogobbler_datatables *message);
 demogobbler_parse_result demogobbler_estate_init(estate *thisptr, entity_parse_scrap* scrap, estate_init_args args);
 demogobbler_parse_result demogobbler_parse_stringtables(demogobbler_stringtables_parsed *out, stringtable_parse_args args);
+demogobbler_parse_result demogobbler_estate_update(estate* entity_state, const packetentities_data* data);
+void demogobbler_estate_free(estate* thisptr);
 
 #ifdef __cplusplus
 }

@@ -5,6 +5,105 @@
 #include "utils.h"
 #include <string.h>
 
+eproparr demogobbler_eproparr_init(uint16_t prop_count) {
+  eproparr output;
+  memset(&output, 0, sizeof(output));
+  output.next_prop_indices = malloc(sizeof(uint16_t)* (prop_count + 1));
+  output.prop_count = prop_count;
+  output.values = malloc(sizeof(prop_value_inner) * prop_count);
+  output.next_prop_indices[0] = prop_count;
+  memset(output.next_prop_indices + 1, 0, sizeof(uint16_t)* prop_count);
+  memset(output.values, 0, sizeof(prop_value_inner) * prop_count);
+
+  return output;
+}
+
+prop_value_inner* demogobbler_eproparr_get(eproparr *thisptr, uint16_t index) {
+  uint16_t *prop_index_ptr = thisptr->next_prop_indices + index + 1;
+  if(*prop_index_ptr == 0) {
+    uint16_t* prev_ptr = prop_index_ptr;
+    // First index always either points to first element
+    // or is the end-of-array index so no need to bounds check
+    while(*--prev_ptr == 0);
+    *prop_index_ptr = *prev_ptr;
+    *prev_ptr = index;
+  }
+
+  return thisptr->values + index;
+}
+
+void demogobbler_eproparr_free(eproparr* thisptr) {
+  free(thisptr->next_prop_indices);
+  free(thisptr->values);
+}
+
+prop_value_inner* demogobbler_eproparr_next(const eproparr* thisptr, prop_value_inner* current) {
+  size_t index;
+  if(current == NULL) {
+    index = 0;
+  } else {
+    index = (current - thisptr->values) + 1;
+  }
+  uint16_t next_index = thisptr->next_prop_indices[index];
+  if(next_index == thisptr->prop_count) {
+    return NULL;
+  } else {
+    return thisptr->values + next_index;
+  }
+}
+
+eproplist demogobbler_eproplist_init() {
+  eproplist list;
+  memset(&list, 0, sizeof(eproplist));
+  list.head = malloc(sizeof(epropnode));
+  memset(list.head, 0, sizeof(epropnode));
+  list.head->index = -1;
+  return list;
+}
+
+epropnode* demogobbler_eproplist_get(eproplist *thisptr, epropnode* initial_guess, uint16_t index) {
+  epropnode* current = initial_guess;
+
+  if(!current) {
+    current = thisptr->head;
+  }
+
+  epropnode* rval;
+
+  // Walk the linked list of props until we arrive at the insertion point
+  while(current->next && current->next->index < index) {
+    current = current->next;
+  }
+
+  if (current->next && current->next->index == index) {
+    rval = current->next;
+  } else {
+    // Did not match, insert a new node either in the middle or back of the list
+    rval = malloc(sizeof(epropnode));
+    memset(rval, 0, sizeof(epropnode));
+    rval->next = current->next;
+    current->next = rval;
+  }
+
+
+  rval->index = index;
+  return rval;
+}
+
+epropnode* demogobbler_eproplist_next(const eproplist* thisptr, epropnode* current) {
+  return current->next;
+}
+
+void demogobbler_eproplist_free(eproplist* thisptr) {
+  epropnode* node = thisptr->head;
+
+  while(node) {
+    epropnode* temp = node->next;
+    free(node);
+    node = temp;
+  }
+}
+
 typedef struct {
   size_t max_props;
   prop_exclude_set excluded_props;

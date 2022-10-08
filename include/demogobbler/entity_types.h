@@ -107,6 +107,25 @@ typedef struct {
 
 struct ent_prop;
 typedef struct ent_prop ent_prop;
+struct epropnode;
+typedef struct epropnode epropnode;
+
+struct epropnode {
+  epropnode* next;
+  prop_value_inner value;
+  int16_t index;
+};
+
+typedef struct {
+  epropnode* head;
+} eproplist;
+
+typedef struct {
+  prop_value_inner *values;
+  uint16_t *next_prop_indices;
+  uint16_t prop_count;
+} eproparr;
+
 
 struct ent_prop {
   prop_value value;

@@ -105,8 +105,6 @@ typedef struct {
   struct demogobbler_svc_packet_entities* orig;
 } svc_packetentities_parsed;
 
-struct ent_prop;
-typedef struct ent_prop ent_prop;
 struct epropnode;
 typedef struct epropnode epropnode;
 
@@ -127,18 +125,17 @@ typedef struct {
 } eproparr;
 
 
-struct ent_prop {
-  prop_value value;
-  ent_prop* next;
-};
-
 typedef struct {
   int handle;
   int datatable_id;
   bool in_pvs;
   bool exists;
   bool explicitly_deleted;
-  ent_prop* values;
+#ifdef DEMOGOBBLER_USE_LINKED_LIST_PROPS
+  eproplist props;
+#else
+  eproparr props;
+#endif
 } edict;
 
 typedef struct {

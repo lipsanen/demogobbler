@@ -5,28 +5,38 @@
 #include "utils.h"
 #include <string.h>
 
+static void free_inner_value(prop_value_inner* value, demogobbler_sendprop* prop);
+
 eproparr demogobbler_eproparr_init(uint16_t prop_count) {
   eproparr output;
   memset(&output, 0, sizeof(output));
-  output.next_prop_indices = malloc(sizeof(uint16_t)* (prop_count + 1));
   output.prop_count = prop_count;
-  output.values = malloc(sizeof(prop_value_inner) * prop_count);
-  output.next_prop_indices[0] = prop_count;
-  memset(output.next_prop_indices + 1, 0, sizeof(uint16_t)* prop_count);
-  memset(output.values, 0, sizeof(prop_value_inner) * prop_count);
 
   return output;
 }
 
-prop_value_inner* demogobbler_eproparr_get(eproparr *thisptr, uint16_t index) {
+prop_value_inner* demogobbler_eproparr_get(eproparr *thisptr, uint16_t index, bool* new_prop) {
+  if(!thisptr->next_prop_indices) {
+    thisptr->next_prop_indices = malloc(sizeof(uint16_t)* (thisptr->prop_count + 1));
+    thisptr->values = malloc(sizeof(prop_value_inner) * thisptr->prop_count);
+    thisptr->next_prop_indices[0] = thisptr->prop_count;
+    memset(thisptr->next_prop_indices + 1, 0, sizeof(uint16_t)* thisptr->prop_count);
+    memset(thisptr->values, 0, sizeof(prop_value_inner) * thisptr->prop_count);
+  }
+
   uint16_t *prop_index_ptr = thisptr->next_prop_indices + index + 1;
   if(*prop_index_ptr == 0) {
     uint16_t* prev_ptr = prop_index_ptr;
     // First index always either points to first element
     // or is the end-of-array index so no need to bounds check
-    while(*--prev_ptr == 0);
+    while(*prev_ptr == 0) {
+      --prev_ptr;
+    }
     *prop_index_ptr = *prev_ptr;
     *prev_ptr = index;
+    *new_prop = true;
+  } else {
+    *new_prop = false;
   }
 
   return thisptr->values + index;
@@ -38,6 +48,10 @@ void demogobbler_eproparr_free(eproparr* thisptr) {
 }
 
 prop_value_inner* demogobbler_eproparr_next(const eproparr* thisptr, prop_value_inner* current) {
+  if(!thisptr->next_prop_indices) {
+    return NULL;
+  }
+
   size_t index;
   if(current == NULL) {
     index = 0;
@@ -61,7 +75,7 @@ eproplist demogobbler_eproplist_init() {
   return list;
 }
 
-epropnode* demogobbler_eproplist_get(eproplist *thisptr, epropnode* initial_guess, uint16_t index) {
+epropnode* demogobbler_eproplist_get(eproplist *thisptr, epropnode* initial_guess, uint16_t index, bool* new_prop) {
   epropnode* current = initial_guess;
 
   if(!current) {
@@ -77,14 +91,15 @@ epropnode* demogobbler_eproplist_get(eproplist *thisptr, epropnode* initial_gues
 
   if (current->next && current->next->index == index) {
     rval = current->next;
+    *new_prop = false;
   } else {
     // Did not match, insert a new node either in the middle or back of the list
     rval = malloc(sizeof(epropnode));
     memset(rval, 0, sizeof(epropnode));
     rval->next = current->next;
     current->next = rval;
+    *new_prop = true;
   }
-
 
   rval->index = index;
   return rval;
@@ -93,6 +108,37 @@ epropnode* demogobbler_eproplist_get(eproplist *thisptr, epropnode* initial_gues
 epropnode* demogobbler_eproplist_next(const eproplist* thisptr, epropnode* current) {
   return current->next;
 }
+
+#ifdef DEMOGOBBLER_USE_LINKED_LIST_PROPS
+static void demogobbler_eproplist_freeprops(eproplist* thisptr, serverclass_data* data) {
+  epropnode* node = thisptr->head;
+  // Free the sentinel node from the beginning
+  epropnode* temp = node->next;
+  free(node);
+  node = temp;
+  
+
+  while(node) {
+    temp = node->next;
+    demogobbler_sendprop* prop = data->props + node->index;
+    free_inner_value(&node->value, prop);
+    free(node);
+    node = temp;
+  }
+}
+#else
+static void demogobbler_eproparr_freeprops(eproparr* thisptr, serverclass_data* data) {
+  prop_value_inner* value = demogobbler_eproparr_next(thisptr, NULL);
+
+  while(value) {
+    size_t index = value - thisptr->values;
+    demogobbler_sendprop* prop = data->props + index;
+    prop_value_inner* next = demogobbler_eproparr_next(thisptr, value);
+    free_inner_value(value, prop);
+    value = next;
+  }
+}
+#endif
 
 void demogobbler_eproplist_free(eproplist* thisptr) {
   epropnode* node = thisptr->head;
@@ -438,7 +484,8 @@ demogobbler_parse_result demogobbler_estate_init(estate *thisptr, entity_parse_s
   return result;
 }
 
-static void free_inner_value(prop_value_inner* value, demogobbler_sendproptype prop_type) {
+static void free_inner_value(prop_value_inner* value, demogobbler_sendprop* prop) {
+  demogobbler_sendproptype prop_type = prop->proptype;
   if(prop_type == sendproptype_vector3) {
     free(value->v3_val);
   } else if(prop_type == sendproptype_vector2) {
@@ -446,36 +493,37 @@ static void free_inner_value(prop_value_inner* value, demogobbler_sendproptype p
   } else if(prop_type == sendproptype_string) {
     free(value->str_val->str);
     free(value->str_val);
+  } else if(prop_type == sendproptype_array) {
+      for(size_t i=0; i < prop->array_num_elements; ++i) {
+        free_inner_value(value->arr_val->values + i, prop->array_prop);
+      }
+      free(value->arr_val->values);
+      free(value->arr_val);
   }
 }
 
-static void free_props(edict* ent) {
-  ent_prop* current = ent->values;
-  while(current) {
-    ent_prop* temp = current->next;
-    if(current->value.prop->proptype == sendproptype_vector3) {
-      free_inner_value(&current->value.value, current->value.prop->proptype);
-    } else if(current->value.prop->proptype == sendproptype_vector2) {
-      free_inner_value(&current->value.value, current->value.prop->proptype);
-    } else if(current->value.prop->proptype == sendproptype_string) {
-      free_inner_value(&current->value.value, current->value.prop->proptype);
-    } else if(current->value.prop->proptype == sendproptype_array) {
-      for(size_t i=0; i < current->value.prop->array_num_elements; ++i) {
-        free_inner_value(current->value.value.arr_val->values + i, current->value.prop->array_prop->proptype);
-      }
-      free(current->value.value.arr_val->values);
-      free(current->value.value.arr_val);
-    }
-    free(current);
-    current = temp;
+#ifdef DEMOGOBBLER_USE_LINKED_LIST_PROPS
+static void free_props(edict* ent, serverclass_data* data) {
+  if(ent->exists) {
+    demogobbler_eproplist_freeprops(&ent->props, data);
   }
 }
+#else
+static void free_props(edict* ent, serverclass_data* data) {
+  if(ent->exists) {
+    demogobbler_eproparr_freeprops(&ent->props, data);
+    demogobbler_eproparr_free(&ent->props);
+  }
+}
+#endif
 
 void demogobbler_estate_free(estate* thisptr) {
   if(thisptr->should_store_props) {
     for(size_t i=0; i < MAX_EDICTS; ++i) {
-      free_props(thisptr->edicts + i);
+      edict *ent = thisptr->edicts + i;
+      free_props(ent, thisptr->class_datas + ent->datatable_id);
     }
+    memset(thisptr->edicts, 0, sizeof(edict) * MAX_EDICTS);
   }
   demogobbler_arena_free(&thisptr->memory_arena);
 }
@@ -541,15 +589,14 @@ static void copy_into_inner_value(prop_value_inner* dest, const prop_value_inner
   }
 }
 
-static void copy_into_prop(ent_prop* prop, const prop_value* value) {
+static void copy_into_prop(prop_value_inner* dest, const prop_value* value) {
   demogobbler_sendproptype prop_type = value->prop->proptype;
-
   if(prop_type != sendproptype_array) {
-    copy_into_inner_value(&prop->value.value, &value->value, prop_type);
+    copy_into_inner_value(dest, &value->value, prop_type);
   } else {
     demogobbler_sendproptype array_prop_type = value->prop->array_prop->proptype;
     for(size_t i=0; i < value->value.arr_val->array_size; ++i) {
-      copy_into_inner_value(prop->value.value.arr_val->values + i, value->value.arr_val->values + i, array_prop_type);
+      copy_into_inner_value(dest->arr_val->values + i, value->value.arr_val->values + i, array_prop_type);
     }
   }
 }
@@ -564,61 +611,72 @@ static void alloc_inner_value(prop_value_inner* dest, demogobbler_sendprop* prop
   } else if (prop->proptype == sendproptype_string) {
     dest->str_val = malloc(sizeof(string_value));
     memset(dest->str_val, 0, sizeof(string_value));
-  } 
-}
-
-static ent_prop* alloc_prop(demogobbler_sendprop* prop) {
-  ent_prop* rval = malloc(sizeof(ent_prop));
-  memset(rval, 0, sizeof(ent_prop));
-  rval->value.prop = prop;
-  if(prop->proptype == sendproptype_array) {
-    rval->value.value.arr_val = malloc(sizeof(array_value));
-    memset(rval->value.value.arr_val, 0, sizeof(array_value));
-    rval->value.value.arr_val->array_size = prop->array_num_elements;
-    rval->value.value.arr_val->values = malloc(sizeof(prop_value_inner) * prop->array_num_elements);
-    memset(rval->value.value.arr_val->values, 0, sizeof(prop_value_inner) * prop->array_num_elements);
-
+  } else if (prop->proptype == sendproptype_array) {
+    dest->arr_val = malloc(sizeof(array_value));
+    memset(dest->arr_val, 0, sizeof(array_value));
+    dest->arr_val->values = malloc(sizeof(prop_value_inner) * prop->array_num_elements);
+    dest->arr_val->array_size = prop->array_num_elements;
+    memset(dest->arr_val->values, 0, sizeof(prop_value_inner) * prop->array_num_elements);
     for(size_t i=0; i < prop->array_num_elements; ++i) {
-      alloc_inner_value(rval->value.value.arr_val->values + i, prop->array_prop);
+      alloc_inner_value(dest->arr_val->values + i, prop->array_prop);
     }
-  } else if(prop->proptype != sendproptype_int || prop->proptype != sendproptype_float) {
-    alloc_inner_value(&rval->value.value, prop);
   }
-
-  return rval;
 }
 
-static void update_props(edict* ent, const ent_update* update) {
-  ent_prop* current = ent->values;
+size_t number_of_props(eproplist* thisptr) {
+  epropnode* node = thisptr->head;
+  size_t i;
+  for(i=0;node != NULL;++i) {
+    node = demogobbler_eproplist_next(thisptr, node);
+  }
+  return i;
+}
 
+#ifdef DEMOGOBBLER_USE_LINKED_LIST_PROPS
+static void update_props(edict* ent, const ent_update* update, serverclass_data* data) {
+  epropnode *node = NULL;
   for(size_t i=0; i < update->prop_value_array_size; ++i) {
     const prop_value* value = update->prop_value_array + i;
-    ent_prop* prop;
+    size_t index = value->prop - data->props;
+    bool newprop;
+    size_t before = number_of_props(&ent->props);
+    node = demogobbler_eproplist_get(&ent->props, node, index, &newprop);
+    size_t after = number_of_props(&ent->props);
 
-    // Walk the linked list of props until we arrive at the insertion point
-    if(current) {
-      while(current->next && current->next->value.prop < value->prop) {
-        current = current->next;
-      }
+    if(newprop) {
+      alloc_inner_value(&node->value, value->prop);
     }
 
-    if(current == NULL || current->value.prop > value->prop) {
-      // We are at the front of the list, change the head pointer
-      prop = alloc_prop(value->prop);
-      prop->next = ent->values;
-      ent->values = prop;
-    } else if (current->value.prop == value->prop) {
-      prop = current;
-    } else {
-      // Did not match, insert a new node either in the middle or back of the list
-      prop = alloc_prop(value->prop);
-      prop->next = current->next;
-      current->next = prop;
+    if(strcmp(value->prop->name, "m_vecOrigin") == 0 && node->value.v3_val == NULL) {
+      int temp = 0;
     }
-    copy_into_prop(prop, value);
-    current = prop;
+    copy_into_prop(&node->value, value);
+    if(strcmp(value->prop->name, "m_vecOrigin") == 0 && node->value.v3_val == NULL) {
+      int temp = 0;
+    }
   }
 }
+#else
+static prop_value_inner* getinsert_prop(edict* ent, uint16_t index, demogobbler_sendprop* prop) {
+  bool newprop;
+  prop_value_inner* value = demogobbler_eproparr_get(&ent->props, index, &newprop);
+
+  if(newprop) {
+    alloc_inner_value(value, prop);
+  }
+
+  return value;
+}
+
+static void update_props(edict* ent, const ent_update* update, serverclass_data* data) {
+  for(size_t i=0; i < update->prop_value_array_size; ++i) {
+    const prop_value* value = update->prop_value_array + i;
+    prop_value_inner* dest = getinsert_prop(ent, value->prop - data->props, value->prop);
+    copy_into_prop(dest, value);
+  }
+}
+#endif
+
 
 demogobbler_parse_result demogobbler_estate_update(estate* entity_state, const packetentities_data* data) {
   demogobbler_parse_result result = {0};
@@ -628,6 +686,28 @@ demogobbler_parse_result demogobbler_estate_update(estate* entity_state, const p
     const ent_update* update = data->ent_updates + i;
     edict* ent = entity_state->edicts + update->ent_index;
     if(update->update_type == 2) {
+      serverclass_data* data = entity_state->class_datas + update->datatable_id;
+      if(should_store_props) {
+        bool tragedy_happened = false;
+        bool init_props = false;
+        if(ent->exists && ent->datatable_id != update->datatable_id) {
+          // game pulled a fast one, existing entity enters pvs with a new datatable???
+          free_props(ent, entity_state->class_datas + ent->datatable_id);
+          memset(ent, 0, sizeof(edict));
+          init_props = true;
+        } else if(!ent->exists) {
+          init_props = true;
+        }
+
+        if(init_props) {
+#ifdef DEMOGOBBLER_USE_LINKED_LIST_PROPS
+          ent->props = demogobbler_eproplist_init();
+#else
+          ent->props = demogobbler_eproparr_init(data->prop_count);
+#endif
+        }
+      }
+
       // Enter pvs
       ent->explicitly_deleted = false;
       ent->exists = true;
@@ -636,19 +716,20 @@ demogobbler_parse_result demogobbler_estate_update(estate* entity_state, const p
       ent->in_pvs = true;
       
       if(should_store_props) {
-        update_props(ent, update);
+        update_props(ent, update, data);
+        int temp = 0;
       }
     } else if( update->update_type == 0) {
       // Delta
       if(should_store_props) {
-        update_props(ent, update);
+        update_props(ent, update, entity_state->class_datas + ent->datatable_id);
       }
     } else if (update->update_type == 1) {
       // Leave PVS
       ent->in_pvs = false;
     } else if (update->update_type == 3) {
       if(should_store_props) {
-        free_props(ent);
+        free_props(ent, entity_state->class_datas + ent->datatable_id);
       }
       memset(ent, 0, sizeof(edict));
     }
@@ -657,8 +738,9 @@ demogobbler_parse_result demogobbler_estate_update(estate* entity_state, const p
 
   for(size_t i=0; i < data->explicit_deletes_count; ++i) {
     edict* ent = entity_state->edicts + data->explicit_deletes[i];
+    serverclass_data* data = entity_state->class_datas + ent->datatable_id;
     if(should_store_props) {
-      free_props(ent);
+      free_props(ent, data);
     }
     memset(ent, 0, sizeof(edict));
     ent->explicitly_deleted = true;

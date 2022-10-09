@@ -27,15 +27,19 @@ static prop_value read_prop(prop_parse_state *state, demogobbler_sendprop *prop)
 static void write_prop(bitwriter* writer, prop_value value);
 
 static void write_int(bitwriter* thisptr, prop_value value) {
-  if(value.prop->flag_unsigned) {
-    bitwriter_write_uint(thisptr, value.value.unsigned_val, value.prop->prop_numbits);
+  if(value.prop->flag_normal) {
+      bitwriter_write_varuint32(thisptr, value.value.unsigned_val);
+  } else if(value.prop->flag_unsigned) {
+      bitwriter_write_uint(thisptr, value.value.unsigned_val, value.prop->prop_numbits);
   } else {
     bitwriter_write_sint(thisptr, value.value.signed_val, value.prop->prop_numbits);
   }
 }
 
 static void read_int(prop_parse_state *state, demogobbler_sendprop *prop, prop_value_inner *value) {
-  if (prop->flag_unsigned) {
+  if (prop->flag_normal) {
+    value->unsigned_val = demogobbler_bitstream_read_varuint32(state->stream);
+  } else if (prop->flag_unsigned) {
     value->unsigned_val = demogobbler_bitstream_read_uint(state->stream, prop->prop_numbits);
   } else {
     value->signed_val = demogobbler_bitstream_read_sint(state->stream, prop->prop_numbits);
@@ -512,37 +516,38 @@ void demogobbler_parse_packetentities(parser *thisptr,
     read_explicit_deletes(&state, new_deletes);
   }
 
-end:;
-#ifdef DEMOGOBBLER_UNSAFE
-  if (thisptr->m_settings.packetentities_parsed_handler) {
-#else
-  if (!thisptr->error && !stream.overflow && thisptr->m_settings.packetentities_parsed_handler) {
-#endif
-    svc_packetentities_parsed parsed;
-    memset(&parsed, 0, sizeof(parsed));
-    parsed.data = state.output;
-    parsed.orig = message;
-    thisptr->m_settings.packetentities_parsed_handler(&thisptr->state, &parsed);
+  if (stream.overflow && !thisptr->error) {
+    thisptr->error = true;
+    thisptr->error_message = "Stream overflowed in svc_packetentities\n";
   }
-
-  demogobbler_estate_update(&thisptr->state.entity_state, &state.output);
-
-  demogobbler_va_free(&state.prop_array);
 
   if(stream.bitsize > stream.bitoffset) {
     thisptr->error = true;
     thisptr->error_message = "Did not read all bits from svc_packetentities\n";
   }
 
-  if (stream.overflow && !thisptr->error) {
-    thisptr->error = true;
-    thisptr->error_message = "Stream overflowed in svc_packetentities\n";
-  }
-
   if (!thisptr->error && i != message->updated_entries) {
     thisptr->error = true;
     thisptr->error_message = "Read the wrong number of entries in svc_packetentities\n";
   }
+
+end:;
+#ifdef DEMOGOBBLER_UNSAFE
+  if (true) {
+#else
+  if (!thisptr->error) {
+#endif
+    if(thisptr->m_settings.packetentities_parsed_handler) {
+      svc_packetentities_parsed parsed;
+      memset(&parsed, 0, sizeof(parsed));
+      parsed.data = state.output;
+      parsed.orig = message;
+      thisptr->m_settings.packetentities_parsed_handler(&thisptr->state, &parsed);
+    }
+    demogobbler_estate_update(&thisptr->state.entity_state, &state.output);
+  }
+
+  demogobbler_va_free(&state.prop_array);
 
   if (thisptr->error) {
 #ifdef DEBUG_BREAK_PROP

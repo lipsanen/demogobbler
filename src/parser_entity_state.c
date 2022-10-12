@@ -688,7 +688,6 @@ demogobbler_parse_result demogobbler_estate_update(estate* entity_state, const p
     if(update->update_type == 2) {
       serverclass_data* data = entity_state->class_datas + update->datatable_id;
       if(should_store_props) {
-        bool tragedy_happened = false;
         bool init_props = false;
         if(ent->exists && ent->datatable_id != update->datatable_id) {
           // game pulled a fast one, existing entity enters pvs with a new datatable???
@@ -717,7 +716,6 @@ demogobbler_parse_result demogobbler_estate_update(estate* entity_state, const p
       
       if(should_store_props) {
         update_props(ent, update, data);
-        int temp = 0;
       }
     } else if( update->update_type == 0) {
       // Delta

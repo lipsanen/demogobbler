@@ -8,29 +8,29 @@
 #include "utils.h"
 #include <string.h>
 
-typedef demogobbler_datatables_parsed datatables;
+typedef dg_datatables_parsed datatables;
 
 typedef struct {
-  demo_version_data* demo_version;
+  dg_demver_data *demo_version;
   bool error;
-  const char* error_message;
-} datatable_parser;  
+  const char *error_message;
+} datatable_parser;
 
-static_assert(sizeof(demogobbler_sendprop) <= 32,
+static_assert(sizeof(dg_sendprop) <= 32,
               "Sendprops are larger than they should be, weird bitfield behavior?");
 
-static const demogobbler_sendproptype old_props[] = {sendproptype_int,     sendproptype_float,
-                                                     sendproptype_vector3, sendproptype_string,
-                                                     sendproptype_array,   sendproptype_datatable};
+static const dg_sendproptype old_props[] = {sendproptype_int,     sendproptype_float,
+                                            sendproptype_vector3, sendproptype_string,
+                                            sendproptype_array,   sendproptype_datatable};
 
-static const demogobbler_sendproptype new_props[] = {
+static const dg_sendproptype new_props[] = {
     sendproptype_int,    sendproptype_float, sendproptype_vector3,  sendproptype_vector2,
     sendproptype_string, sendproptype_array, sendproptype_datatable};
 
-static unsigned sendproptype_to_raw(writer *thisptr, demogobbler_sendproptype proptype) {
+static unsigned sendproptype_to_raw(writer *thisptr, dg_sendproptype proptype) {
   size_t size;
-  const demogobbler_sendproptype *props;
-  demo_version_data *version = &thisptr->version;
+  const dg_sendproptype *props;
+  dg_demver_data *version = &thisptr->version;
 
   if (version->network_protocol <= 14) {
     props = old_props;
@@ -56,8 +56,8 @@ static unsigned sendproptype_to_raw(writer *thisptr, demogobbler_sendproptype pr
   return 0;
 }
 
-static demogobbler_sendproptype raw_to_sendproptype(datatable_parser *thisptr, unsigned int value) {
-  demo_version_data *data = thisptr->demo_version;
+static dg_sendproptype raw_to_sendproptype(datatable_parser *thisptr, unsigned int value) {
+  dg_demver_data *data = thisptr->demo_version;
   if (data->network_protocol <= 14) {
     if (value < ARRAYSIZE(old_props)) {
       return old_props[value];
@@ -71,22 +71,22 @@ static demogobbler_sendproptype raw_to_sendproptype(datatable_parser *thisptr, u
   return sendproptype_invalid;
 }
 
-static char *parse_cstring(arena *a, bitstream *stream) {
+static char *parse_cstring(dg_arena *a, dg_bitstream *stream) {
   char STRINGBUF[1024];
   size_t size = bitstream_read_cstring(stream, STRINGBUF, sizeof(STRINGBUF));
   char *rval = NULL;
 
-  if(size == 0) {
+  if (size == 0) {
     stream->overflow = true;
   } else if (!stream->overflow) {
-    rval = demogobbler_arena_allocate(a, size, 1);
+    rval = dg_arena_allocate(a, size, 1);
     memcpy(rval, STRINGBUF, size);
   }
 
   return rval;
 }
 
-static unsigned get_flags_from_sendprop(writer *thisptr, demogobbler_sendprop *prop) {
+static unsigned get_flags_from_sendprop(writer *thisptr, dg_sendprop *prop) {
   unsigned flags = 0;
   // hopefully the compiler wizards can generate branchless code from this
   // otherwise there's like 100 branches in this function
@@ -128,7 +128,7 @@ static unsigned get_flags_from_sendprop(writer *thisptr, demogobbler_sendprop *p
   return flags;
 }
 
-static void get_sendprop_flags(datatable_parser *thisptr, demogobbler_sendprop *prop, unsigned int flags) {
+static void get_sendprop_flags(datatable_parser *thisptr, dg_sendprop *prop, unsigned int flags) {
 #define GET_BIT(member, index) prop->member = (flags & (1 << index)) ? 1 : 0;
 
   GET_BIT(flag_unsigned, 0);
@@ -164,7 +164,7 @@ static void get_sendprop_flags(datatable_parser *thisptr, demogobbler_sendprop *
 #undef GET_BIT
 }
 
-static void write_sendprop(writer *thisptr, bitwriter *writer, demogobbler_sendprop *prop) {
+static void write_sendprop(writer *thisptr, bitwriter *writer, dg_sendprop *prop) {
   unsigned int raw_value = sendproptype_to_raw(thisptr, prop->proptype);
   if (thisptr->error)
     return;
@@ -191,9 +191,9 @@ static void write_sendprop(writer *thisptr, bitwriter *writer, demogobbler_sendp
   }
 }
 
-static void parse_sendprop(datatable_parser *thisptr, arena *a, bitstream *stream,
-                           demogobbler_sendtable *table, demogobbler_sendprop *prop, size_t index) {
-  memset(prop, 0, sizeof(demogobbler_sendprop));
+static void parse_sendprop(datatable_parser *thisptr, dg_arena *a, dg_bitstream *stream,
+                           dg_sendtable *table, dg_sendprop *prop, size_t index) {
+  memset(prop, 0, sizeof(dg_sendprop));
   unsigned int raw_value = bitstream_read_uint(stream, 5);
   prop->proptype = raw_to_sendproptype(thisptr, raw_value);
 
@@ -220,7 +220,7 @@ static void parse_sendprop(datatable_parser *thisptr, arena *a, bitstream *strea
     prop->array_num_elements = bitstream_read_uint(stream, 10);
     prop->array_prop = (prop - 1); // The insidearray prop should be in the previous element
 
-    if(index == 0 || !prop->array_prop->flag_insidearray) {
+    if (index == 0 || !prop->array_prop->flag_insidearray) {
       thisptr->error = true;
       thisptr->error_message = "Array prop not preceded by insidearray prop";
     }
@@ -233,7 +233,7 @@ static void parse_sendprop(datatable_parser *thisptr, arena *a, bitstream *strea
   }
 }
 
-static void write_sendtable(writer *thisptr, bitwriter *writer, demogobbler_sendtable *ptable) {
+static void write_sendtable(writer *thisptr, bitwriter *writer, dg_sendtable *ptable) {
   bitwriter_write_bit(writer, ptable->needs_decoder);
   bitwriter_write_cstring(writer, ptable->name);
   bitwriter_write_uint(writer, ptable->prop_count, thisptr->version.datatable_propcount_bits);
@@ -245,9 +245,9 @@ static void write_sendtable(writer *thisptr, bitwriter *writer, demogobbler_send
 
 #define ERROR_SET (stream->overflow || thisptr->error)
 
-static void parse_sendtable(datatable_parser *thisptr, arena *a, bitstream *stream,
-                            demogobbler_sendtable *ptable) {
-  memset(ptable, 0, sizeof(demogobbler_sendtable));
+static void parse_sendtable(datatable_parser *thisptr, dg_arena *a, dg_bitstream *stream,
+                            dg_sendtable *ptable) {
+  memset(ptable, 0, sizeof(dg_sendtable));
   ptable->needs_decoder = bitstream_read_bit(stream);
   ptable->name = parse_cstring(a, stream);
 
@@ -258,23 +258,23 @@ static void parse_sendtable(datatable_parser *thisptr, arena *a, bitstream *stre
   }
 
   ptable->prop_count = bitstream_read_uint(stream, thisptr->demo_version->datatable_propcount_bits);
-  ptable->props = demogobbler_arena_allocate(a, ptable->prop_count * sizeof(demogobbler_sendprop),
-                                             alignof(demogobbler_sendprop));
+  ptable->props =
+      dg_arena_allocate(a, ptable->prop_count * sizeof(dg_sendprop), alignof(dg_sendprop));
 
   for (size_t i = 0; i < ptable->prop_count && !ERROR_SET; ++i) {
     parse_sendprop(thisptr, a, stream, ptable, ptable->props + i, i);
   }
 }
 
-static void write_serverclass(bitwriter *writer, demogobbler_serverclass *pclass) {
+static void write_serverclass(bitwriter *writer, dg_serverclass *pclass) {
   bitwriter_write_uint(writer, pclass->serverclass_id, 16);
   bitwriter_write_cstring(writer, pclass->serverclass_name);
   bitwriter_write_cstring(writer, pclass->datatable_name);
 }
 
-static void parse_serverclass(datatable_parser *thisptr, arena *a, bitstream *stream,
-                              demogobbler_serverclass *pclass) {
-  memset(pclass, 0, sizeof(demogobbler_serverclass));
+static void parse_serverclass(datatable_parser *thisptr, dg_arena *a, dg_bitstream *stream,
+                              dg_serverclass *pclass) {
+  memset(pclass, 0, sizeof(dg_serverclass));
   pclass->serverclass_id = bitstream_read_uint(stream, 16);
   pclass->serverclass_name = parse_cstring(a, stream);
   pclass->datatable_name = parse_cstring(a, stream);
@@ -283,8 +283,7 @@ static void parse_serverclass(datatable_parser *thisptr, arena *a, bitstream *st
 #undef ERROR_SET
 #define ERROR_SET (stream.overflow || thisptr->error)
 
-void demogobbler_write_datatables_parsed(writer *thisptr,
-                                         demogobbler_datatables_parsed *datatables) {
+void dg_write_datatables_parsed(writer *thisptr, dg_datatables_parsed *datatables) {
   bitwriter writer;
   bitwriter_init(&writer, datatables->_raw_buffer_bytes * 8);
 
@@ -312,7 +311,7 @@ void demogobbler_write_datatables_parsed(writer *thisptr,
     if (datatables->_raw_buffer && bytes == datatables->_raw_buffer_bytes) {
       // If we are exactly at the same number of bytes, copy the last bits out of the buffer to
       // ensure bit for bit equality
-      bitstream stream =
+      dg_bitstream stream =
           bitstream_create(datatables->_raw_buffer, datatables->_raw_buffer_bytes * 8);
       bitstream_advance(&stream, writer.bitoffset);
       unsigned int bits_left = stream.bitsize - stream.bitoffset;
@@ -327,7 +326,7 @@ void demogobbler_write_datatables_parsed(writer *thisptr,
   }
 
   if (!thisptr->error) {
-    demogobbler_write_preamble(thisptr, datatables->preamble);
+    dg_write_preamble(thisptr, datatables->preamble);
     thisptr->output_funcs.write(thisptr->_stream, &bytes, 4);
     thisptr->output_funcs.write(thisptr->_stream, writer.ptr, bytes);
   }
@@ -335,9 +334,8 @@ void demogobbler_write_datatables_parsed(writer *thisptr,
   bitwriter_free(&writer);
 }
 
-demogobbler_datatables_parsed_rval demogobbler_parse_datatables(demo_version_data *version_data, arena *memory_arena,
-                                                                demogobbler_datatables *input)
-{
+dg_datatables_parsed_rval dg_parse_datatables(dg_demver_data *version_data,
+                                              dg_arena *memory_arena, dg_datatables *input) {
   datatable_parser dparser;
   datatables output;
   memset(&dparser, 0, sizeof(dparser));
@@ -348,37 +346,36 @@ demogobbler_datatables_parsed_rval demogobbler_parse_datatables(demo_version_dat
   output._raw_buffer = input->data;
   output._raw_buffer_bytes = input->size_bytes;
 
-  bitstream stream = bitstream_create(input->data, input->size_bytes * 8);
+  dg_bitstream stream = bitstream_create(input->data, input->size_bytes * 8);
 
   size_t array_size = 1024; // a guess at what the array size could be
-  output.sendtables = malloc(array_size * sizeof(demogobbler_sendtable));
+  output.sendtables = malloc(array_size * sizeof(dg_sendtable));
 
   while (bitstream_read_bit(&stream)) {
     if (output.sendtable_count >= array_size) {
       array_size <<= 1;
-      output.sendtables = realloc(output.sendtables, array_size * sizeof(demogobbler_sendtable));
+      output.sendtables = realloc(output.sendtables, array_size * sizeof(dg_sendtable));
     }
     parse_sendtable(&dparser, memory_arena, &stream, output.sendtables + output.sendtable_count);
     ++output.sendtable_count;
   }
 
-  demogobbler_arena_attach(memory_arena, output.sendtables, array_size * sizeof(demogobbler_sendtable));
+  dg_arena_attach(memory_arena, output.sendtables, array_size * sizeof(dg_sendtable));
 
   output.serverclass_count = bitstream_read_uint(&stream, 16);
-  output.serverclasses = demogobbler_arena_allocate(
-      memory_arena, output.serverclass_count * sizeof(demogobbler_serverclass),
-      alignof(demogobbler_serverclass));
+  output.serverclasses = dg_arena_allocate(
+      memory_arena, output.serverclass_count * sizeof(dg_serverclass), alignof(dg_serverclass));
 
   for (size_t i = 0; i < output.serverclass_count && !dparser.error; ++i) {
     parse_serverclass(&dparser, memory_arena, &stream, output.serverclasses + i);
   }
 
-  if(stream.overflow && !dparser.error) {
+  if (stream.overflow && !dparser.error) {
     dparser.error = true;
     dparser.error_message = "Bitstream overflowed while parsing datatables";
   }
 
-  demogobbler_datatables_parsed_rval rval;
+  dg_datatables_parsed_rval rval;
   rval.error = dparser.error;
   rval.error_message = dparser.error_message;
   rval.output = output;
@@ -386,10 +383,10 @@ demogobbler_datatables_parsed_rval demogobbler_parse_datatables(demo_version_dat
   return rval;
 }
 
-void parse_datatables(parser *thisptr, demogobbler_datatables *input) {
-  arena *memory_arena;
+void parse_datatables(parser *thisptr, dg_datatables *input) {
+  dg_arena *memory_arena;
   bool init_entity_state;
-  if(thisptr->state.entity_state.edicts == NULL && thisptr->m_settings.store_ents) {
+  if (thisptr->state.entity_state.edicts == NULL && thisptr->m_settings.store_ents) {
     memory_arena = &thisptr->state.entity_state.memory_arena;
     init_entity_state = false;
   } else {
@@ -397,17 +394,18 @@ void parse_datatables(parser *thisptr, demogobbler_datatables *input) {
     init_entity_state = true;
   }
 
-  demogobbler_datatables_parsed_rval value = demogobbler_parse_datatables(&thisptr->demo_version, memory_arena, input);
+  dg_datatables_parsed_rval value =
+      dg_parse_datatables(&thisptr->demo_version, memory_arena, input);
 
   if (!value.error) {
     if (thisptr->m_settings.datatables_parsed_handler)
       thisptr->m_settings.datatables_parsed_handler(&thisptr->state, &value.output);
     if (!init_entity_state) {
-      demogobbler_parser_init_estate(thisptr, &value.output);
+      dg_parser_init_estate(thisptr, &value.output);
     }
   }
 
   if (init_entity_state) {
-    demogobbler_arena_free(memory_arena);
+    dg_arena_free(memory_arena);
   }
 }

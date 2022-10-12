@@ -1,23 +1,23 @@
 #include "benchmark/benchmark.h"
 #include "demogobbler.h"
 #include "test_demos.hpp"
-#include <iostream>
 #include <filesystem>
+#include <iostream>
 
-static void header_handler(parser_state*, demogobbler_header *header) {}
-static void consolecmd_handler(parser_state*, demogobbler_consolecmd *message) {}
-static void customdata_handler(parser_state*, demogobbler_customdata *message) {}
-static void datatables_handler(parser_state*, demogobbler_datatables *message) {}
-static void packet_handler(parser_state*, demogobbler_packet *packet) {}
-static void stringtables_handler(parser_state*, demogobbler_stringtables *message) {}
-static void stop_handler(parser_state*, demogobbler_stop *message) {}
-static void synctick_handler(parser_state*, demogobbler_synctick *message) {}
-static void usercmd_handler(parser_state*, demogobbler_usercmd *message) {}
+static void header_handler(parser_state *, dg_header *header) {}
+static void consolecmd_handler(parser_state *, dg_consolecmd *message) {}
+static void customdata_handler(parser_state *, dg_customdata *message) {}
+static void datatables_handler(parser_state *, dg_datatables *message) {}
+static void packet_handler(parser_state *, dg_packet *packet) {}
+static void stringtables_handler(parser_state *, dg_stringtables *message) {}
+static void stop_handler(parser_state *, dg_stop *message) {}
+static void synctick_handler(parser_state *, dg_synctick *message) {}
+static void usercmd_handler(parser_state *, dg_usercmd *message) {}
 
 static void get_bytes(benchmark::State &state) {
   size_t bytes = 0;
 
-  for(auto& demo : get_test_demos()) {
+  for (auto &demo : get_test_demos()) {
     bytes += std::filesystem::file_size(demo);
   }
 
@@ -26,28 +26,27 @@ static void get_bytes(benchmark::State &state) {
 
 static void testdemos_packet_only(benchmark::State &state) {
   // Benchmarks only the parsing portion
-  demogobbler_settings settings;
-  demogobbler_settings_init(&settings);
+  dg_settings settings;
+  dg_settings_init(&settings);
 
   settings.packet_handler = packet_handler;
 
   auto demos = get_test_demos();
 
   for (auto _ : state) {
-    for(auto& demo : demos)
-    {
-      demogobbler_parse_file(&settings, demo.c_str());
+    for (auto &demo : demos) {
+      dg_parse_file(&settings, demo.c_str());
     }
   }
 
   get_bytes(state);
 }
 
-static void packet_parsed_handler(parser_state*, packet_parsed* message) {}
+static void packet_parsed_handler(parser_state *, packet_parsed *message) {}
 
 static void testdemos_parse_everything(benchmark::State &state) {
-  demogobbler_settings settings;
-  demogobbler_settings_init(&settings);
+  dg_settings settings;
+  dg_settings_init(&settings);
 
   settings.consolecmd_handler = consolecmd_handler;
   settings.customdata_handler = customdata_handler;
@@ -64,26 +63,23 @@ static void testdemos_parse_everything(benchmark::State &state) {
   auto demos = get_test_demos();
 
   for (auto _ : state) {
-    for(auto& demo : demos)
-    {
-      demogobbler_parse_file(&settings, demo.c_str());
+    for (auto &demo : demos) {
+      dg_parse_file(&settings, demo.c_str());
     }
   }
 
   get_bytes(state);
 }
 
-static void parse_only(demogobbler_settings* settings, const std::vector<std::string>& demos)
-{
-  for(auto& file : demos)
-  {
-    demogobbler_parse_file(settings, file.c_str());
+static void parse_only(dg_settings *settings, const std::vector<std::string> &demos) {
+  for (auto &file : demos) {
+    dg_parse_file(settings, file.c_str());
   }
 }
 
 static void testdemos_parse_only(benchmark::State &state) {
-  demogobbler_settings settings;
-  demogobbler_settings_init(&settings);
+  dg_settings settings;
+  dg_settings_init(&settings);
 
   settings.consolecmd_handler = consolecmd_handler;
   settings.customdata_handler = customdata_handler;
@@ -106,15 +102,14 @@ static void testdemos_parse_only(benchmark::State &state) {
 
 static void testdemos_header_only(benchmark::State &state) {
   // Only register header handler, opportunity to optimize the main loop out
-  demogobbler_settings settings;
-  demogobbler_settings_init(&settings);
+  dg_settings settings;
+  dg_settings_init(&settings);
   settings.header_handler = header_handler;
   auto demos = get_test_demos();
 
   for (auto _ : state) {
-    for(auto& demo : demos)
-    {
-      demogobbler_parse_file(&settings, demo.c_str());
+    for (auto &demo : demos) {
+      dg_parse_file(&settings, demo.c_str());
     }
   }
 

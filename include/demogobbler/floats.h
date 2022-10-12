@@ -11,16 +11,16 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
-struct bitangle_vector {
+struct dg_bitangle_vector {
   uint32_t x;
   uint32_t y;
   uint32_t z;
   unsigned int bits : 6;
 };
 
-typedef struct bitangle_vector bitangle_vector;
+typedef struct dg_bitangle_vector dg_bitangle_vector;
 
-struct bitcoord {
+struct dg_bitcoord {
   unsigned exists : 1; // Used by vector
   unsigned has_int : 1;
   unsigned has_frac : 1;
@@ -29,25 +29,25 @@ struct bitcoord {
   unsigned frac_value : 5;
 };
 
-typedef struct bitcoord bitcoord;
+typedef struct dg_bitcoord dg_bitcoord;
 
-struct bitcoord_vector {
-  bitcoord x;
-  bitcoord y;
-  bitcoord z;
+struct dg_bitcoord_vector {
+  dg_bitcoord x;
+  dg_bitcoord y;
+  dg_bitcoord z;
 };
 
-typedef struct bitcoord_vector bitcoord_vector;
+typedef struct dg_bitcoord_vector dg_bitcoord_vector;
 
 typedef struct {
   unsigned frac;
   bool sign;
-} demogobbler_bitnormal;
+} dg_bitnormal;
 
 typedef struct {
   unsigned int_val;
   unsigned fract_val;
-} demogobbler_bitcellcoord;
+} dg_bitcellcoord;
 
 typedef struct {
   unsigned int_val;
@@ -55,7 +55,7 @@ typedef struct {
   bool inbounds;
   bool int_has_val;
   bool sign;
-} demogobbler_bitcoordmp;
+} dg_bitcoordmp;
 
 #ifdef __cplusplus
 }

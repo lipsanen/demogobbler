@@ -7,23 +7,23 @@ extern "C" {
 static void eproplist_insert(benchmark::State &state) {
   bool newprop;
   for (auto _ : state) {
-    eproplist list = demogobbler_eproplist_init();
-    epropnode *node = nullptr;
+    dg_eproplist list = dg_eproplist_init();
+    dg_epropnode *node = nullptr;
     for (uint16_t i = 0; i < 20; ++i) {
-      node = demogobbler_eproplist_get(&list, node, i, &newprop);
+      node = dg_eproplist_get(&list, node, i, &newprop);
     }
-    demogobbler_eproplist_free(&list);
+    dg_eproplist_free(&list);
   }
 }
 
 static void eproparr_insert(benchmark::State &state) {
   bool newprop;
   for (auto _ : state) {
-    eproparr arr = demogobbler_eproparr_init(400);
+    dg_eproparr arr = dg_eproparr_init(400);
     for (uint16_t i = 0; i < 20; ++i) {
-      demogobbler_eproparr_get(&arr, i * 10, &newprop);
+      dg_eproparr_get(&arr, i * 10, &newprop);
     }
-    demogobbler_eproparr_free(&arr);
+    dg_eproparr_free(&arr);
   }
 }
 
@@ -53,13 +53,13 @@ static void eproparr_demosim(benchmark::State &state) {
   auto updates = get_demosim();
 
   for (auto _ : state) {
-    eproparr arr = demogobbler_eproparr_init(400);
+    dg_eproparr arr = dg_eproparr_init(400);
     for (size_t i = 0; i < updates.size(); ++i) {
       for (size_t u = 0; u < updates[i].size(); ++u) {
-        demogobbler_eproparr_get(&arr, updates[i][u], &newprop);
+        dg_eproparr_get(&arr, updates[i][u], &newprop);
       }
     }
-    demogobbler_eproparr_free(&arr);
+    dg_eproparr_free(&arr);
   }
 }
 
@@ -68,15 +68,15 @@ static void eproplist_demosim(benchmark::State &state) {
   auto updates = get_demosim();
 
   for (auto _ : state) {
-    eproplist list = demogobbler_eproplist_init();
+    dg_eproplist list = dg_eproplist_init();
     for (size_t i = 0; i < updates.size(); ++i) {
-      epropnode *node = nullptr;
+      dg_epropnode *node = nullptr;
       for (size_t u = 0; u < updates[i].size(); ++u) {
         uint16_t value = updates[i][u];
-        node = demogobbler_eproplist_get(&list, node, value, &newprop);
+        node = dg_eproplist_get(&list, node, value, &newprop);
       }
     }
-    demogobbler_eproplist_free(&list);
+    dg_eproplist_free(&list);
   }
 }
 

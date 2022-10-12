@@ -1,12 +1,12 @@
 #include "demogobbler/conversions.h"
 #include "utils.h"
 
-static float bitcoordmp_to_float(demogobbler_bitcoordmp value, bool is_int, bool lp) {
-  if(is_int) {
+static float bitcoordmp_to_float(dg_bitcoordmp value, bool is_int, bool lp) {
+  if (is_int) {
     return value.int_val * (value.sign ? -1 : 1);
   } else {
     float val = value.int_val * (value.sign ? -1 : 1);
-    if(lp) {
+    if (lp) {
       val += value.frac_val * COORD_RESOLUTION_LP;
     } else {
       val += value.frac_val * COORD_RESOLUTION;
@@ -15,19 +15,19 @@ static float bitcoordmp_to_float(demogobbler_bitcoordmp value, bool is_int, bool
   }
 }
 
-static float bitnormal_to_float(demogobbler_bitnormal value) {
+static float bitnormal_to_float(dg_bitnormal value) {
   float out = value.frac / NORM_RES;
 
-  if(value.sign)
+  if (value.sign)
     out = -out;
   return out;
 }
 
-static float bitcellcoord_to_float(demogobbler_bitcellcoord value, bool is_int, bool lp) {
+static float bitcellcoord_to_float(dg_bitcellcoord value, bool is_int, bool lp) {
   float out = value.int_val;
-  
-  if(!is_int) {
-    if(lp) {
+
+  if (!is_int) {
+    if (lp) {
       out += value.fract_val * COORD_RESOLUTION_LP;
     } else {
       out += value.fract_val * COORD_RESOLUTION;
@@ -37,19 +37,19 @@ static float bitcellcoord_to_float(demogobbler_bitcellcoord value, bool is_int, 
   return out;
 }
 
-static float bitcoord_to_float(bitcoord value) {
+static float bitcoord_to_float(dg_bitcoord value) {
   float out = 0;
 
-  if(value.has_int)
+  if (value.has_int)
     out += value.int_value + 1;
   out += value.frac_value * COORD_RESOLUTION;
-  if(value.sign)
+  if (value.sign)
     out *= -1;
 
   return out;
 }
 
-float demogobbler_prop_to_float(demogobbler_sendprop* prop, prop_value_inner value) {
+float dg_prop_to_float(dg_sendprop *prop, dg_prop_value_inner value) {
   if (prop->flag_coord) {
     return bitcoord_to_float(value.bitcoord_val);
   } else if (prop->flag_coordmp) {

@@ -1,15 +1,14 @@
 #pragma once
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
-struct demogobbler_vector {
+struct dg_vector {
   float x, y, z;
 };
 
-typedef struct demogobbler_vector vector;
+typedef struct dg_vector vector;
 
 #ifdef __cplusplus
 }

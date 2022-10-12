@@ -4,8 +4,8 @@
 #include "demogobbler/bitwriter.h"
 #include "parser_packetentities.h"
 #include "utils.h"
-#include "version_utils.h"
 #include "vector_array.h"
+#include "version_utils.h"
 #include <string.h>
 
 #define TOSS_STRING() bitstream_read_cstring(stream, scrap, 260);
@@ -25,34 +25,34 @@
 #endif
 
 typedef struct {
-  void* address;
+  void *address;
   size_t size;
 } blk;
 
-static void handle_net_nop(parser *thisptr, bitstream *stream, packet_net_message *message,
-                           blk* scrap) {
+static void handle_net_nop(parser *thisptr, dg_bitstream *stream, packet_net_message *message,
+                           blk *scrap) {
   SEND_MESSAGE();
 }
 
-static void write_net_nop(bitwriter *writer, demo_version_data *version,
+static void write_net_nop(bitwriter *writer, dg_demver_data *version,
                           packet_net_message *message) {}
 
-static void handle_net_disconnect(parser *thisptr, bitstream *stream, packet_net_message *message,
-                                  blk* scrap) {
-  struct demogobbler_net_disconnect *ptr = &message->message_net_disconnect;
+static void handle_net_disconnect(parser *thisptr, dg_bitstream *stream,
+                                  packet_net_message *message, blk *scrap) {
+  struct dg_net_disconnect *ptr = &message->message_net_disconnect;
   COPY_STRING(ptr->text);
   SEND_MESSAGE();
 }
 
-static void write_net_disconnect(bitwriter *writer, demo_version_data *version,
+static void write_net_disconnect(bitwriter *writer, dg_demver_data *version,
                                  packet_net_message *message) {
-  struct demogobbler_net_disconnect *ptr = &message->message_net_disconnect;
+  struct dg_net_disconnect *ptr = &message->message_net_disconnect;
   bitwriter_write_cstring(writer, ptr->text);
 }
 
-static void handle_net_file(parser *thisptr, bitstream *stream, packet_net_message *message,
-                            blk* scrap) {
-  struct demogobbler_net_file *ptr = &message->message_net_file;
+static void handle_net_file(parser *thisptr, dg_bitstream *stream, packet_net_message *message,
+                            blk *scrap) {
+  struct dg_net_file *ptr = &message->message_net_file;
 
   ptr->transfer_id = bitstream_read_uint32(stream);
   COPY_STRING(ptr->filename);
@@ -60,17 +60,17 @@ static void handle_net_file(parser *thisptr, bitstream *stream, packet_net_messa
   SEND_MESSAGE();
 }
 
-static void write_net_file(bitwriter *writer, demo_version_data *version,
+static void write_net_file(bitwriter *writer, dg_demver_data *version,
                            packet_net_message *message) {
-  struct demogobbler_net_file *ptr = &message->message_net_file;
+  struct dg_net_file *ptr = &message->message_net_file;
   bitwriter_write_uint32(writer, ptr->transfer_id);
   bitwriter_write_cstring(writer, ptr->filename);
   bitwriter_write_uint(writer, ptr->file_requested, version->net_file_bits);
 }
 
-static void handle_net_tick(parser *thisptr, bitstream *stream, packet_net_message *message,
-                            blk* scrap) {
-  struct demogobbler_net_tick *ptr = &message->message_net_tick;
+static void handle_net_tick(parser *thisptr, dg_bitstream *stream, packet_net_message *message,
+                            blk *scrap) {
+  struct dg_net_tick *ptr = &message->message_net_tick;
   ptr->tick = bitstream_read_uint32(stream);
   if (thisptr->demo_version.has_nettick_times) {
     ptr->host_frame_time = bitstream_read_uint(stream, 16);
@@ -79,9 +79,9 @@ static void handle_net_tick(parser *thisptr, bitstream *stream, packet_net_messa
   SEND_MESSAGE();
 }
 
-static void write_net_tick(bitwriter *writer, demo_version_data *version,
+static void write_net_tick(bitwriter *writer, dg_demver_data *version,
                            packet_net_message *message) {
-  struct demogobbler_net_tick *ptr = &message->message_net_tick;
+  struct dg_net_tick *ptr = &message->message_net_tick;
   bitwriter_write_uint32(writer, ptr->tick);
 
   if (version->has_nettick_times) {
@@ -90,27 +90,27 @@ static void write_net_tick(bitwriter *writer, demo_version_data *version,
   }
 }
 
-static void handle_net_stringcmd(parser *thisptr, bitstream *stream, packet_net_message *message,
-                                 blk* scrap) {
-  struct demogobbler_net_stringcmd *ptr = &message->message_net_stringcmd;
+static void handle_net_stringcmd(parser *thisptr, dg_bitstream *stream, packet_net_message *message,
+                                 blk *scrap) {
+  struct dg_net_stringcmd *ptr = &message->message_net_stringcmd;
   COPY_STRING(ptr->command);
   SEND_MESSAGE();
 }
 
-static void write_net_stringcmd(bitwriter *writer, demo_version_data *version,
+static void write_net_stringcmd(bitwriter *writer, dg_demver_data *version,
                                 packet_net_message *message) {
-  struct demogobbler_net_stringcmd *ptr = &message->message_net_stringcmd;
+  struct dg_net_stringcmd *ptr = &message->message_net_stringcmd;
   bitwriter_write_cstring(writer, ptr->command);
 }
 
-static void handle_net_setconvar(parser *thisptr, bitstream *stream, packet_net_message *message,
-                                 blk* scrap) {
+static void handle_net_setconvar(parser *thisptr, dg_bitstream *stream, packet_net_message *message,
+                                 blk *scrap) {
   // Reserve space on stack for maximum amount of convars
-  struct demogobbler_net_setconvar *ptr = &message->message_net_setconvar;
+  struct dg_net_setconvar *ptr = &message->message_net_setconvar;
   ptr->count = bitstream_read_uint(stream, 8);
-  ptr->convars = demogobbler_arena_allocate(
-      &thisptr->temp_arena, sizeof(struct demogobbler_net_setconvar_convar) * ptr->count,
-      alignof(struct demogobbler_net_setconvar_convar));
+  ptr->convars =
+      dg_arena_allocate(&thisptr->temp_arena, sizeof(struct dg_net_setconvar_convar) * ptr->count,
+                        alignof(struct dg_net_setconvar_convar));
   for (size_t i = 0; i < message->message_net_setconvar.count; ++i) {
     COPY_STRING(ptr->convars[i].name);
     COPY_STRING(ptr->convars[i].value);
@@ -119,9 +119,9 @@ static void handle_net_setconvar(parser *thisptr, bitstream *stream, packet_net_
   SEND_MESSAGE();
 }
 
-static void write_net_setconvar(bitwriter *writer, demo_version_data *version,
+static void write_net_setconvar(bitwriter *writer, dg_demver_data *version,
                                 packet_net_message *message) {
-  struct demogobbler_net_setconvar *ptr = &message->message_net_setconvar;
+  struct dg_net_setconvar *ptr = &message->message_net_setconvar;
   bitwriter_write_uint(writer, ptr->count, 8);
 
   for (size_t i = 0; i < ptr->count; ++i) {
@@ -130,9 +130,9 @@ static void write_net_setconvar(bitwriter *writer, demo_version_data *version,
   }
 }
 
-static void handle_net_signonstate(parser *thisptr, bitstream *stream, packet_net_message *message,
-                                   blk* scrap) {
-  struct demogobbler_net_signonstate *ptr = &message->message_net_signonstate;
+static void handle_net_signonstate(parser *thisptr, dg_bitstream *stream,
+                                   packet_net_message *message, blk *scrap) {
+  struct dg_net_signonstate *ptr = &message->message_net_signonstate;
   ptr->signon_state = bitstream_read_uint(stream, 8);
   ptr->spawn_count = bitstream_read_sint32(stream);
 
@@ -146,8 +146,7 @@ static void handle_net_signonstate(parser *thisptr, bitstream *stream, packet_ne
     if (scrap->size < ptr->NE_map_name_length) {
       thisptr->error = true;
       thisptr->error_message = "Map name in net_signonstate has bad length";
-    }
-    else {
+    } else {
       bitstream_read_fixed_string(stream, scrap->address, ptr->NE_map_name_length);
     }
   }
@@ -156,9 +155,9 @@ static void handle_net_signonstate(parser *thisptr, bitstream *stream, packet_ne
   SEND_MESSAGE();
 }
 
-static void write_net_signonstate(bitwriter *writer, demo_version_data *version,
+static void write_net_signonstate(bitwriter *writer, dg_demver_data *version,
                                   packet_net_message *message) {
-  struct demogobbler_net_signonstate *ptr = &message->message_net_signonstate;
+  struct dg_net_signonstate *ptr = &message->message_net_signonstate;
   bitwriter_write_uint(writer, ptr->signon_state, 8);
   bitwriter_write_uint32(writer, ptr->spawn_count);
 
@@ -173,9 +172,9 @@ static void write_net_signonstate(bitwriter *writer, demo_version_data *version,
   }
 }
 
-static void handle_svc_print(parser *thisptr, bitstream *stream, packet_net_message *message,
-                             blk* scrap) {
-  struct demogobbler_svc_print *ptr = &message->message_svc_print;
+static void handle_svc_print(parser *thisptr, dg_bitstream *stream, packet_net_message *message,
+                             blk *scrap) {
+  struct dg_svc_print *ptr = &message->message_svc_print;
 
   COPY_STRING(ptr->message);
 
@@ -193,17 +192,17 @@ static void handle_svc_print(parser *thisptr, bitstream *stream, packet_net_mess
   SEND_MESSAGE();
 }
 
-static void write_svc_print(bitwriter *writer, demo_version_data *version,
+static void write_svc_print(bitwriter *writer, dg_demver_data *version,
                             packet_net_message *message) {
-  struct demogobbler_svc_print *ptr = &message->message_svc_print;
+  struct dg_svc_print *ptr = &message->message_svc_print;
   bitwriter_write_cstring(writer, ptr->message);
 }
 
-static void handle_svc_serverinfo(parser *thisptr, bitstream *stream, packet_net_message *message,
-                                  blk* scrap) {
-  message->message_svc_serverinfo = demogobbler_arena_allocate(&thisptr->temp_arena, sizeof(struct demogobbler_svc_serverinfo),
-  alignof(struct demogobbler_svc_serverinfo));
-  struct demogobbler_svc_serverinfo* ptr = message->message_svc_serverinfo;
+static void handle_svc_serverinfo(parser *thisptr, dg_bitstream *stream,
+                                  packet_net_message *message, blk *scrap) {
+  message->message_svc_serverinfo = dg_arena_allocate(
+      &thisptr->temp_arena, sizeof(struct dg_svc_serverinfo), alignof(struct dg_svc_serverinfo));
+  struct dg_svc_serverinfo *ptr = message->message_svc_serverinfo;
   ptr->network_protocol = bitstream_read_uint(stream, 16);
   ptr->server_count = bitstream_read_uint32(stream);
   ptr->is_hltv = bitstream_read_bit(stream);
@@ -251,9 +250,9 @@ static void handle_svc_serverinfo(parser *thisptr, bitstream *stream, packet_net
   SEND_MESSAGE();
 }
 
-static void write_svc_serverinfo(bitwriter *writer, demo_version_data *version,
+static void write_svc_serverinfo(bitwriter *writer, dg_demver_data *version,
                                  packet_net_message *message) {
-  struct demogobbler_svc_serverinfo *ptr = message->message_svc_serverinfo;
+  struct dg_svc_serverinfo *ptr = message->message_svc_serverinfo;
 
   bitwriter_write_uint(writer, ptr->network_protocol, 16);
   bitwriter_write_uint32(writer, ptr->server_count);
@@ -295,31 +294,32 @@ static void write_svc_serverinfo(bitwriter *writer, demo_version_data *version,
     bitwriter_write_bit(writer, ptr->has_replay);
 }
 
-static void handle_svc_sendtable(parser *thisptr, bitstream *stream, packet_net_message *message,
-                                 blk* scrap) {
-  struct demogobbler_svc_sendtable *ptr = &message->message_svc_sendtable;
+static void handle_svc_sendtable(parser *thisptr, dg_bitstream *stream, packet_net_message *message,
+                                 blk *scrap) {
+  struct dg_svc_sendtable *ptr = &message->message_svc_sendtable;
   ptr->needs_decoder = bitstream_read_bit(stream);
   ptr->length = bitstream_read_uint(stream, 16);
   ptr->data = bitstream_fork_and_advance(stream, ptr->length);
   SEND_MESSAGE();
 }
 
-static void write_svc_sendtable(bitwriter *writer, demo_version_data *version,
+static void write_svc_sendtable(bitwriter *writer, dg_demver_data *version,
                                 packet_net_message *message) {
   writer->error = true;
   writer->error_message = "Writing not implemented for svc_sendtable";
 }
 
-static void handle_svc_classinfo(parser *thisptr, bitstream *stream, packet_net_message *message,
-                                 blk* scrap) {
-  struct demogobbler_svc_classinfo *ptr = &message->message_svc_classinfo;
+static void handle_svc_classinfo(parser *thisptr, dg_bitstream *stream, packet_net_message *message,
+                                 blk *scrap) {
+  struct dg_svc_classinfo *ptr = &message->message_svc_classinfo;
   ptr->length = bitstream_read_uint(stream, 16);
   ptr->create_on_client = bitstream_read_bit(stream);
   unsigned int bits = highest_bit_index(ptr->length) + 1;
 
   // Could in theory have 32768 classes so use the allocator for this
   if (!ptr->create_on_client) {
-    ptr->server_classes = demogobbler_arena_allocate(&thisptr->temp_arena, ptr->length * sizeof(struct demogobbler_svc_classinfo_serverclass), 1);
+    ptr->server_classes = dg_arena_allocate(
+        &thisptr->temp_arena, ptr->length * sizeof(struct dg_svc_classinfo_serverclass), 1);
     for (unsigned int i = 0; i < ptr->length && !stream->overflow; ++i) {
       ptr->server_classes[i].class_id = bitstream_read_uint(stream, bits);
       COPY_STRING(ptr->server_classes[i].class_name);
@@ -331,9 +331,9 @@ static void handle_svc_classinfo(parser *thisptr, bitstream *stream, packet_net_
   SEND_MESSAGE();
 }
 
-static void write_svc_classinfo(bitwriter *writer, demo_version_data *version,
+static void write_svc_classinfo(bitwriter *writer, dg_demver_data *version,
                                 packet_net_message *message) {
-  struct demogobbler_svc_classinfo *ptr = &message->message_svc_classinfo;
+  struct dg_svc_classinfo *ptr = &message->message_svc_classinfo;
   bitwriter_write_uint(writer, ptr->length, 16);
   bitwriter_write_bit(writer, ptr->create_on_client);
   unsigned int bits = highest_bit_index(ptr->length) + 1;
@@ -347,21 +347,21 @@ static void write_svc_classinfo(bitwriter *writer, demo_version_data *version,
   }
 }
 
-static void handle_svc_setpause(parser *thisptr, bitstream *stream, packet_net_message *message,
-                                blk* scrap) {
+static void handle_svc_setpause(parser *thisptr, dg_bitstream *stream, packet_net_message *message,
+                                blk *scrap) {
   message->message_svc_setpause.paused = bitstream_read_bit(stream);
   SEND_MESSAGE();
 }
 
-static void write_svc_setpause(bitwriter *writer, demo_version_data *version,
+static void write_svc_setpause(bitwriter *writer, dg_demver_data *version,
                                packet_net_message *message) {
-  struct demogobbler_svc_setpause *ptr = &message->message_svc_setpause;
+  struct dg_svc_setpause *ptr = &message->message_svc_setpause;
   bitwriter_write_bit(writer, ptr->paused);
 }
 
-static void handle_svc_create_stringtable(parser *thisptr, bitstream *stream,
-                                          packet_net_message *message, blk* scrap) {
-  struct demogobbler_svc_create_stringtable *ptr = &message->message_svc_create_stringtable;
+static void handle_svc_create_stringtable(parser *thisptr, dg_bitstream *stream,
+                                          packet_net_message *message, blk *scrap) {
+  struct dg_svc_create_stringtable *ptr = &message->message_svc_create_stringtable;
   COPY_STRING(ptr->name);
   ptr->max_entries = bitstream_read_uint(stream, 16);
   unsigned int num_entries_bits = highest_bit_index(ptr->max_entries) + 1;
@@ -395,9 +395,9 @@ static void handle_svc_create_stringtable(parser *thisptr, bitstream *stream,
   SEND_MESSAGE();
 }
 
-static void write_svc_create_stringtable(bitwriter *writer, demo_version_data *version,
+static void write_svc_create_stringtable(bitwriter *writer, dg_demver_data *version,
                                          packet_net_message *message) {
-  struct demogobbler_svc_create_stringtable *ptr = &message->message_svc_create_stringtable;
+  struct dg_svc_create_stringtable *ptr = &message->message_svc_create_stringtable;
   bitwriter_write_cstring(writer, ptr->name);
   bitwriter_write_uint(writer, ptr->max_entries, 16);
   unsigned int num_entries_bits = highest_bit_index(ptr->max_entries) + 1;
@@ -423,10 +423,11 @@ static void write_svc_create_stringtable(bitwriter *writer, demo_version_data *v
   bitwriter_write_bitstream(writer, &ptr->data);
 }
 
-static void handle_svc_update_stringtable(parser *thisptr, bitstream *stream,
-                                          packet_net_message *message, blk* scrap) {
-  struct demogobbler_svc_update_stringtable *ptr = &message->message_svc_update_stringtable;
-  ptr->table_id = bitstream_read_uint(stream, thisptr->demo_version.svc_update_stringtable_table_id_bits);
+static void handle_svc_update_stringtable(parser *thisptr, dg_bitstream *stream,
+                                          packet_net_message *message, blk *scrap) {
+  struct dg_svc_update_stringtable *ptr = &message->message_svc_update_stringtable;
+  ptr->table_id =
+      bitstream_read_uint(stream, thisptr->demo_version.svc_update_stringtable_table_id_bits);
   ptr->exists = bitstream_read_bit(stream);
   if (ptr->exists) {
     ptr->changed_entries = bitstream_read_uint(stream, 16);
@@ -443,9 +444,9 @@ static void handle_svc_update_stringtable(parser *thisptr, bitstream *stream,
   SEND_MESSAGE();
 }
 
-static void write_svc_update_stringtable(bitwriter *writer, demo_version_data *version,
+static void write_svc_update_stringtable(bitwriter *writer, dg_demver_data *version,
                                          packet_net_message *message) {
-  struct demogobbler_svc_update_stringtable *ptr = &message->message_svc_update_stringtable;
+  struct dg_svc_update_stringtable *ptr = &message->message_svc_update_stringtable;
   bitwriter_write_uint(writer, ptr->table_id, version->svc_update_stringtable_table_id_bits);
   bitwriter_write_bit(writer, ptr->exists);
 
@@ -462,9 +463,9 @@ static void write_svc_update_stringtable(bitwriter *writer, demo_version_data *v
   bitwriter_write_bitstream(writer, &ptr->data);
 }
 
-static void handle_svc_voice_init(parser *thisptr, bitstream *stream, packet_net_message *message,
-                                  blk* scrap) {
-  struct demogobbler_svc_voice_init *ptr = &message->message_svc_voice_init;
+static void handle_svc_voice_init(parser *thisptr, dg_bitstream *stream,
+                                  packet_net_message *message, blk *scrap) {
+  struct dg_svc_voice_init *ptr = &message->message_svc_voice_init;
 
   COPY_STRING(ptr->codec);
   ptr->quality = bitstream_read_uint(stream, 8);
@@ -482,9 +483,9 @@ static void handle_svc_voice_init(parser *thisptr, bitstream *stream, packet_net
   SEND_MESSAGE();
 }
 
-static void write_svc_voice_init(bitwriter *writer, demo_version_data *version,
+static void write_svc_voice_init(bitwriter *writer, dg_demver_data *version,
                                  packet_net_message *message) {
-  struct demogobbler_svc_voice_init *ptr = &message->message_svc_voice_init;
+  struct dg_svc_voice_init *ptr = &message->message_svc_voice_init;
   bitwriter_write_cstring(writer, ptr->codec);
   bitwriter_write_uint(writer, ptr->quality, 8);
 
@@ -497,9 +498,9 @@ static void write_svc_voice_init(bitwriter *writer, demo_version_data *version,
   }
 }
 
-static void handle_svc_voice_data(parser *thisptr, bitstream *stream, packet_net_message *message,
-                                  blk* scrap) {
-  struct demogobbler_svc_voice_data *ptr = &message->message_svc_voice_data;
+static void handle_svc_voice_data(parser *thisptr, dg_bitstream *stream,
+                                  packet_net_message *message, blk *scrap) {
+  struct dg_svc_voice_data *ptr = &message->message_svc_voice_data;
   ptr->client = bitstream_read_uint(stream, 8);
   ptr->proximity = bitstream_read_uint(stream, 8);
   ptr->length = bitstream_read_uint(stream, 16);
@@ -507,15 +508,15 @@ static void handle_svc_voice_data(parser *thisptr, bitstream *stream, packet_net
   SEND_MESSAGE();
 }
 
-static void write_svc_voice_data(bitwriter *writer, demo_version_data *version,
+static void write_svc_voice_data(bitwriter *writer, dg_demver_data *version,
                                  packet_net_message *message) {
   writer->error = true;
   writer->error_message = "Writing not implemented for svc_voice_data";
 }
 
-static void handle_svc_sounds(parser *thisptr, bitstream *stream, packet_net_message *message,
-                              blk* scrap) {
-  struct demogobbler_svc_sounds *ptr = &message->message_svc_sounds;
+static void handle_svc_sounds(parser *thisptr, dg_bitstream *stream, packet_net_message *message,
+                              blk *scrap) {
+  struct dg_svc_sounds *ptr = &message->message_svc_sounds;
   ptr->reliable_sound = bitstream_read_bit(stream);
   if (ptr->reliable_sound) {
     ptr->sounds = 1;
@@ -528,9 +529,9 @@ static void handle_svc_sounds(parser *thisptr, bitstream *stream, packet_net_mes
   SEND_MESSAGE();
 }
 
-static void write_svc_sounds(bitwriter *writer, demo_version_data *version,
+static void write_svc_sounds(bitwriter *writer, dg_demver_data *version,
                              packet_net_message *message) {
-  struct demogobbler_svc_sounds *ptr = &message->message_svc_sounds;
+  struct dg_svc_sounds *ptr = &message->message_svc_sounds;
   bitwriter_write_bit(writer, ptr->reliable_sound);
   if (ptr->reliable_sound) {
     bitwriter_write_uint(writer, ptr->length, 8);
@@ -542,50 +543,50 @@ static void write_svc_sounds(bitwriter *writer, demo_version_data *version,
   bitwriter_write_bitstream(writer, &ptr->data);
 }
 
-static void handle_svc_setview(parser *thisptr, bitstream *stream, packet_net_message *message,
-                               blk* scrap) {
-  struct demogobbler_svc_setview *ptr = &message->message_svc_setview;
+static void handle_svc_setview(parser *thisptr, dg_bitstream *stream, packet_net_message *message,
+                               blk *scrap) {
+  struct dg_svc_setview *ptr = &message->message_svc_setview;
   ptr->entity_index = bitstream_read_uint(stream, 11);
   SEND_MESSAGE();
 }
 
-static void write_svc_setview(bitwriter *writer, demo_version_data *version,
+static void write_svc_setview(bitwriter *writer, dg_demver_data *version,
                               packet_net_message *message) {
-  struct demogobbler_svc_setview *ptr = &message->message_svc_setview;
+  struct dg_svc_setview *ptr = &message->message_svc_setview;
   bitwriter_write_uint(writer, ptr->entity_index, 11);
 }
 
-static void handle_svc_fixangle(parser *thisptr, bitstream *stream, packet_net_message *message,
-                                blk* scrap) {
-  struct demogobbler_svc_fixangle *ptr = &message->message_svc_fixangle;
+static void handle_svc_fixangle(parser *thisptr, dg_bitstream *stream, packet_net_message *message,
+                                blk *scrap) {
+  struct dg_svc_fixangle *ptr = &message->message_svc_fixangle;
   ptr->relative = bitstream_read_bit(stream);
   ptr->angle = bitstream_read_bitvector(stream, 16);
   SEND_MESSAGE();
 }
 
-static void write_svc_fixangle(bitwriter *writer, demo_version_data *version,
+static void write_svc_fixangle(bitwriter *writer, dg_demver_data *version,
                                packet_net_message *message) {
-  struct demogobbler_svc_fixangle *ptr = &message->message_svc_fixangle;
+  struct dg_svc_fixangle *ptr = &message->message_svc_fixangle;
   bitwriter_write_bit(writer, ptr->relative);
   bitwriter_write_bitvector(writer, ptr->angle);
 }
 
-static void handle_svc_crosshair_angle(parser *thisptr, bitstream *stream,
-                                       packet_net_message *message, blk* scrap) {
-  struct demogobbler_svc_crosshair_angle *ptr = &message->message_svc_crosshair_angle;
+static void handle_svc_crosshair_angle(parser *thisptr, dg_bitstream *stream,
+                                       packet_net_message *message, blk *scrap) {
+  struct dg_svc_crosshair_angle *ptr = &message->message_svc_crosshair_angle;
   ptr->angle = bitstream_read_bitvector(stream, 16);
   SEND_MESSAGE();
 }
 
-static void write_svc_crosshair_angle(bitwriter *writer, demo_version_data *version,
+static void write_svc_crosshair_angle(bitwriter *writer, dg_demver_data *version,
                                       packet_net_message *message) {
-  struct demogobbler_svc_crosshair_angle *ptr = &message->message_svc_crosshair_angle;
+  struct dg_svc_crosshair_angle *ptr = &message->message_svc_crosshair_angle;
   bitwriter_write_bitvector(writer, ptr->angle);
 }
 
-static void handle_svc_bsp_decal(parser *thisptr, bitstream *stream, packet_net_message *message,
-                                 blk* scrap) {
-  struct demogobbler_svc_bsp_decal *ptr = &message->message_svc_bsp_decal;
+static void handle_svc_bsp_decal(parser *thisptr, dg_bitstream *stream, packet_net_message *message,
+                                 blk *scrap) {
+  struct dg_svc_bsp_decal *ptr = &message->message_svc_bsp_decal;
   ptr->pos = bitstream_read_coordvector(stream);
   ptr->decal_texture_index = bitstream_read_uint(stream, 9);
   ptr->index_bool = bitstream_read_bit(stream);
@@ -598,9 +599,9 @@ static void handle_svc_bsp_decal(parser *thisptr, bitstream *stream, packet_net_
   SEND_MESSAGE();
 }
 
-static void write_svc_bsp_decal(bitwriter *writer, demo_version_data *version,
+static void write_svc_bsp_decal(bitwriter *writer, dg_demver_data *version,
                                 packet_net_message *message) {
-  struct demogobbler_svc_bsp_decal *ptr = &message->message_svc_bsp_decal;
+  struct dg_svc_bsp_decal *ptr = &message->message_svc_bsp_decal;
   bitwriter_write_coordvector(writer, ptr->pos);
   bitwriter_write_uint(writer, ptr->decal_texture_index, 9);
   bitwriter_write_bit(writer, ptr->index_bool);
@@ -613,26 +614,26 @@ static void write_svc_bsp_decal(bitwriter *writer, demo_version_data *version,
   bitwriter_write_bit(writer, ptr->lowpriority);
 }
 
-static void handle_svc_user_message(parser *thisptr, bitstream *stream, packet_net_message *message,
-                                    blk* scrap) {
-  struct demogobbler_svc_user_message *ptr = &message->message_svc_user_message;
+static void handle_svc_user_message(parser *thisptr, dg_bitstream *stream,
+                                    packet_net_message *message, blk *scrap) {
+  struct dg_svc_user_message *ptr = &message->message_svc_user_message;
   ptr->msg_type = bitstream_read_uint(stream, 8);
   ptr->length = bitstream_read_uint(stream, thisptr->demo_version.svc_user_message_bits);
   ptr->data = bitstream_fork_and_advance(stream, ptr->length);
   SEND_MESSAGE();
 }
 
-static void write_svc_user_message(bitwriter *writer, demo_version_data *version,
+static void write_svc_user_message(bitwriter *writer, dg_demver_data *version,
                                    packet_net_message *message) {
-  struct demogobbler_svc_user_message *ptr = &message->message_svc_user_message;
+  struct dg_svc_user_message *ptr = &message->message_svc_user_message;
   bitwriter_write_uint(writer, ptr->msg_type, 8);
   bitwriter_write_uint(writer, ptr->length, version->svc_user_message_bits);
   bitwriter_write_bitstream(writer, &ptr->data);
 }
 
-static void handle_svc_entity_message(parser *thisptr, bitstream *stream,
-                                      packet_net_message *message, blk* scrap) {
-  struct demogobbler_svc_entity_message *ptr = &message->message_svc_entity_message;
+static void handle_svc_entity_message(parser *thisptr, dg_bitstream *stream,
+                                      packet_net_message *message, blk *scrap) {
+  struct dg_svc_entity_message *ptr = &message->message_svc_entity_message;
   ptr->entity_index = bitstream_read_uint(stream, 11);
   ptr->class_id = bitstream_read_uint(stream, 9);
   ptr->length = bitstream_read_uint(stream, 11);
@@ -640,34 +641,34 @@ static void handle_svc_entity_message(parser *thisptr, bitstream *stream,
   SEND_MESSAGE();
 }
 
-static void write_svc_entity_message(bitwriter *writer, demo_version_data *version,
+static void write_svc_entity_message(bitwriter *writer, dg_demver_data *version,
                                      packet_net_message *message) {
-  struct demogobbler_svc_entity_message *ptr = &message->message_svc_entity_message;
+  struct dg_svc_entity_message *ptr = &message->message_svc_entity_message;
   bitwriter_write_uint(writer, ptr->entity_index, 11);
   bitwriter_write_uint(writer, ptr->class_id, 9);
   bitwriter_write_uint(writer, ptr->length, 11);
   bitwriter_write_bitstream(writer, &ptr->data);
 }
 
-static void handle_svc_game_event(parser *thisptr, bitstream *stream, packet_net_message *message,
-                                  blk* scrap) {
-  struct demogobbler_svc_game_event *ptr = &message->message_svc_game_event;
+static void handle_svc_game_event(parser *thisptr, dg_bitstream *stream,
+                                  packet_net_message *message, blk *scrap) {
+  struct dg_svc_game_event *ptr = &message->message_svc_game_event;
   ptr->length = bitstream_read_uint(stream, 11);
   ptr->data = bitstream_fork_and_advance(stream, ptr->length);
 
   SEND_MESSAGE();
 }
 
-static void write_svc_game_event(bitwriter *writer, demo_version_data *version,
+static void write_svc_game_event(bitwriter *writer, dg_demver_data *version,
                                  packet_net_message *message) {
-  struct demogobbler_svc_game_event *ptr = &message->message_svc_game_event;
+  struct dg_svc_game_event *ptr = &message->message_svc_game_event;
   bitwriter_write_uint(writer, ptr->length, 11);
   bitwriter_write_bitstream(writer, &ptr->data);
 }
 
-static void handle_svc_packet_entities(parser *thisptr, bitstream *stream,
-                                       packet_net_message *message, blk* scrap) {
-  struct demogobbler_svc_packet_entities *ptr = &message->message_svc_packet_entities;
+static void handle_svc_packet_entities(parser *thisptr, dg_bitstream *stream,
+                                       packet_net_message *message, blk *scrap) {
+  struct dg_svc_packet_entities *ptr = &message->message_svc_packet_entities;
   ptr->max_entries = bitstream_read_uint(stream, 11);
   ptr->is_delta = bitstream_read_bit(stream);
 
@@ -684,14 +685,14 @@ static void handle_svc_packet_entities(parser *thisptr, bitstream *stream,
   ptr->data = bitstream_fork_and_advance(stream, ptr->data_length);
   SEND_MESSAGE();
 
-  if(thisptr->m_settings.store_ents) {
-    demogobbler_parse_packetentities(thisptr, ptr);
+  if (thisptr->m_settings.store_ents) {
+    dg_parse_packetentities(thisptr, ptr);
   }
 }
 
-static void write_svc_packet_entities(bitwriter *writer, demo_version_data *version,
+static void write_svc_packet_entities(bitwriter *writer, dg_demver_data *version,
                                       packet_net_message *message) {
-  struct demogobbler_svc_packet_entities *ptr = &message->message_svc_packet_entities;
+  struct dg_svc_packet_entities *ptr = &message->message_svc_packet_entities;
   bitwriter_write_uint(writer, ptr->max_entries, 11);
   bitwriter_write_bit(writer, ptr->is_delta);
   if (ptr->is_delta) {
@@ -705,9 +706,9 @@ static void write_svc_packet_entities(bitwriter *writer, demo_version_data *vers
   bitwriter_write_bitstream(writer, &ptr->data);
 }
 
-static void handle_svc_temp_entities(parser *thisptr, bitstream *stream,
-                                     packet_net_message *message, blk* scrap) {
-  struct demogobbler_svc_temp_entities *ptr = &message->message_svc_temp_entities;
+static void handle_svc_temp_entities(parser *thisptr, dg_bitstream *stream,
+                                     packet_net_message *message, blk *scrap) {
+  struct dg_svc_temp_entities *ptr = &message->message_svc_temp_entities;
   ptr->num_entries = bitstream_read_uint(stream, 8);
 
   if (thisptr->demo_version.game == steampipe) {
@@ -722,9 +723,9 @@ static void handle_svc_temp_entities(parser *thisptr, bitstream *stream,
   SEND_MESSAGE();
 }
 
-static void write_svc_temp_entities(bitwriter *writer, demo_version_data *version,
+static void write_svc_temp_entities(bitwriter *writer, dg_demver_data *version,
                                     packet_net_message *message) {
-  struct demogobbler_svc_temp_entities *ptr = &message->message_svc_temp_entities;
+  struct dg_svc_temp_entities *ptr = &message->message_svc_temp_entities;
   bitwriter_write_uint(writer, ptr->num_entries, 8);
 
   if (version->game == steampipe) {
@@ -737,119 +738,119 @@ static void write_svc_temp_entities(bitwriter *writer, demo_version_data *versio
   bitwriter_write_bitstream(writer, &ptr->data);
 }
 
-static void handle_svc_prefetch(parser *thisptr, bitstream *stream, packet_net_message *message,
-                                blk* scrap) {
-  struct demogobbler_svc_prefetch *ptr = &message->message_svc_prefetch;
+static void handle_svc_prefetch(parser *thisptr, dg_bitstream *stream, packet_net_message *message,
+                                blk *scrap) {
+  struct dg_svc_prefetch *ptr = &message->message_svc_prefetch;
   ptr->sound_index = bitstream_read_uint(stream, thisptr->demo_version.svc_prefetch_bits);
   SEND_MESSAGE();
 }
 
-static void write_svc_prefetch(bitwriter *writer, demo_version_data *version,
+static void write_svc_prefetch(bitwriter *writer, dg_demver_data *version,
                                packet_net_message *message) {
-  struct demogobbler_svc_prefetch *ptr = &message->message_svc_prefetch;
+  struct dg_svc_prefetch *ptr = &message->message_svc_prefetch;
   bitwriter_write_uint(writer, ptr->sound_index, version->svc_prefetch_bits);
 }
 
-static void handle_svc_menu(parser *thisptr, bitstream *stream, packet_net_message *message,
-                            blk* scrap) {
-  struct demogobbler_svc_menu *ptr = &message->message_svc_menu;
+static void handle_svc_menu(parser *thisptr, dg_bitstream *stream, packet_net_message *message,
+                            blk *scrap) {
+  struct dg_svc_menu *ptr = &message->message_svc_menu;
   ptr->menu_type = bitstream_read_uint(stream, 16);
   ptr->data_length = bitstream_read_uint32(stream);
   ptr->data = bitstream_fork_and_advance(stream, ptr->data_length);
   SEND_MESSAGE();
 }
 
-static void write_svc_menu(bitwriter *writer, demo_version_data *version,
+static void write_svc_menu(bitwriter *writer, dg_demver_data *version,
                            packet_net_message *message) {
   writer->error = true;
   writer->error_message = "Writing not implemented for svc_menu";
 }
 
-static void handle_svc_game_event_list(parser *thisptr, bitstream *stream,
-                                       packet_net_message *message, blk* scrap) {
-  struct demogobbler_svc_game_event_list *ptr = &message->message_svc_game_event_list;
+static void handle_svc_game_event_list(parser *thisptr, dg_bitstream *stream,
+                                       packet_net_message *message, blk *scrap) {
+  struct dg_svc_game_event_list *ptr = &message->message_svc_game_event_list;
   ptr->events = bitstream_read_uint(stream, 9);
   ptr->length = bitstream_read_uint(stream, 20);
   ptr->data = bitstream_fork_and_advance(stream, ptr->length);
   SEND_MESSAGE();
 }
 
-static void write_svc_game_event_list(bitwriter *writer, demo_version_data *version,
+static void write_svc_game_event_list(bitwriter *writer, dg_demver_data *version,
                                       packet_net_message *message) {
-  struct demogobbler_svc_game_event_list *ptr = &message->message_svc_game_event_list;
+  struct dg_svc_game_event_list *ptr = &message->message_svc_game_event_list;
   bitwriter_write_uint(writer, ptr->events, 9);
   bitwriter_write_uint(writer, ptr->length, 20);
   bitwriter_write_bitstream(writer, &ptr->data);
 }
 
-static void handle_svc_get_cvar_value(parser *thisptr, bitstream *stream,
-                                      packet_net_message *message, blk* scrap) {
-  struct demogobbler_svc_get_cvar_value *ptr = &message->message_svc_get_cvar_value;
+static void handle_svc_get_cvar_value(parser *thisptr, dg_bitstream *stream,
+                                      packet_net_message *message, blk *scrap) {
+  struct dg_svc_get_cvar_value *ptr = &message->message_svc_get_cvar_value;
   ptr->cookie = bitstream_read_sint32(stream);
   COPY_STRING(ptr->cvar_name);
   SEND_MESSAGE();
 }
 
-static void write_svc_get_cvar_value(bitwriter *writer, demo_version_data *version,
+static void write_svc_get_cvar_value(bitwriter *writer, dg_demver_data *version,
                                      packet_net_message *message) {
-  struct demogobbler_svc_get_cvar_value *ptr = &message->message_svc_get_cvar_value;
+  struct dg_svc_get_cvar_value *ptr = &message->message_svc_get_cvar_value;
   bitwriter_write_sint32(writer, ptr->cookie);
   bitwriter_write_cstring(writer, ptr->cvar_name);
 }
 
-static void handle_net_splitscreen_user(parser *thisptr, bitstream *stream,
-                                        packet_net_message *message, blk* scrap) {
+static void handle_net_splitscreen_user(parser *thisptr, dg_bitstream *stream,
+                                        packet_net_message *message, blk *scrap) {
   message->message_net_splitscreen_user.unk = bitstream_read_bit(stream);
   SEND_MESSAGE();
 }
 
-static void write_net_splitscreen_user(bitwriter *writer, demo_version_data *version,
+static void write_net_splitscreen_user(bitwriter *writer, dg_demver_data *version,
                                        packet_net_message *message) {
   writer->error = true;
   writer->error_message = "Writing not implemented for net_splitscreen_user";
 }
 
-static void handle_svc_splitscreen(parser *thisptr, bitstream *stream, packet_net_message *message,
-                                   blk* scrap) {
-  struct demogobbler_svc_splitscreen *ptr = &message->message_svc_splitscreen;
+static void handle_svc_splitscreen(parser *thisptr, dg_bitstream *stream,
+                                   packet_net_message *message, blk *scrap) {
+  struct dg_svc_splitscreen *ptr = &message->message_svc_splitscreen;
   ptr->remove_user = bitstream_read_bit(stream);
   ptr->data_length = bitstream_read_uint(stream, 11);
   ptr->data = bitstream_fork_and_advance(stream, ptr->data_length);
   SEND_MESSAGE();
 }
 
-static void write_svc_splitscreen(bitwriter *writer, demo_version_data *version,
+static void write_svc_splitscreen(bitwriter *writer, dg_demver_data *version,
                                   packet_net_message *message) {
   writer->error = true;
   writer->error_message = "Writing not implemented for svc_splitscreen";
 }
 
-static void handle_svc_paintmap_data(parser *thisptr, bitstream *stream,
-                                     packet_net_message *message, blk* scrap) {
-  struct demogobbler_svc_paintmap_data *ptr = &message->message_svc_paintmap_data;
+static void handle_svc_paintmap_data(parser *thisptr, dg_bitstream *stream,
+                                     packet_net_message *message, blk *scrap) {
+  struct dg_svc_paintmap_data *ptr = &message->message_svc_paintmap_data;
   ptr->data_length = bitstream_read_uint32(stream);
   ptr->data = bitstream_fork_and_advance(stream, ptr->data_length);
   SEND_MESSAGE();
 }
 
-static void write_svc_paintmap_data(bitwriter *writer, demo_version_data *version,
+static void write_svc_paintmap_data(bitwriter *writer, dg_demver_data *version,
                                     packet_net_message *message) {
-  struct demogobbler_svc_paintmap_data *ptr = &message->message_svc_paintmap_data;
+  struct dg_svc_paintmap_data *ptr = &message->message_svc_paintmap_data;
   bitwriter_write_uint32(writer, ptr->data_length);
   bitwriter_write_bitstream(writer, &ptr->data);
 }
 
-static void handle_svc_cmd_key_values(parser *thisptr, bitstream *stream,
-                                      packet_net_message *message, blk* scrap) {
-  struct demogobbler_svc_cmd_key_values *ptr = &message->message_svc_cmd_key_values;
+static void handle_svc_cmd_key_values(parser *thisptr, dg_bitstream *stream,
+                                      packet_net_message *message, blk *scrap) {
+  struct dg_svc_cmd_key_values *ptr = &message->message_svc_cmd_key_values;
   ptr->data_length = bitstream_read_uint32(stream);
   ptr->data = bitstream_fork_and_advance(stream, ptr->data_length * 8);
   SEND_MESSAGE();
 }
 
-static void write_svc_cmd_key_values(bitwriter *writer, demo_version_data *version,
+static void write_svc_cmd_key_values(bitwriter *writer, dg_demver_data *version,
                                      packet_net_message *message) {
-  struct demogobbler_svc_cmd_key_values *ptr = &message->message_svc_cmd_key_values;
+  struct dg_svc_cmd_key_values *ptr = &message->message_svc_cmd_key_values;
   bitwriter_write_uint32(writer, ptr->data_length);
   bitwriter_write_bitstream(writer, &ptr->data);
 }
@@ -867,8 +868,8 @@ static net_message_type version_get_message_type(parser *thisptr, unsigned int v
   }
 }
 
-void demogobbler_bitwriter_write_netmessage(bitwriter *writer, demo_version_data *version,
-                                            packet_net_message *message) {
+void dg_bitwriter_write_netmessage(bitwriter *writer, dg_demver_data *version,
+                                   packet_net_message *message) {
   int type_out = -1;
   // Don't use the type index directly, we want to support writing to different protocols than the
   // demo was read
@@ -899,38 +900,38 @@ void demogobbler_bitwriter_write_netmessage(bitwriter *writer, demo_version_data
 #undef DECLARE_SWITCH_STATEMENT
 }
 
-static vector_array init_netmsg_array(arena* a) {
+static dg_vector_array init_netmsg_array(dg_arena *a) {
   const size_t initial_size = sizeof(packet_net_message) * 32;
-  void* ptr = demogobbler_arena_allocate(a, initial_size, alignof(packet_net_message));
-  vector_array arr = demogobbler_va_create_(
-      ptr, initial_size, sizeof(packet_net_message), alignof(packet_net_message));
+  void *ptr = dg_arena_allocate(a, initial_size, alignof(packet_net_message));
+  dg_vector_array arr =
+      dg_va_create_(ptr, initial_size, sizeof(packet_net_message), alignof(packet_net_message));
 
   return arr;
 }
 
-void parse_netmessages(parser *thisptr, demogobbler_packet* packet) {
+void parse_netmessages(parser *thisptr, dg_packet *packet) {
 #ifdef DEBUG
-  #define MAX_HISTORY 256
+#define MAX_HISTORY 256
   net_message_type type_history[MAX_HISTORY];
   size_t history_index = 0;
 #endif
 
-  void* data = packet->data;
+  void *data = packet->data;
   size_t size = packet->size_bytes;
-  bitstream stream = demogobbler_bitstream_create(data, size * 8);
+  dg_bitstream stream = dg_bitstream_create(data, size * 8);
   // fprintf(stderr, "packet start:\n");
 
   // We allocate a single scrap buffer for the duration of parsing the packet that is as large as
   // the whole packet. Should never run out of space as long as we don't make things larger as we
   // read it out
   blk scrap_blk;
-  scrap_blk.address = demogobbler_arena_allocate(&thisptr->temp_arena, size, 1);
+  scrap_blk.address = dg_arena_allocate(&thisptr->temp_arena, size, 1);
   scrap_blk.size = size;
   unsigned int bits = thisptr->demo_version.netmessage_type_bits;
 
-  vector_array packet_arr = init_netmsg_array(&thisptr->temp_arena);
+  dg_vector_array packet_arr = init_netmsg_array(&thisptr->temp_arena);
 
-  while (demogobbler_bitstream_bits_left(&stream) > bits && !thisptr->error && !stream.overflow) {
+  while (dg_bitstream_bits_left(&stream) > bits && !thisptr->error && !stream.overflow) {
     if (scrap_blk.address == NULL) {
       thisptr->error = true;
       thisptr->error_message = "Unable to allocate scrap block";
@@ -941,15 +942,14 @@ void parse_netmessages(parser *thisptr, demogobbler_packet* packet) {
     net_message_type type = version_get_message_type(thisptr, type_index);
 
 #ifdef DEBUG
-  if(history_index < MAX_HISTORY)
-  {
-    type_history[history_index] = type;
-    ++history_index;
-  }
+    if (history_index < MAX_HISTORY) {
+      type_history[history_index] = type;
+      ++history_index;
+    }
 #endif
 
-    //fprintf(stderr, "%d : %d\n", type_index, type);
-    packet_net_message* message = demogobbler_va_push_back_empty(&packet_arr);
+    // fprintf(stderr, "%d : %d\n", type_index, type);
+    packet_net_message *message = dg_va_push_back_empty(&packet_arr);
     memset(message, 0, sizeof(packet_net_message));
     message->mtype = type;
 
@@ -974,7 +974,7 @@ void parse_netmessages(parser *thisptr, demogobbler_packet* packet) {
     thisptr->error_message = "Bitstream overflowed during packet parsing";
   }
 
-  if(!thisptr->error) {
+  if (!thisptr->error) {
     packet_parsed parsed;
     memset(&parsed, 0, sizeof(parsed));
     parsed.messages = packet_arr.ptr;
@@ -982,30 +982,28 @@ void parse_netmessages(parser *thisptr, demogobbler_packet* packet) {
     parsed.orig = packet;
     parsed.leftover_bits = stream;
 
-    if(thisptr->m_settings.packet_parsed_handler) {
+    if (thisptr->m_settings.packet_parsed_handler) {
       thisptr->m_settings.packet_parsed_handler(&thisptr->state, &parsed);
     }
   }
 
   // Ignore errors on negative tick packets, these are known to be bad
-  if (packet->preamble.tick < 0 && packet->preamble.converted_type == demogobbler_type_packet && thisptr->error) {
-    //printf("%s\n", thisptr->error_message);
+  if (packet->preamble.tick < 0 && packet->preamble.converted_type == dg_type_packet &&
+      thisptr->error) {
+    // printf("%s\n", thisptr->error_message);
     thisptr->error = false;
   }
 
   // fprintf(stderr, "packet end:\n");
-  demogobbler_va_free(&packet_arr);
+  dg_va_free(&packet_arr);
 
 #ifdef DEBUG
-  if(thisptr->error)
-  {
+  if (thisptr->error) {
     fprintf(stderr, "netmessages before error: ");
-    for(size_t i=0; i < history_index; ++i)
-    {
+    for (size_t i = 0; i < history_index; ++i) {
       fprintf(stderr, "%d ", type_history[i]);
     }
     fprintf(stderr, "\n");
   }
 #endif
-
 }

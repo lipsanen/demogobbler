@@ -1,14 +1,14 @@
 #include "benchmark/benchmark.h"
 
 extern "C" {
-  #include "hashtable.h"
-  #define XXH_INLINE_ALL
-  #include "xxhash.h"
+#include "hashtable.h"
+#define XXH_INLINE_ALL
+#include "xxhash.h"
 }
 #include <map>
-#include <unordered_map>
 #include <stdlib.h>
 #include <string.h>
+#include <unordered_map>
 
 static const char *TEST_STRINGS[] = {
     "DT_AR2Explosion",
@@ -235,48 +235,41 @@ static const char *TEST_STRINGS[] = {
     "DT_SporeTrail",
 };
 
-#define ARRAYSIZE(a) \
-  ((sizeof(a) / sizeof(*(a))) / \
-  (size_t)(!(sizeof(a) % sizeof(*(a)))))
-
+#define ARRAYSIZE(a) ((sizeof(a) / sizeof(*(a))) / (size_t)(!(sizeof(a) % sizeof(*(a)))))
 
 const size_t TIMES_SEARCHED = 1;
 
 static void hashmap_custom(benchmark::State &state) {
   const size_t array_size = ARRAYSIZE(TEST_STRINGS);
 
-  for(auto _ : state) {
-    auto table = demogobbler_hashtable_create(array_size * 2);
+  for (auto _ : state) {
+    auto table = dg_hashtable_create(array_size * 2);
 
-    for(size_t i=0; i < array_size; ++i) {
-      hashtable_entry entry;
+    for (size_t i = 0; i < array_size; ++i) {
+      dg_hashtable_entry entry;
       entry.str = TEST_STRINGS[i];
       entry.value = i;
-      demogobbler_hashtable_insert(&table, entry);
+      dg_hashtable_insert(&table, entry);
     }
 
-    for(size_t u=0; u < TIMES_SEARCHED; ++u) {
-      for(size_t i=0; i < array_size; ++i) {
-        auto entry = demogobbler_hashtable_get(&table, TEST_STRINGS[i]);
-        if(entry.value != i) {
+    for (size_t u = 0; u < TIMES_SEARCHED; ++u) {
+      for (size_t i = 0; i < array_size; ++i) {
+        auto entry = dg_hashtable_get(&table, TEST_STRINGS[i]);
+        if (entry.value != i) {
           abort();
         }
       }
     }
-    demogobbler_hashtable_free(&table);
+    dg_hashtable_free(&table);
   }
 }
 
 struct keyhash {
-  std::size_t operator()(const char* str) const {
-    return XXH32(str, strlen(str), 0);
-  }
+  std::size_t operator()(const char *str) const { return XXH32(str, strlen(str), 0); }
 };
 
 struct strequal {
-  bool operator()(const char* lhs, const char* rhs) const {
-    return strcmp(rhs, lhs) == 0;
-  }
+  bool operator()(const char *lhs, const char *rhs) const { return strcmp(rhs, lhs) == 0; }
 };
 
 const float LOAD_FACTOR = 0.9f;
@@ -285,18 +278,18 @@ static void hashmap_unordered_map(benchmark::State &state) {
   const size_t array_size = ARRAYSIZE(TEST_STRINGS);
   const size_t allocated_size = static_cast<size_t>(array_size / LOAD_FACTOR);
 
-  for(auto _ : state) {
-    std::unordered_map<const char*, size_t, keyhash, strequal> map;
+  for (auto _ : state) {
+    std::unordered_map<const char *, size_t, keyhash, strequal> map;
     map.reserve(allocated_size);
 
-    for(size_t i=0; i < array_size; ++i) {
+    for (size_t i = 0; i < array_size; ++i) {
       map.insert({TEST_STRINGS[i], i});
     }
 
-    for(size_t u=0; u < TIMES_SEARCHED; ++u) {
-      for(size_t i=0; i < array_size; ++i) {
+    for (size_t u = 0; u < TIMES_SEARCHED; ++u) {
+      for (size_t i = 0; i < array_size; ++i) {
         auto it = map.find(TEST_STRINGS[i]);
-        if(it->second != i) {
+        if (it->second != i) {
           abort();
         }
       }
@@ -304,27 +297,24 @@ static void hashmap_unordered_map(benchmark::State &state) {
   }
 }
 
-
 struct compare {
-  bool operator()(const char* lhs, const char* rhs) const {
-    return strcmp(lhs, rhs) > 0;
-  }
+  bool operator()(const char *lhs, const char *rhs) const { return strcmp(lhs, rhs) > 0; }
 };
 
 static void hashmap_map(benchmark::State &state) {
   const size_t array_size = ARRAYSIZE(TEST_STRINGS);
 
-  for(auto _ : state) {
-    std::map<const char*, size_t, compare> map;
+  for (auto _ : state) {
+    std::map<const char *, size_t, compare> map;
 
-    for(size_t i=0; i < array_size; ++i) {
+    for (size_t i = 0; i < array_size; ++i) {
       map.insert({TEST_STRINGS[i], i});
     }
 
-    for(size_t u=0; u < TIMES_SEARCHED; ++u) {
-      for(size_t i=0; i < array_size; ++i) {
+    for (size_t u = 0; u < TIMES_SEARCHED; ++u) {
+      for (size_t i = 0; i < array_size; ++i) {
         auto it = map.find(TEST_STRINGS[i]);
-        if(it->second != i) {
+        if (it->second != i) {
           abort();
         }
       }
@@ -332,24 +322,23 @@ static void hashmap_map(benchmark::State &state) {
   }
 }
 
-static size_t nomap_find(const char* str) {
+static size_t nomap_find(const char *str) {
   const size_t array_size = ARRAYSIZE(TEST_STRINGS);
-  for(size_t i=0; i < array_size; ++i) {
-    if(strcmp(str, TEST_STRINGS[i]) == 0)
+  for (size_t i = 0; i < array_size; ++i) {
+    if (strcmp(str, TEST_STRINGS[i]) == 0)
       return i;
   }
 
   abort();
 }
 
-
 static void hashmap_nomap(benchmark::State &state) {
   const size_t array_size = ARRAYSIZE(TEST_STRINGS);
-  for(auto _ : state) {
-    for(size_t u=0; u < TIMES_SEARCHED; ++u) {
-      for(size_t i=0; i < array_size; ++i) {
+  for (auto _ : state) {
+    for (size_t u = 0; u < TIMES_SEARCHED; ++u) {
+      for (size_t i = 0; i < array_size; ++i) {
         auto value = nomap_find(TEST_STRINGS[i]);
-        if(value != i) {
+        if (value != i) {
           abort();
         }
       }

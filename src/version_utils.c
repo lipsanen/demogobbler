@@ -112,9 +112,9 @@ static net_message_type new_protocol_messages[] =
 };
 // clang-format on
 
-static bool is_oe(demo_version_data *version) { return version->network_protocol <= 7; }
+static bool is_oe(dg_demver_data *version) { return version->network_protocol <= 7; }
 
-static void get_net_message_array(demo_version_data *version) {
+static void get_net_message_array(dg_demver_data *version) {
   if (version->demo_protocol == 1) {
     version->netmessage_array = protocol_2_messages;
     version->netmessage_count = ARRAYSIZE(protocol_2_messages);
@@ -127,7 +127,7 @@ static void get_net_message_array(demo_version_data *version) {
   }
 }
 
-static void get_net_message_bits(demo_version_data *version) {
+static void get_net_message_bits(dg_demver_data *version) {
   if (version->network_protocol <= 14) {
     version->netmessage_type_bits = 5;
   } else if (version->game == l4d && version->network_protocol <= 37) {
@@ -137,7 +137,7 @@ static void get_net_message_bits(demo_version_data *version) {
   }
 }
 
-static void get_preamble_info(demo_version_data *version) {
+static void get_preamble_info(dg_demver_data *version) {
   if (version->game == portal2 || version->game == csgo || version->game == l4d ||
       version->game == l4d2) {
     version->has_slot_in_preamble = true;
@@ -146,7 +146,7 @@ static void get_preamble_info(demo_version_data *version) {
   }
 }
 
-static void get_cmdinfo_size(demo_version_data *version) {
+static void get_cmdinfo_size(dg_demver_data *version) {
   if (version->game == l4d || version->game == l4d2) {
     version->cmdinfo_size = 4;
   } else if (version->game == portal2 || version->game == csgo) {
@@ -156,7 +156,7 @@ static void get_cmdinfo_size(demo_version_data *version) {
   }
 }
 
-static void get_net_file_bits(demo_version_data *version) {
+static void get_net_file_bits(dg_demver_data *version) {
   if (version->demo_protocol <= 3) {
     version->net_file_bits = 1;
   } else {
@@ -164,7 +164,7 @@ static void get_net_file_bits(demo_version_data *version) {
   }
 }
 
-static void get_has_nettick_times(demo_version_data *version) {
+static void get_has_nettick_times(dg_demver_data *version) {
   if (version->network_protocol < 11) {
     version->has_nettick_times = false;
   } else {
@@ -172,7 +172,7 @@ static void get_has_nettick_times(demo_version_data *version) {
   }
 }
 
-static void get_stringtable_flags_bits(demo_version_data *version) {
+static void get_stringtable_flags_bits(dg_demver_data *version) {
   if (version->demo_protocol >= 4) {
     version->stringtable_flags_bits = 2;
   } else {
@@ -180,7 +180,7 @@ static void get_stringtable_flags_bits(demo_version_data *version) {
   }
 }
 
-static void get_stringtable_userdata_size_bits(demo_version_data *version) {
+static void get_stringtable_userdata_size_bits(dg_demver_data *version) {
   if (version->game == l4d2) {
     version->stringtable_userdata_size_bits = 21;
   } else {
@@ -188,7 +188,7 @@ static void get_stringtable_userdata_size_bits(demo_version_data *version) {
   }
 }
 
-static void get_svc_user_message_bits(demo_version_data *version) {
+static void get_svc_user_message_bits(dg_demver_data *version) {
   if (version->game == l4d || version->game == l4d2) {
     version->svc_user_message_bits = 11;
   } else if (version->demo_protocol >= 4) {
@@ -198,7 +198,7 @@ static void get_svc_user_message_bits(demo_version_data *version) {
   }
 }
 
-static void get_svc_prefetch_bits(demo_version_data *version) {
+static void get_svc_prefetch_bits(dg_demver_data *version) {
   if (version->game == l4d2 && version->l4d2_version >= 2091) {
     version->svc_prefetch_bits = 15;
   } else if (version->game == l4d2 || version->game == steampipe) {
@@ -208,7 +208,7 @@ static void get_svc_prefetch_bits(demo_version_data *version) {
   }
 }
 
-static void get_model_index_bits(demo_version_data *version) {
+static void get_model_index_bits(dg_demver_data *version) {
   if (version->game == l4d2 && version->l4d2_version >= 2203) {
     version->model_index_bits = 12;
   } else if (version->game == steampipe) {
@@ -218,7 +218,7 @@ static void get_model_index_bits(demo_version_data *version) {
   }
 }
 
-static void get_datatable_propcount_bits(demo_version_data *version) {
+static void get_datatable_propcount_bits(dg_demver_data *version) {
   if (is_oe(version)) {
     version->datatable_propcount_bits = 9;
   } else {
@@ -226,42 +226,37 @@ static void get_datatable_propcount_bits(demo_version_data *version) {
   }
 }
 
-static void get_sendprop_flag_bits(demo_version_data* version) {
-  if(version->demo_protocol == 2) {
+static void get_sendprop_flag_bits(dg_demver_data *version) {
+  if (version->demo_protocol == 2) {
     version->sendprop_flag_bits = 11;
-  }
-  else if(is_oe(version)) { 
+  } else if (is_oe(version)) {
     version->sendprop_flag_bits = 13;
-  }
-  else if(version->game == l4d || version->demo_protocol == 3) {
+  } else if (version->game == l4d || version->demo_protocol == 3) {
     version->sendprop_flag_bits = 16;
-  }
-  else {
+  } else {
     version->sendprop_flag_bits = 19;
   }
 }
 
-static void get_sendprop_numbits_for_numbits(demo_version_data* version) {
-  if(version->game == l4d || version->game == l4d2 || version->network_protocol <= 14) {
+static void get_sendprop_numbits_for_numbits(dg_demver_data *version) {
+  if (version->game == l4d || version->game == l4d2 || version->network_protocol <= 14) {
     version->sendprop_numbits_for_numbits = 6;
-  }
-  else {
+  } else {
     version->sendprop_numbits_for_numbits = 7;
   }
 }
 
-static void get_svc_update_stringtable_table_id_bits(demo_version_data* version) {
-  if(version->network_protocol < 11) {
+static void get_svc_update_stringtable_table_id_bits(dg_demver_data *version) {
+  if (version->network_protocol < 11) {
     version->svc_update_stringtable_table_id_bits = 4;
-  }
-  else {
+  } else {
     version->svc_update_stringtable_table_id_bits = 5;
   }
 }
 
 struct version_pair {
   const char *game_directory;
-  enum demogobbler_game version;
+  enum dg_game version;
 };
 
 typedef struct version_pair version_pair;
@@ -271,8 +266,8 @@ static version_pair versions[] = {{"aperturetag", portal2},    {"portal2", porta
                                   {"TWTM", portal2},           {"csgo", csgo},
                                   {"left4dead2", l4d2},        {"left4dead", l4d}};
 
-demo_version_data demogobbler_get_demo_version(demogobbler_header *header) {
-  demo_version_data version;
+dg_demver_data dg_get_demo_version(dg_header *header) {
+  dg_demver_data version;
   version.game = orangebox;
   version.demo_protocol = header->demo_protocol;
   version.network_protocol = header->net_protocol;
@@ -313,7 +308,7 @@ demo_version_data demogobbler_get_demo_version(demogobbler_header *header) {
   return version;
 }
 
-void version_update_build_info(demo_version_data *version) {
+void version_update_build_info(dg_demver_data *version) {
   // This can be re-run in the case of l4d2 demos
   get_cmdinfo_size(version);
   get_preamble_info(version);

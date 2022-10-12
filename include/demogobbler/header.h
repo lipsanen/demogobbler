@@ -6,9 +6,9 @@ extern "C" {
 
 #include <stdint.h>
 
-typedef struct demogobbler_header demogobbler_header;
+typedef struct dg_header dg_header;
 
-struct demogobbler_header {
+struct dg_header {
   char ID[8];
   int32_t demo_protocol;
   int32_t net_protocol;

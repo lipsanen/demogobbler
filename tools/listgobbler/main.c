@@ -1,7 +1,7 @@
 #include "demogobbler.h"
 #include "stdio.h"
 
-void print_header(parser_state* a, demogobbler_header *header) {
+void print_header(parser_state *a, dg_header *header) {
   printf("ID: %s\n", header->ID);
   printf("Demo protocol: %d\n", header->demo_protocol);
   printf("Net protocol: %d\n", header->net_protocol);
@@ -21,11 +21,11 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-  demogobbler_settings settings;
-  demogobbler_settings_init(&settings);
+  dg_settings settings;
+  dg_settings_init(&settings);
   settings.header_handler = print_header;
 
-  demogobbler_parse_file(&settings, argv[1]);
+  dg_parse_file(&settings, argv[1]);
 
   return 0;
 }

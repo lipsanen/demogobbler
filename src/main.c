@@ -5,9 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-demogobbler_parse_result demogobbler_parse(demogobbler_settings *settings, void *stream,
-                              input_interface input_interface) {
-  demogobbler_parse_result out;
+dg_parse_result dg_parse(dg_settings *settings, void *stream, input_interface input_interface) {
+  dg_parse_result out;
   memset(&out, 0, sizeof(out));
   parser parser;
   parser_init(&parser, settings);
@@ -18,8 +17,8 @@ demogobbler_parse_result demogobbler_parse(demogobbler_settings *settings, void 
   return out;
 }
 
-demogobbler_parse_result demogobbler_parse_file(demogobbler_settings *settings, const char *filepath) {
-  demogobbler_parse_result out;
+dg_parse_result dg_parse_file(dg_settings *settings, const char *filepath) {
+  dg_parse_result out;
   memset(&out, 0, sizeof(out));
   FILE *file = fopen(filepath, "rb");
 
@@ -28,7 +27,7 @@ demogobbler_parse_result demogobbler_parse_file(demogobbler_settings *settings, 
     input.read = fstream_read;
     input.seek = fstream_seek;
 
-    out = demogobbler_parse(settings, file, input);
+    out = dg_parse(settings, file, input);
 
     fclose(file);
   } else {
@@ -39,18 +38,18 @@ demogobbler_parse_result demogobbler_parse_file(demogobbler_settings *settings, 
   return out;
 }
 
-demogobbler_parse_result demogobbler_parse_buffer(demogobbler_settings *settings, void *buffer, size_t size) {
-  demogobbler_parse_result out;
+dg_parse_result dg_parse_buffer(dg_settings *settings, void *buffer, size_t size) {
+  dg_parse_result out;
   memset(&out, 0, sizeof(out));
 
-  if(buffer) {
+  if (buffer) {
     input_interface input;
     input.read = buffer_stream_read;
     input.seek = buffer_stream_seek;
 
     buffer_stream stream;
     buffer_stream_init(&stream, buffer, size);
-    out = demogobbler_parse(settings, &stream, input);
+    out = dg_parse(settings, &stream, input);
   } else {
     out.error = true;
     out.error_message = "Buffer was NULL";
@@ -59,6 +58,4 @@ demogobbler_parse_result demogobbler_parse_buffer(demogobbler_settings *settings
   return out;
 }
 
-void demogobbler_settings_init(demogobbler_settings *settings) {
-  memset(settings, 0, sizeof(demogobbler_settings));
-}
+void dg_settings_init(dg_settings *settings) { memset(settings, 0, sizeof(dg_settings)); }

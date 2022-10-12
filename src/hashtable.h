@@ -1,19 +1,19 @@
 #pragma once
 
-#include <stdbool.h>
-#include <stdint.h>
-#include <stddef.h>
 #include "demogobbler/datatable_types.h"
 #include "demogobbler/entity_types.h"
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
-hashtable demogobbler_hashtable_create(size_t array_size);
-hashtable_entry demogobbler_hashtable_get(hashtable* thisptr, const char* str);
-bool demogobbler_hashtable_insert(hashtable* thisptr, hashtable_entry entry);
-void demogobbler_hashtable_clear(hashtable* thisptr);
-void demogobbler_hashtable_free(hashtable* thisptr);
+dg_hashtable dg_hashtable_create(size_t array_size);
+dg_hashtable_entry dg_hashtable_get(dg_hashtable *thisptr, const char *str);
+bool dg_hashtable_insert(dg_hashtable *thisptr, dg_hashtable_entry entry);
+void dg_hashtable_clear(dg_hashtable *thisptr);
+void dg_hashtable_free(dg_hashtable *thisptr);
 
-prop_exclude_set demogobbler_pes_create(size_t array_size);
-bool demogobbler_pes_has(prop_exclude_set* thisptr, demogobbler_sendtable* table, demogobbler_sendprop* prop);
-bool demogobbler_pes_insert(prop_exclude_set* thisptr, demogobbler_sendprop* entry);
-void demogobbler_pes_free(prop_exclude_set* thisptr);
-void demogobbler_pes_clear(prop_exclude_set* thisptr);
+dg_pes dg_pes_create(size_t array_size);
+bool dg_pes_has(dg_pes *thisptr, dg_sendtable *table, dg_sendprop *prop);
+bool dg_pes_insert(dg_pes *thisptr, dg_sendprop *entry);
+void dg_pes_free(dg_pes *thisptr);
+void dg_pes_clear(dg_pes *thisptr);

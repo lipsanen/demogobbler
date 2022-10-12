@@ -2,4 +2,4 @@
 
 #include "parser.h"
 
-void parse_datatables(parser *thisptr, demogobbler_datatables* input);
+void parse_datatables(parser *thisptr, dg_datatables *input);

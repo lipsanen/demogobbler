@@ -18,39 +18,37 @@ typedef enum {
   sendproptype_array,
   sendproptype_datatable,
   sendproptype_invalid
-} demogobbler_sendproptype;
+} dg_sendproptype;
 
 typedef struct {
   float low_value;
   float high_value;
-} prop_values;
+} dg_prop_values;
 
 // Forward declaration for the array pointer
-struct demogobbler_sendprop;
-typedef struct demogobbler_sendprop demogobbler_sendprop;
-struct demogobbler_sendtable;
-typedef struct demogobbler_sendtable demogobbler_sendtable;
+struct dg_sendprop;
+typedef struct dg_sendprop dg_sendprop;
+struct dg_sendtable;
+typedef struct dg_sendtable dg_sendtable;
 
-struct demogobbler_sendprop {
+struct dg_sendprop {
   const char *name;
   union {
-    prop_values prop_;
+    dg_prop_values prop_;
     const char *exclude_name;
     const char *dtname; // Datatable or exclude flag is set
-    demogobbler_sendprop *array_prop;
+    dg_sendprop *array_prop;
   };
 
   union {
-    struct demogobbler_sendtable
-        *baseclass; // For sendproptype_datatable this is a pointer to the baseclass
-    struct demogobbler_sendtable
-        *owner_class; // For flattened props that are from a derived class this points to the class
-                      // (sendtable) where they came from
+    struct dg_sendtable *baseclass; // For sendproptype_datatable this is a pointer to the baseclass
+    struct dg_sendtable *owner_class; // For flattened props that are from a derived class this
+                                      // points to the class (sendtable) where they came from
   };
 
   unsigned priority : 8;
   unsigned prop_numbits : 7;
-  demogobbler_sendproptype proptype : 4;
+  dg_sendproptype proptype : 4;
   unsigned flag_unsigned : 1;
   unsigned flag_coord : 1;
   unsigned flag_noscale : 1;
@@ -73,37 +71,37 @@ struct demogobbler_sendprop {
   unsigned array_num_elements : 10;
 };
 
-struct demogobbler_sendtable {
+struct dg_sendtable {
   const char *name;
-  demogobbler_sendprop *props;
+  dg_sendprop *props;
   size_t prop_count;
   bool needs_decoder;
 };
 
-struct demogobbler_serverclass {
+struct dg_serverclass {
   uint16_t serverclass_id;
   const char *serverclass_name;
   const char *datatable_name;
 };
 
-typedef struct demogobbler_serverclass demogobbler_serverclass;
+typedef struct dg_serverclass dg_serverclass;
 
 typedef struct {
-  demogobbler_message_preamble preamble;
-  demogobbler_sendtable *sendtables;
+  dg_message_preamble preamble;
+  dg_sendtable *sendtables;
   size_t sendtable_count;
-  demogobbler_serverclass *serverclasses;
+  dg_serverclass *serverclasses;
   size_t serverclass_count;
 
   void *_raw_buffer;
   size_t _raw_buffer_bytes;
-} demogobbler_datatables_parsed;
+} dg_datatables_parsed;
 
 typedef struct {
-  demogobbler_datatables_parsed output;
-  const char* error_message;
+  dg_datatables_parsed output;
+  const char *error_message;
   bool error;
-} demogobbler_datatables_parsed_rval;
+} dg_datatables_parsed_rval;
 
 #ifdef __cplusplus
 }

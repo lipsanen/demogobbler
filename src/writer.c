@@ -1,5 +1,5 @@
-#include "demogobbler/bitstream.h"
 #include "demogobbler.h"
+#include "demogobbler/bitstream.h"
 #include "demogobbler/bitwriter.h"
 #include "streams.h"
 #include "utils.h"
@@ -7,12 +7,12 @@
 #include <stdlib.h>
 #include <string.h>
 
-void demogobbler_writer_init(writer *thisptr) {
+void dg_writer_init(writer *thisptr) {
   memset(thisptr, 0, sizeof(writer));
-  demogobbler_bitwriter_init(&thisptr->bitwriter, 32768);
+  dg_bitwriter_init(&thisptr->bitwriter, 32768);
 }
 
-void demogobbler_writer_open_file(writer *thisptr, const char *filepath) {
+void dg_writer_open_file(writer *thisptr, const char *filepath) {
   thisptr->_stream = fopen(filepath, "wb");
   thisptr->output_funcs = (output_interface){fstream_write};
   thisptr->_custom_stream = false;
@@ -22,13 +22,13 @@ void demogobbler_writer_open_file(writer *thisptr, const char *filepath) {
     thisptr->error_message = "Unable to open file";
   }
 }
-void demogobbler_writer_open(writer *thisptr, void *stream, output_interface output_interface) {
+void dg_writer_open(writer *thisptr, void *stream, output_interface output_interface) {
   thisptr->_stream = stream;
   thisptr->output_funcs = output_interface;
   thisptr->_custom_stream = true;
 }
 
-void demogobbler_writer_close(writer *thisptr) {
+void dg_writer_close(writer *thisptr) {
   if (!thisptr->_custom_stream && thisptr->_stream) {
     fclose(thisptr->_stream);
     thisptr->_stream = NULL;
@@ -54,7 +54,7 @@ void demogobbler_writer_close(writer *thisptr) {
   if (message->size_bytes > 0)                                                                     \
     thisptr->output_funcs.write(thisptr->_stream, message->data, message->size_bytes);
 
-void demogobbler_write_preamble(writer *thisptr, demogobbler_message_preamble preamble) {
+void dg_write_preamble(writer *thisptr, dg_message_preamble preamble) {
   thisptr->output_funcs.write(thisptr->_stream, &preamble.type, 1);
   thisptr->output_funcs.write(thisptr->_stream, &preamble.tick, 4);
   if (thisptr->version.has_slot_in_preamble) {
@@ -62,23 +62,23 @@ void demogobbler_write_preamble(writer *thisptr, demogobbler_message_preamble pr
   }
 }
 
-void demogobbler_write_consolecmd(writer *thisptr, demogobbler_consolecmd *message) {
+void dg_write_consolecmd(writer *thisptr, dg_consolecmd *message) {
   WRITE_PREAMBLE();
   WRITE_DATA();
 }
 
-void demogobbler_write_customdata(writer *thisptr, demogobbler_customdata *message) {
+void dg_write_customdata(writer *thisptr, dg_customdata *message) {
   WRITE_PREAMBLE();
   WRITE_INT32(unknown);
   WRITE_DATA();
 }
 
-void demogobbler_write_datatables(writer *thisptr, demogobbler_datatables *message) {
+void dg_write_datatables(writer *thisptr, dg_datatables *message) {
   WRITE_PREAMBLE();
   WRITE_DATA();
 }
 
-void demogobbler_write_header(writer *thisptr, demogobbler_header *message) {
+void dg_write_header(writer *thisptr, dg_header *message) {
   WRITE_STRING(ID, 8);
   WRITE_INT32(demo_protocol);
   WRITE_INT32(net_protocol);
@@ -92,11 +92,11 @@ void demogobbler_write_header(writer *thisptr, demogobbler_header *message) {
   WRITE_INT32(signon_length);
 }
 
-void demogobbler_write_packet(writer *thisptr, demogobbler_packet *message) {
+void dg_write_packet(writer *thisptr, dg_packet *message) {
   WRITE_PREAMBLE();
 
   for (int i = 0; i < thisptr->version.cmdinfo_size; ++i) {
-    demogobbler_cmdinfo *cmdinfo = &message->cmdinfo[i];
+    dg_cmdinfo *cmdinfo = &message->cmdinfo[i];
     thisptr->output_funcs.write(thisptr->_stream, &cmdinfo->interp_flags, 4);
 
     WRITE_CMDINFO_VEC(view_origin);
@@ -112,13 +112,13 @@ void demogobbler_write_packet(writer *thisptr, demogobbler_packet *message) {
   WRITE_DATA();
 }
 
-void demogobbler_write_packet_parsed(writer *thisptr, packet_parsed *message_parsed) {
-  demogobbler_packet *message = message_parsed->orig;
+void dg_write_packet_parsed(writer *thisptr, packet_parsed *message_parsed) {
+  dg_packet *message = message_parsed->orig;
   thisptr->bitwriter.bitoffset = 0;
   WRITE_PREAMBLE();
 
   for (int i = 0; i < thisptr->version.cmdinfo_size; ++i) {
-    demogobbler_cmdinfo *cmdinfo = &message->cmdinfo[i];
+    dg_cmdinfo *cmdinfo = &message->cmdinfo[i];
     thisptr->output_funcs.write(thisptr->_stream, &cmdinfo->interp_flags, 4);
 
     WRITE_CMDINFO_VEC(view_origin);
@@ -134,18 +134,18 @@ void demogobbler_write_packet_parsed(writer *thisptr, packet_parsed *message_par
 
   for (uint32_t i = 0; i < message_parsed->message_count; ++i) {
     packet_net_message *netmsg = message_parsed->messages + i;
-    demogobbler_bitwriter_write_netmessage(&thisptr->bitwriter, &thisptr->version, netmsg);
+    dg_bitwriter_write_netmessage(&thisptr->bitwriter, &thisptr->version, netmsg);
   }
 
   if (thisptr->bitwriter.bitoffset % 8 != 0) {
-    uint32_t expected_bits = thisptr->bitwriter.bitoffset +
-                             demogobbler_bitstream_bits_left(&message_parsed->leftover_bits);  
+    uint32_t expected_bits =
+        thisptr->bitwriter.bitoffset + dg_bitstream_bits_left(&message_parsed->leftover_bits);
     if (expected_bits / 8 == message->size_bytes) {
       // grab leftover bits from original stream if number of bytes matches
-      demogobbler_bitwriter_write_bitstream(&thisptr->bitwriter, &message_parsed->leftover_bits);
+      dg_bitwriter_write_bitstream(&thisptr->bitwriter, &message_parsed->leftover_bits);
     } else {
       // otherwise write 0 for the last bits
-      demogobbler_bitwriter_write_uint(&thisptr->bitwriter, 0, 8 - thisptr->bitwriter.bitoffset % 8);
+      dg_bitwriter_write_uint(&thisptr->bitwriter, 0, 8 - thisptr->bitwriter.bitoffset % 8);
     }
   }
 
@@ -154,50 +154,48 @@ void demogobbler_write_packet_parsed(writer *thisptr, packet_parsed *message_par
   thisptr->output_funcs.write(thisptr->_stream, thisptr->bitwriter.ptr, bytes);
 }
 
-void demogobbler_write_synctick(writer *thisptr, demogobbler_synctick *message) {
-  WRITE_PREAMBLE();
-}
+void dg_write_synctick(writer *thisptr, dg_synctick *message) { WRITE_PREAMBLE(); }
 
-void demogobbler_write_stop(writer *thisptr, demogobbler_stop *message) {
-  enum demogobbler_type t = demogobbler_type_stop;
+void dg_write_stop(writer *thisptr, dg_stop *message) {
+  enum dg_type t = dg_type_stop;
   thisptr->output_funcs.write(thisptr->_stream, &t, 1);
   thisptr->output_funcs.write(thisptr->_stream, message->data, message->size_bytes);
 }
 
-void demogobbler_write_stringtables(writer *thisptr, demogobbler_stringtables *message) {
+void dg_write_stringtables(writer *thisptr, dg_stringtables *message) {
   WRITE_PREAMBLE();
   WRITE_DATA();
 }
 
-void demogobbler_write_usercmd(writer *thisptr, demogobbler_usercmd *message) {
+void dg_write_usercmd(writer *thisptr, dg_usercmd *message) {
   WRITE_PREAMBLE();
   WRITE_INT32(cmd);
   WRITE_DATA();
 }
 
-void demogobbler_writer_free(writer *thisptr) {
-  demogobbler_writer_close(thisptr);
-  demogobbler_bitwriter_free(&thisptr->bitwriter);
+void dg_writer_free(writer *thisptr) {
+  dg_writer_close(thisptr);
+  dg_bitwriter_free(&thisptr->bitwriter);
 }
 
-void demogobbler_write_byte(writer* thisptr, uint8_t value) {
+void dg_write_byte(writer *thisptr, uint8_t value) {
   thisptr->output_funcs.write(thisptr->_stream, &value, 1);
 }
 
-void demogobbler_write_short(writer* thisptr, uint16_t value) {
+void dg_write_short(writer *thisptr, uint16_t value) {
   thisptr->output_funcs.write(thisptr->_stream, &value, 2);
 }
 
-void demogobbler_write_int32(writer* thisptr, int32_t value) {
+void dg_write_int32(writer *thisptr, int32_t value) {
   thisptr->output_funcs.write(thisptr->_stream, &value, 4);
 }
 
-void demogobbler_write_data(writer* thisptr, void* src, uint32_t bytes) {
+void dg_write_data(writer *thisptr, void *src, uint32_t bytes) {
   thisptr->output_funcs.write(thisptr->_stream, src, bytes);
 }
 
-void demogobbler_write_string(writer* thisptr, const char* str) {
-  while(*str) {
+void dg_write_string(writer *thisptr, const char *str) {
+  while (*str) {
     thisptr->output_funcs.write(thisptr->_stream, str, 1);
     ++str;
   }

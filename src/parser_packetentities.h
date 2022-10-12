@@ -1,6 +1,6 @@
 #pragma once
 
-#include "parser.h"
 #include "demogobbler/packet_netmessages.h"
+#include "parser.h"
 
-void demogobbler_parse_packetentities(parser* thisptr, struct demogobbler_svc_packet_entities* message);
+void dg_parse_packetentities(parser *thisptr, struct dg_svc_packet_entities *message);

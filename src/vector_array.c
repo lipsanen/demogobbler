@@ -11,9 +11,9 @@ static size_t find_smallest_power_of_two_that_is_bigger(size_t value) {
   return rval;
 }
 
-vector_array demogobbler_va_create_(void *ptr, uint32_t ptr_bytes, uint32_t bytes_per_element,
-                                    uint32_t alignment) {
-  vector_array out;
+dg_vector_array dg_va_create_(void *ptr, uint32_t ptr_bytes, uint32_t bytes_per_element,
+                           uint32_t alignment) {
+  dg_vector_array out;
   memset(&out, 0, sizeof(out));
   // We align the user provided memory if required, otherwise alignment information is not stored
   // malloc should return sufficiently aligned memory for any type
@@ -30,7 +30,7 @@ vector_array demogobbler_va_create_(void *ptr, uint32_t ptr_bytes, uint32_t byte
   return out;
 }
 
-void* demogobbler_va_push_back_empty(vector_array *thisptr) {
+void *dg_va_push_back_empty(dg_vector_array *thisptr) {
   uint32_t new_size = (thisptr->count_elements + 1) * thisptr->bytes_per_element;
   if (new_size > thisptr->ptr_bytes) {
     uint32_t new_allocation_size = find_smallest_power_of_two_that_is_bigger(new_size);
@@ -59,25 +59,25 @@ void* demogobbler_va_push_back_empty(vector_array *thisptr) {
     }
   }
   thisptr->count_elements = thisptr->count_elements + 1;
-  return demogobbler_va_indexptr(thisptr, thisptr->count_elements - 1);
+  return dg_va_indexptr(thisptr, thisptr->count_elements - 1);
 }
 
-bool demogobbler_va_push_back(vector_array *thisptr, void *src) {
-  void* index_ptr = demogobbler_va_push_back_empty(thisptr);
+bool dg_va_push_back(dg_vector_array *thisptr, void *src) {
+  void *index_ptr = dg_va_push_back_empty(thisptr);
   memcpy(index_ptr, src, thisptr->bytes_per_element);
 
   return true;
 }
 
-void demogobbler_va_clear(vector_array *thisptr) { thisptr->count_elements = 0; }
+void dg_va_clear(dg_vector_array *thisptr) { thisptr->count_elements = 0; }
 
-void demogobbler_va_free(vector_array *thisptr) {
+void dg_va_free(dg_vector_array *thisptr) {
   if (thisptr->allocated_by_malloc) {
     free(thisptr->ptr);
     thisptr->ptr = NULL;
   }
 }
 
-void *demogobbler_va_indexptr(vector_array *thisptr, uint32_t index) {
+void *dg_va_indexptr(dg_vector_array *thisptr, uint32_t index) {
   return (uint8_t *)thisptr->ptr + thisptr->bytes_per_element * index;
 }

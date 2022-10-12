@@ -1,10 +1,10 @@
 #include "parser.h"
+#include "alignof_wrapper.h"
 #include "arena.h"
 #include "demogobbler.h"
-#include "alignof_wrapper.h"
+#include "demogobbler/packettypes.h"
 #include "filereader.h"
 #include "hashtable.h"
-#include "demogobbler/packettypes.h"
 #include "parser_datatables.h"
 #include "parser_netmessages.h"
 #include "parser_stringtables.h"
@@ -18,24 +18,24 @@
 // Optimization, read the cmdinfo bit as a uin32_t array instead of picking the individual words out
 // Should be fine I think, but I'll check that the size and alignment match here just in case
 // Assumes little endian I suppose but probably so does many other parts of this codebase
-static_assert(sizeof(struct demogobbler_cmdinfo_raw) == sizeof(demogobbler_cmdinfo), "Bad length in cmdinfo_raw");
-static_assert(alignof(struct demogobbler_cmdinfo_raw) == 4, "Bad alignment in cmdinfo_raw");
-static_assert(alignof(struct demogobbler_cmdinfo_raw) == alignof(demogobbler_cmdinfo), "Bad alignment in cmdinfo_raw");
-
+static_assert(sizeof(struct dg_cmdinfo_raw) == sizeof(dg_cmdinfo), "Bad length in cmdinfo_raw");
+static_assert(alignof(struct dg_cmdinfo_raw) == 4, "Bad alignment in cmdinfo_raw");
+static_assert(alignof(struct dg_cmdinfo_raw) == alignof(dg_cmdinfo),
+              "Bad alignment in cmdinfo_raw");
 
 void _parser_mainloop(parser *thisptr);
 void _parse_header(parser *thisptr);
 void _parse_consolecmd(parser *thisptr);
 void _parse_customdata(parser *thisptr);
 void _parse_datatables(parser *thisptr);
-void _parse_packet(parser *thisptr, enum demogobbler_type type);
+void _parse_packet(parser *thisptr, enum dg_type type);
 void _parse_stop(parser *thisptr);
 void _parse_stringtables(parser *thisptr, int32_t type);
 void _parse_synctick(parser *thisptr);
 void _parse_usercmd(parser *thisptr);
 bool _parse_anymessage(parser *thisptr);
 
-void parser_init(parser *thisptr, demogobbler_settings *settings) {
+void parser_init(parser *thisptr, dg_settings *settings) {
   memset(thisptr, 0, sizeof(*thisptr));
   thisptr->state.client_state = settings->client_state;
   thisptr->m_settings = *settings;
@@ -43,8 +43,8 @@ void parser_init(parser *thisptr, demogobbler_settings *settings) {
   const size_t INITIAL_SIZE = 1 << 17;
   const size_t INITIAL_TEMP_SIZE = 1 << 17;
   // Does lazy allocation, only allocates stuff if requested
-  thisptr->state.entity_state.memory_arena = demogobbler_arena_create(INITIAL_SIZE);
-  thisptr->temp_arena = demogobbler_arena_create(INITIAL_TEMP_SIZE);
+  thisptr->state.entity_state.memory_arena = dg_arena_create(INITIAL_SIZE);
+  thisptr->temp_arena = dg_arena_create(INITIAL_TEMP_SIZE);
 }
 
 void parser_parse(parser *thisptr, void *stream, input_interface input) {
@@ -79,7 +79,7 @@ size_t _parser_read_length(parser *thisptr) {
 }
 
 void _parse_header(parser *thisptr) {
-  demogobbler_header header;
+  dg_header header;
   filereader_readdata(thisreader, header.ID, 8);
   header.demo_protocol = filereader_readint32(thisreader);
   header.net_protocol = filereader_readint32(thisreader);
@@ -97,7 +97,7 @@ void _parse_header(parser *thisptr) {
   header.ID[7] = header.server_name[259] = header.client_name[259] = header.map_name[259] =
       header.game_directory[259] = '\0';
 
-  thisptr->demo_version = demogobbler_get_demo_version(&header);
+  thisptr->demo_version = dg_get_demo_version(&header);
 
   if (thisptr->m_settings.demo_version_handler) {
     thisptr->m_settings.demo_version_handler(&thisptr->state, thisptr->demo_version);
@@ -110,28 +110,28 @@ void _parse_header(parser *thisptr) {
 
 bool _parse_anymessage(parser *thisptr) {
   uint8_t type = filereader_readbyte(thisreader);
-  demogobbler_arena_clear(&thisptr->temp_arena);
+  dg_arena_clear(&thisptr->temp_arena);
 
   switch (type) {
-  case demogobbler_type_consolecmd:
+  case dg_type_consolecmd:
     _parse_consolecmd(thisptr);
     break;
-  case demogobbler_type_datatables:
+  case dg_type_datatables:
     _parse_datatables(thisptr);
     break;
-  case demogobbler_type_packet:
+  case dg_type_packet:
     _parse_packet(thisptr, type);
     break;
-  case demogobbler_type_signon:
+  case dg_type_signon:
     _parse_packet(thisptr, type);
     break;
-  case demogobbler_type_stop:
+  case dg_type_stop:
     _parse_stop(thisptr);
     break;
-  case demogobbler_type_synctick:
+  case dg_type_synctick:
     _parse_synctick(thisptr);
     break;
-  case demogobbler_type_usercmd:
+  case dg_type_usercmd:
     _parse_usercmd(thisptr);
     break;
   case 8:
@@ -150,16 +150,16 @@ bool _parse_anymessage(parser *thisptr) {
     break;
   }
 
-  return type != demogobbler_type_stop && !thisptr->m_reader.eof &&
+  return type != dg_type_stop && !thisptr->m_reader.eof &&
          !thisptr->error; // Return false when done parsing demo, or when at eof
 }
 
 static void parser_free_state(parser *thisptr) {
-  demogobbler_arena_free(&thisptr->temp_arena);
-  demogobbler_hashtable_free(&thisptr->ent_scrap.dt_hashtable);
-  demogobbler_hashtable_free(&thisptr->ent_scrap.dts_with_excludes);
-  demogobbler_pes_free(&thisptr->ent_scrap.excluded_props);
-  demogobbler_estate_free(&thisptr->state.entity_state);
+  dg_arena_free(&thisptr->temp_arena);
+  dg_hashtable_free(&thisptr->ent_scrap.dt_hashtable);
+  dg_hashtable_free(&thisptr->ent_scrap.dts_with_excludes);
+  dg_pes_free(&thisptr->ent_scrap.excluded_props);
+  dg_estate_free(&thisptr->state.entity_state);
 }
 
 #define PARSE_PREAMBLE()                                                                           \
@@ -170,7 +170,7 @@ static void parser_free_state(parser *thisptr) {
 void _parser_mainloop(parser *thisptr) {
   // Add check if the only thing we care about is the header
 
-  demogobbler_settings *settings = &thisptr->m_settings;
+  dg_settings *settings = &thisptr->m_settings;
   bool should_parse = false;
 
 #define NULL_CHECK(name)                                                                           \
@@ -188,7 +188,7 @@ void _parser_mainloop(parser *thisptr) {
   NULL_CHECK(stringtables);
   NULL_CHECK(usercmd);
 
-  if(settings->store_props) {
+  if (settings->store_props) {
     settings->store_ents = true;
   }
 
@@ -229,15 +229,15 @@ void _parser_mainloop(parser *thisptr) {
   }
 
 void _parse_consolecmd(parser *thisptr) {
-  demogobbler_consolecmd message;
-  message.preamble.type = message.preamble.converted_type = demogobbler_type_consolecmd;
+  dg_consolecmd message;
+  message.preamble.type = message.preamble.converted_type = dg_type_consolecmd;
   PARSE_PREAMBLE();
   message.size_bytes = _parser_read_length(thisptr);
 
   if (message.size_bytes > 0) {
     ;
     if (thisptr->m_settings.consolecmd_handler) {
-      void *block = demogobbler_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
+      void *block = dg_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
       READ_MESSAGE_DATA();
 
       if (!thisptr->error) {
@@ -255,15 +255,15 @@ void _parse_consolecmd(parser *thisptr) {
 }
 
 void _parse_customdata(parser *thisptr) {
-  demogobbler_customdata message;
-  message.preamble.type = message.preamble.converted_type = demogobbler_type_customdata;
+  dg_customdata message;
+  message.preamble.type = message.preamble.converted_type = dg_type_customdata;
   PARSE_PREAMBLE();
 
   message.unknown = filereader_readint32(thisreader);
   message.size_bytes = _parser_read_length(thisptr);
 
   if (thisptr->m_settings.customdata_handler && message.size_bytes > 0) {
-    void *block = demogobbler_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
+    void *block = dg_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
     READ_MESSAGE_DATA();
     if (!thisptr->error) {
       thisptr->m_settings.customdata_handler(&thisptr->state, &message);
@@ -274,8 +274,8 @@ void _parse_customdata(parser *thisptr) {
 }
 
 void _parse_datatables(parser *thisptr) {
-  demogobbler_datatables message;
-  message.preamble.type = message.preamble.converted_type = demogobbler_type_datatables;
+  dg_datatables message;
+  message.preamble.type = message.preamble.converted_type = dg_type_datatables;
   PARSE_PREAMBLE();
 
   message.size_bytes = _parser_read_length(thisptr);
@@ -285,7 +285,7 @@ void _parse_datatables(parser *thisptr) {
                                thisptr->m_settings.store_ents;
 
   if (has_datatable_handler && message.size_bytes > 0) {
-    void *block = demogobbler_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
+    void *block = dg_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
     READ_MESSAGE_DATA();
     if (!thisptr->error) {
 
@@ -300,19 +300,19 @@ void _parse_datatables(parser *thisptr) {
   }
 }
 
-static void _parse_cmdinfo(parser *thisptr, demogobbler_packet *packet, size_t i) {
+static void _parse_cmdinfo(parser *thisptr, dg_packet *packet, size_t i) {
   bool should_parse_netmessages =
       !thisptr->demo_version.l4d2_version_finalized || thisptr->parse_netmessages;
   if (thisptr->m_settings.packet_handler || should_parse_netmessages) {
     filereader_readdata(thisreader, packet->cmdinfo_raw[i].data,
                         sizeof(packet->cmdinfo_raw[i].data));
   } else {
-    filereader_skipbytes(thisreader, sizeof(struct demogobbler_cmdinfo_raw));
+    filereader_skipbytes(thisreader, sizeof(struct dg_cmdinfo_raw));
   }
 }
 
-void _parse_packet(parser *thisptr, enum demogobbler_type type) {
-  demogobbler_packet message;
+void _parse_packet(parser *thisptr, enum dg_type type) {
+  dg_packet message;
   message.preamble.type = message.preamble.converted_type = type;
   PARSE_PREAMBLE();
   message.cmdinfo_size = thisptr->demo_version.cmdinfo_size;
@@ -328,7 +328,7 @@ void _parse_packet(parser *thisptr, enum demogobbler_type type) {
   message.size_bytes = _parser_read_length(thisptr);
 
   if ((thisptr->m_settings.packet_handler || should_parse_netmessages) && message.size_bytes > 0) {
-    void *block = demogobbler_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
+    void *block = dg_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
     READ_MESSAGE_DATA();
     if (!thisptr->error) {
 
@@ -349,7 +349,7 @@ void _parse_packet(parser *thisptr, enum demogobbler_type type) {
 void _parse_stop(parser *thisptr) {
 
   if (thisptr->m_settings.stop_handler) {
-    demogobbler_stop message;
+    dg_stop message;
 
     const size_t bytes_per_read = 4096;
     size_t bytes = 0;
@@ -359,8 +359,7 @@ void _parse_stop(parser *thisptr) {
 
     do {
       size_t new_reserve_size = bytes_reserved + bytes_per_read;
-      ptr = demogobbler_arena_reallocate(&thisptr->temp_arena, ptr, bytes_reserved,
-                                         new_reserve_size, 1);
+      ptr = dg_arena_reallocate(&thisptr->temp_arena, ptr, bytes_reserved, new_reserve_size, 1);
       bytes_reserved = new_reserve_size;
 
       bytesReadIt = filereader_readdata(thisreader, (uint8_t *)ptr + bytes, bytes_per_read);
@@ -374,22 +373,22 @@ void _parse_stop(parser *thisptr) {
 }
 
 void _parse_stringtables(parser *thisptr, int32_t type) {
-  demogobbler_stringtables message;
+  dg_stringtables message;
   message.preamble.type = type;
-  message.preamble.converted_type = demogobbler_type_stringtables;
+  message.preamble.converted_type = dg_type_stringtables;
   PARSE_PREAMBLE();
   message.size_bytes = _parser_read_length(thisptr);
   bool should_parse =
       thisptr->m_settings.stringtables_parsed_handler || thisptr->m_settings.stringtables_handler;
 
   if (should_parse && message.size_bytes > 0) {
-    void *block = demogobbler_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
+    void *block = dg_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
     READ_MESSAGE_DATA();
     if (!thisptr->error) {
-      if(thisptr->m_settings.stringtables_handler)
+      if (thisptr->m_settings.stringtables_handler)
         thisptr->m_settings.stringtables_handler(&thisptr->state, &message);
-      if(thisptr->m_settings.stringtables_parsed_handler) {
-        demogobbler_parser_parse_stringtables(thisptr, &message);
+      if (thisptr->m_settings.stringtables_parsed_handler) {
+        dg_parser_parse_stringtables(thisptr, &message);
       }
     }
   } else {
@@ -398,8 +397,8 @@ void _parse_stringtables(parser *thisptr, int32_t type) {
 }
 
 void _parse_synctick(parser *thisptr) {
-  demogobbler_synctick message;
-  message.preamble.type = message.preamble.converted_type = demogobbler_type_synctick;
+  dg_synctick message;
+  message.preamble.type = message.preamble.converted_type = dg_type_synctick;
   PARSE_PREAMBLE();
 
   if (thisptr->m_settings.synctick_handler) {
@@ -408,8 +407,8 @@ void _parse_synctick(parser *thisptr) {
 }
 
 void _parse_usercmd(parser *thisptr) {
-  demogobbler_usercmd message;
-  message.preamble.type = message.preamble.converted_type = demogobbler_type_usercmd;
+  dg_usercmd message;
+  message.preamble.type = message.preamble.converted_type = dg_type_usercmd;
   PARSE_PREAMBLE();
 
   message.cmd = filereader_readint32(thisreader);
@@ -417,7 +416,7 @@ void _parse_usercmd(parser *thisptr) {
 
   if (thisptr->m_settings.usercmd_handler) {
     if (message.size_bytes > 0) {
-      void *block = demogobbler_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
+      void *block = dg_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
       READ_MESSAGE_DATA();
     } else {
       message.data = NULL;

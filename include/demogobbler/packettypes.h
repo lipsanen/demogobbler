@@ -9,34 +9,34 @@ extern "C" {
 #include <stddef.h>
 #include <stdint.h>
 
-enum demogobbler_type {
-  demogobbler_type_signon = 1,
-  demogobbler_type_packet = 2,
-  demogobbler_type_synctick = 3,
-  demogobbler_type_consolecmd = 4,
-  demogobbler_type_usercmd = 5,
-  demogobbler_type_datatables = 6,
-  demogobbler_type_stop = 7,
-  demogobbler_type_customdata = 8,
-  demogobbler_type_stringtables = 9
+enum dg_type {
+  dg_type_signon = 1,
+  dg_type_packet = 2,
+  dg_type_synctick = 3,
+  dg_type_consolecmd = 4,
+  dg_type_usercmd = 5,
+  dg_type_datatables = 6,
+  dg_type_stop = 7,
+  dg_type_customdata = 8,
+  dg_type_stringtables = 9
   // These arent necessarily 1 : 1 with the number in the demo
   // Customdata is 8 and Stringtables is either 8 or 9 depending on version
 };
 
-struct demogobbler_message_preamble {
+struct dg_message_preamble {
   uint8_t type;
   int32_t tick;
   uint8_t slot;
-  enum demogobbler_type converted_type;
+  enum dg_type converted_type;
 };
 
-typedef struct demogobbler_message_preamble demogobbler_message_preamble;
+typedef struct dg_message_preamble dg_message_preamble;
 
-struct demogobbler_cmdinfo_raw {
+struct dg_cmdinfo_raw {
   int32_t data[19];
 };
 
-struct demogobbler_cmdinfo {
+struct dg_cmdinfo {
   int32_t interp_flags;
   vector view_origin;
   vector view_angles;
@@ -46,13 +46,13 @@ struct demogobbler_cmdinfo {
   vector local_viewangles2;
 };
 
-typedef struct demogobbler_cmdinfo demogobbler_cmdinfo;
+typedef struct dg_cmdinfo dg_cmdinfo;
 
-struct demogobbler_packet {
-  demogobbler_message_preamble preamble;
+struct dg_packet {
+  dg_message_preamble preamble;
   union {
-    struct demogobbler_cmdinfo_raw cmdinfo_raw[4];
-    demogobbler_cmdinfo cmdinfo[4]; // allocates memory enough for all games
+    struct dg_cmdinfo_raw cmdinfo_raw[4];
+    dg_cmdinfo cmdinfo[4]; // allocates memory enough for all games
   };
   size_t cmdinfo_size;
   int32_t in_sequence;
@@ -61,62 +61,62 @@ struct demogobbler_packet {
   void *data;
 };
 
-typedef struct demogobbler_packet demogobbler_packet;
+typedef struct dg_packet dg_packet;
 
-struct demogobbler_consolecmd {
-  demogobbler_message_preamble preamble;
+struct dg_consolecmd {
+  dg_message_preamble preamble;
   int32_t size_bytes;
   char *data;
 };
 
-typedef struct demogobbler_consolecmd demogobbler_consolecmd;
+typedef struct dg_consolecmd dg_consolecmd;
 
-struct demogobbler_usercmd {
-  demogobbler_message_preamble preamble;
+struct dg_usercmd {
+  dg_message_preamble preamble;
   int32_t cmd;
   int32_t size_bytes;
   void *data;
 };
 
-typedef struct demogobbler_usercmd demogobbler_usercmd;
+typedef struct dg_usercmd dg_usercmd;
 
-struct demogobbler_datatables {
-  demogobbler_message_preamble preamble;
+struct dg_datatables {
+  dg_message_preamble preamble;
   int32_t size_bytes;
   void *data;
 };
 
-typedef struct demogobbler_datatables demogobbler_datatables;
+typedef struct dg_datatables dg_datatables;
 
-struct demogobbler_stop {
+struct dg_stop {
   int32_t size_bytes; // Inferred, not in the demo
   void *data;
 };
 
-typedef struct demogobbler_stop demogobbler_stop;
+typedef struct dg_stop dg_stop;
 
-struct demogobbler_synctick {
-  demogobbler_message_preamble preamble;
+struct dg_synctick {
+  dg_message_preamble preamble;
 };
 
-typedef struct demogobbler_synctick demogobbler_synctick;
+typedef struct dg_synctick dg_synctick;
 
-struct demogobbler_customdata {
-  demogobbler_message_preamble preamble;
+struct dg_customdata {
+  dg_message_preamble preamble;
   int32_t unknown;
   int32_t size_bytes;
   void *data;
 };
 
-typedef struct demogobbler_customdata demogobbler_customdata;
+typedef struct dg_customdata dg_customdata;
 
-struct demogobbler_stringtables {
-  demogobbler_message_preamble preamble;
+struct dg_stringtables {
+  dg_message_preamble preamble;
   int32_t size_bytes;
   void *data;
 };
 
-typedef struct demogobbler_stringtables demogobbler_stringtables;
+typedef struct dg_stringtables dg_stringtables;
 
 #ifdef __cplusplus
 }

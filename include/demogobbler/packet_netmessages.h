@@ -1,15 +1,15 @@
 #pragma once
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
-struct demogobbler_packet_net_message;
-struct demo_version_data;
-struct demogobbler_bitwriter;
+struct dg_packet_net_message;
+struct dg_demver_data;
+struct dg_bitwriter;
 
-void demogobbler_bitwriter_write_netmessage(struct demogobbler_bitwriter *writer, struct demo_version_data* version, struct demogobbler_packet_net_message* message);
+void dg_bitwriter_write_netmessage(struct dg_bitwriter *writer, struct dg_demver_data *version,
+                                   struct dg_packet_net_message *message);
 
 #undef DECLARE_MESSAGE_IN_UNION
 

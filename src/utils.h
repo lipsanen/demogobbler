@@ -39,6 +39,6 @@ static inline size_t alignment_loss(size_t bytes_allocated, size_t alignment) {
   }
 }
 
-unsigned demogobbler_bits_required(unsigned i);
+unsigned dg_bits_required(unsigned i);
 unsigned int highest_bit_index(unsigned int number);
 int Q_log2(int val);

@@ -6,7 +6,7 @@
 #include "gtest/gtest.h"
 
 struct packet_copy_tester {
-  demo_version_data version;
+  dg_demver_data version;
   bitwriter writer;
   int64_t prev_offset;
   net_message_type last_message;
@@ -15,9 +15,9 @@ struct packet_copy_tester {
   int64_t packet_bits;
   bool error;
 
-  ~packet_copy_tester() { 
+  ~packet_copy_tester() {
     bitwriter_free(&writer);
-    free(current_data); 
+    free(current_data);
   }
 
   packet_copy_tester() {
@@ -29,16 +29,16 @@ struct packet_copy_tester {
   }
 };
 
-static void version_handler(parser_state* state, demo_version_data data) {
+static void version_handler(parser_state *state, dg_demver_data data) {
   packet_copy_tester *tester = (packet_copy_tester *)state->client_state;
   tester->version = data;
 }
 
-static void packet_handler(parser_state* state, packet_parsed *packet_parsed) {
+static void packet_handler(parser_state *state, packet_parsed *packet_parsed) {
   packet_copy_tester *tester = (packet_copy_tester *)state->client_state;
-  demogobbler_packet* packet = packet_parsed->orig;
+  dg_packet *packet = packet_parsed->orig;
 
-  if(packet->size_bytes > (int32_t)tester->current_data_size) {
+  if (packet->size_bytes > (int32_t)tester->current_data_size) {
     free(tester->current_data);
     tester->current_data = malloc(packet->size_bytes);
     tester->current_data_size = packet->size_bytes;
@@ -52,15 +52,16 @@ static void packet_handler(parser_state* state, packet_parsed *packet_parsed) {
 #endif
   tester->packet_bits = packet->size_bytes * 8;
 
-  for(size_t i=0; i < packet_parsed->message_count; ++i) {
+  for (size_t i = 0; i < packet_parsed->message_count; ++i) {
     packet_net_message *message = &packet_parsed->messages[i];
-    demogobbler_bitwriter_write_netmessage(&tester->writer, &tester->version, message);
+    dg_bitwriter_write_netmessage(&tester->writer, &tester->version, message);
 
 #ifdef DEBUG
-    EXPECT_EQ(tester->writer.bitoffset, message->offset) << "Error writing message of type " << message->mtype;
+    EXPECT_EQ(tester->writer.bitoffset, message->offset)
+        << "Error writing message of type " << message->mtype;
 #endif
 
-    if(tester->writer.error) {
+    if (tester->writer.error) {
       EXPECT_EQ(tester->writer.error, false) << tester->writer.error_message;
       tester->error = true;
       state->error = true;
@@ -70,28 +71,27 @@ static void packet_handler(parser_state* state, packet_parsed *packet_parsed) {
 
   bitwriter_write_bitstream(&tester->writer, &packet_parsed->leftover_bits);
 
-  if(!tester->error) {
-    for(int32_t i=0; i < packet->size_bytes; ++i) {
-      uint8_t dest = *((uint8_t*)tester->writer.ptr + i);
-      uint8_t src = *((uint8_t*)packet->data + i);
-      EXPECT_EQ(dest, src) << "manual mem check failed, bug with bitstreams " << dest << " != " << src;
+  if (!tester->error) {
+    for (int32_t i = 0; i < packet->size_bytes; ++i) {
+      uint8_t dest = *((uint8_t *)tester->writer.ptr + i);
+      uint8_t src = *((uint8_t *)packet->data + i);
+      EXPECT_EQ(dest, src) << "manual mem check failed, bug with bitstreams " << dest
+                           << " != " << src;
     }
   }
-
 }
 
 static void packet_write_test(const char *filepath) {
   packet_copy_tester tester;
-  demogobbler_settings settings;
-  demogobbler_settings_init(&settings);
+  dg_settings settings;
+  dg_settings_init(&settings);
 
   settings.packet_parsed_handler = packet_handler;
   settings.demo_version_handler = version_handler;
   settings.client_state = &tester;
 
-  auto out = demogobbler_parse_file(&settings, filepath);
+  auto out = dg_parse_file(&settings, filepath);
   EXPECT_EQ(out.error, false) << out.error_message;
-
 }
 
 TEST(E2E, packet_copy) {

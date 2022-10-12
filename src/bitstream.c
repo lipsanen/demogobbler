@@ -23,7 +23,7 @@ static inline uint32_t FUN_ATTRIBUTE get_size_in_bytes(uint32_t bits) {
   }
 }
 
-static inline unsigned int FUN_ATTRIBUTE buffered_bits(bitstream *thisptr) {
+static inline unsigned int FUN_ATTRIBUTE buffered_bits(dg_bitstream *thisptr) {
   uint8_t *cur_address = (uint8_t *)thisptr->data + thisptr->bitoffset / 8;
   uint32_t difference = (cur_address - thisptr->buffered_address);
 
@@ -34,7 +34,7 @@ static inline unsigned int FUN_ATTRIBUTE buffered_bits(bitstream *thisptr) {
   }
 }
 
-static inline void NO_ASAN FUN_ATTRIBUTE fetch_ubit(bitstream *thisptr) {
+static inline void NO_ASAN FUN_ATTRIBUTE fetch_ubit(dg_bitstream *thisptr) {
   if (thisptr->bitoffset >= thisptr->bitsize || thisptr->overflow) {
     thisptr->buffered = 0;
     thisptr->buffered_address = NULL;
@@ -60,9 +60,9 @@ static inline void NO_ASAN FUN_ATTRIBUTE fetch_ubit(bitstream *thisptr) {
   }
 }
 
-bitstream FUN_ATTRIBUTE demogobbler_bitstream_create(void *data, size_t size) {
-  bitstream stream;
-  memset(&stream, 0, sizeof(bitstream));
+dg_bitstream FUN_ATTRIBUTE dg_bitstream_create(void *data, size_t size) {
+  dg_bitstream stream;
+  memset(&stream, 0, sizeof(dg_bitstream));
   stream.data = data;
   stream.bitsize = size;
   stream.bitoffset = 0;
@@ -70,7 +70,7 @@ bitstream FUN_ATTRIBUTE demogobbler_bitstream_create(void *data, size_t size) {
   return stream;
 }
 
-void FUN_ATTRIBUTE demogobbler_bitstream_advance(bitstream *thisptr, unsigned int bits) {
+void FUN_ATTRIBUTE dg_bitstream_advance(dg_bitstream *thisptr, unsigned int bits) {
   thisptr->bitoffset += bits;
   thisptr->buffered >>= bits;
 
@@ -80,20 +80,21 @@ void FUN_ATTRIBUTE demogobbler_bitstream_advance(bitstream *thisptr, unsigned in
   }
 }
 
-bitstream FUN_ATTRIBUTE demogobbler_bitstream_fork_and_advance(bitstream *stream, unsigned int bits) {
-  bitstream output;
+dg_bitstream FUN_ATTRIBUTE dg_bitstream_fork_and_advance(dg_bitstream *stream, unsigned int bits) {
+  dg_bitstream output;
 
   memset(&output, 0, sizeof(output));
   output.bitoffset = stream->bitoffset;
   output.bitsize = stream->bitoffset + bits;
   output.data = stream->data;
   output.overflow = stream->overflow;
-  demogobbler_bitstream_advance(stream, bits);
+  dg_bitstream_advance(stream, bits);
 
   return output;
 }
 
-static inline uint64_t FUN_ATTRIBUTE read_ubit_slow(bitstream *thisptr, unsigned requested_bits) {
+static inline uint64_t FUN_ATTRIBUTE read_ubit_slow(dg_bitstream *thisptr,
+                                                    unsigned requested_bits) {
   if (thisptr->overflow) {
     return 0;
   }
@@ -135,8 +136,9 @@ static inline uint64_t FUN_ATTRIBUTE read_ubit_slow(bitstream *thisptr, unsigned
   return rval;
 }
 
-static inline uint64_t FUN_ATTRIBUTE NO_ASAN read_ubit(bitstream *thisptr, unsigned requested_bits) {
-  if(requested_bits > 56 || thisptr->overflow) {
+static inline uint64_t FUN_ATTRIBUTE NO_ASAN read_ubit(dg_bitstream *thisptr,
+                                                       unsigned requested_bits) {
+  if (requested_bits > 56 || thisptr->overflow) {
     return read_ubit_slow(thisptr, requested_bits);
   }
 
@@ -150,7 +152,7 @@ static inline uint64_t FUN_ATTRIBUTE NO_ASAN read_ubit(bitstream *thisptr, unsig
   thisptr->bitoffset += requested_bits;
   thisptr->buffered >>= requested_bits;
 
-  if(thisptr->bitoffset <= thisptr->bitsize) {
+  if (thisptr->bitoffset <= thisptr->bitsize) {
     return rval;
   } else {
     thisptr->overflow = true;
@@ -158,17 +160,18 @@ static inline uint64_t FUN_ATTRIBUTE NO_ASAN read_ubit(bitstream *thisptr, unsig
   }
 }
 
-void FUN_ATTRIBUTE demogobbler_bitstream_read_fixed_string(bitstream *thisptr, void *_dest, size_t bytes) {
+void FUN_ATTRIBUTE dg_bitstream_read_fixed_string(dg_bitstream *thisptr, void *_dest,
+                                                  size_t bytes) {
   uint8_t *dest = (uint8_t *)_dest;
 
   for (size_t i = 0; i < bytes; ++i) {
     uint8_t val = read_ubit(thisptr, 8);
-    if(dest)
+    if (dest)
       dest[i] = val;
   }
 }
 
-bool FUN_ATTRIBUTE NO_ASAN demogobbler_bitstream_read_bit(bitstream *thisptr) {
+bool FUN_ATTRIBUTE NO_ASAN dg_bitstream_read_bit(dg_bitstream *thisptr) {
   if (thisptr->overflow || thisptr->bitoffset >= thisptr->bitsize) {
     thisptr->overflow = true;
     return false;
@@ -183,28 +186,29 @@ bool FUN_ATTRIBUTE NO_ASAN demogobbler_bitstream_read_bit(bitstream *thisptr) {
   return *ptr & MASKS[offset_alignment];
 }
 
-uint64_t FUN_ATTRIBUTE demogobbler_bitstream_read_uint(bitstream *thisptr, unsigned int bits) {
+uint64_t FUN_ATTRIBUTE dg_bitstream_read_uint(dg_bitstream *thisptr, unsigned int bits) {
   return read_ubit(thisptr, bits);
 }
 
-int64_t FUN_ATTRIBUTE demogobbler_bitstream_read_sint(bitstream *thisptr, unsigned int bits) {
-  int64_t n_ret = demogobbler_bitstream_read_uint(thisptr, bits);
+int64_t FUN_ATTRIBUTE dg_bitstream_read_sint(dg_bitstream *thisptr, unsigned int bits) {
+  int64_t n_ret = dg_bitstream_read_uint(thisptr, bits);
   // Sign magic
   return (n_ret << (64 - bits)) >> (64 - bits);
 }
 
-float FUN_ATTRIBUTE demogobbler_bitstream_read_float(bitstream *thisptr) {
+float FUN_ATTRIBUTE dg_bitstream_read_float(dg_bitstream *thisptr) {
   union result {
     uint32_t uint;
     float res;
   };
 
   union result out;
-  out.uint = demogobbler_bitstream_read_uint32(thisptr);
+  out.uint = dg_bitstream_read_uint32(thisptr);
   return out.res;
 }
 
-size_t FUN_ATTRIBUTE demogobbler_bitstream_read_cstring(bitstream *thisptr, char *dest, size_t max_bytes) {
+size_t FUN_ATTRIBUTE dg_bitstream_read_cstring(dg_bitstream *thisptr, char *dest,
+                                               size_t max_bytes) {
   size_t i;
   bool overflow = true;
   for (i = 0; i < max_bytes; ++i) {
@@ -219,15 +223,16 @@ size_t FUN_ATTRIBUTE demogobbler_bitstream_read_cstring(bitstream *thisptr, char
     }
   }
 
-  if(overflow) {
+  if (overflow) {
     thisptr->overflow = true;
   }
 
   return i;
 }
 
-bitangle_vector FUN_ATTRIBUTE demogobbler_bitstream_read_bitvector(bitstream *thisptr, unsigned int bits) {
-  bitangle_vector out;
+dg_bitangle_vector FUN_ATTRIBUTE dg_bitstream_read_bitvector(dg_bitstream *thisptr,
+                                                             unsigned int bits) {
+  dg_bitangle_vector out;
   out.x = bitstream_read_uint(thisptr, bits);
   out.y = bitstream_read_uint(thisptr, bits);
   out.z = bitstream_read_uint(thisptr, bits);
@@ -235,31 +240,31 @@ bitangle_vector FUN_ATTRIBUTE demogobbler_bitstream_read_bitvector(bitstream *th
   return out;
 }
 
-bitcoord_vector FUN_ATTRIBUTE demogobbler_bitstream_read_coordvector(bitstream *thisptr) {
-  bitcoord_vector out;
+dg_bitcoord_vector FUN_ATTRIBUTE dg_bitstream_read_coordvector(dg_bitstream *thisptr) {
+  dg_bitcoord_vector out;
   memset(&out, 0, sizeof(out));
   out.x.exists = bitstream_read_uint(thisptr, 1);
   out.y.exists = bitstream_read_uint(thisptr, 1);
   out.z.exists = bitstream_read_uint(thisptr, 1);
 
   if (out.x.exists)
-    out.x = demogobbler_bitstream_read_bitcoord(thisptr);
+    out.x = dg_bitstream_read_bitcoord(thisptr);
   if (out.y.exists)
-    out.y = demogobbler_bitstream_read_bitcoord(thisptr);
+    out.y = dg_bitstream_read_bitcoord(thisptr);
   if (out.z.exists)
-    out.z = demogobbler_bitstream_read_bitcoord(thisptr);
+    out.z = dg_bitstream_read_bitcoord(thisptr);
   return out;
 }
 
-bitcoord FUN_ATTRIBUTE demogobbler_bitstream_read_bitcoord(bitstream *thisptr) {
+dg_bitcoord FUN_ATTRIBUTE dg_bitstream_read_bitcoord(dg_bitstream *thisptr) {
 #if 1
-  bitcoord out;
+  dg_bitcoord out;
   memset(&out, 0, sizeof(out));
   out.exists = true;
 
   const uint32_t bits = COORD_INTEGER_BITS + COORD_FRACTIONAL_BITS + 3;
   unsigned int bits_left = buffered_bits(thisptr);
-  if(bits > bits_left) {
+  if (bits > bits_left) {
     fetch_ubit(thisptr);
   }
 
@@ -274,13 +279,13 @@ bitcoord FUN_ATTRIBUTE demogobbler_bitstream_read_bitcoord(bitstream *thisptr) {
     val >>= 3;
     bits_used = 3;
 
-    if(out.has_int) {
+    if (out.has_int) {
       const unsigned mask = ((1 << COORD_INTEGER_BITS) - 1);
       out.int_value = val & mask;
       val >>= COORD_INTEGER_BITS;
       bits_used += COORD_INTEGER_BITS;
     }
-    if(out.has_frac) {
+    if (out.has_frac) {
       const unsigned mask = ((1 << COORD_FRACTIONAL_BITS) - 1);
       out.frac_value = val & mask;
       bits_used += COORD_FRACTIONAL_BITS;
@@ -292,32 +297,32 @@ bitcoord FUN_ATTRIBUTE demogobbler_bitstream_read_bitcoord(bitstream *thisptr) {
   return out;
 #else
   // Old slow code
-  bitcoord out;
+  dg_bitcoord out;
   memset(&out, 0, sizeof(out));
   out.exists = true;
-  out.has_int = demogobbler_bitstream_read_uint(thisptr, 1);
-  out.has_frac = demogobbler_bitstream_read_uint(thisptr, 1);
+  out.has_int = dg_bitstream_read_uint(thisptr, 1);
+  out.has_frac = dg_bitstream_read_uint(thisptr, 1);
 
   if (out.has_int || out.has_frac) {
-    out.sign = demogobbler_bitstream_read_uint(thisptr, 1);
+    out.sign = dg_bitstream_read_uint(thisptr, 1);
     if (out.has_int)
-      out.int_value = demogobbler_bitstream_read_uint(thisptr, COORD_INTEGER_BITS);
+      out.int_value = dg_bitstream_read_uint(thisptr, COORD_INTEGER_BITS);
     if (out.has_frac)
-      out.frac_value = demogobbler_bitstream_read_uint(thisptr, COORD_FRACTIONAL_BITS);
+      out.frac_value = dg_bitstream_read_uint(thisptr, COORD_FRACTIONAL_BITS);
   }
 
   return out;
 #endif
 }
 
-uint32_t FUN_ATTRIBUTE demogobbler_bitstream_read_uint32(bitstream *thisptr) {
-  return demogobbler_bitstream_read_uint(thisptr, 32);
+uint32_t FUN_ATTRIBUTE dg_bitstream_read_uint32(dg_bitstream *thisptr) {
+  return dg_bitstream_read_uint(thisptr, 32);
 }
 
-uint32_t FUN_ATTRIBUTE demogobbler_bitstream_read_varuint32(bitstream *thisptr) {
+uint32_t FUN_ATTRIBUTE dg_bitstream_read_varuint32(dg_bitstream *thisptr) {
   uint32_t result = 0;
   for (int i = 0; i < 5; i++) {
-    uint32_t b = demogobbler_bitstream_read_uint(thisptr, 8);
+    uint32_t b = dg_bitstream_read_uint(thisptr, 8);
     result |= (b & 0x7F) << (7 * i);
     if ((b & 0x80) == 0)
       break;
@@ -325,11 +330,11 @@ uint32_t FUN_ATTRIBUTE demogobbler_bitstream_read_varuint32(bitstream *thisptr) 
   return result;
 }
 
-int32_t FUN_ATTRIBUTE demogobbler_bitstream_read_sint32(bitstream *thisptr) {
-  return demogobbler_bitstream_read_sint(thisptr, 32);
+int32_t FUN_ATTRIBUTE dg_bitstream_read_sint32(dg_bitstream *thisptr) {
+  return dg_bitstream_read_sint(thisptr, 32);
 }
 
-uint32_t FUN_ATTRIBUTE demogobbler_bitstream_read_ubitint(bitstream *thisptr) {
+uint32_t FUN_ATTRIBUTE dg_bitstream_read_ubitint(dg_bitstream *thisptr) {
   uint32_t ret = bitstream_read_uint(thisptr, 4);
   uint32_t num = bitstream_read_uint(thisptr, 2);
   uint32_t add = 0;
@@ -351,25 +356,18 @@ uint32_t FUN_ATTRIBUTE demogobbler_bitstream_read_ubitint(bitstream *thisptr) {
   return ret | (add << 4);
 }
 
-uint32_t FUN_ATTRIBUTE demogobbler_bitstream_read_ubitvar(bitstream* thisptr) {
+uint32_t FUN_ATTRIBUTE dg_bitstream_read_ubitvar(dg_bitstream *thisptr) {
 #if 1
-  if(thisptr->overflow)
+  if (thisptr->overflow)
     return 0;
 
-  if(buffered_bits(thisptr) < 34) {
+  if (buffered_bits(thisptr) < 34) {
     fetch_ubit(thisptr);
   }
 
-  const unsigned int masks[] = {
-    (1 << 4) - 1,
-    (1 << 8) - 1,
-    (1 << 12) - 1,
-    UINT32_MAX
-  };
+  const unsigned int masks[] = {(1 << 4) - 1, (1 << 8) - 1, (1 << 12) - 1, UINT32_MAX};
 
-  const unsigned int bits_per_sel[] = {
-    6, 10, 14, 34
-  };
+  const unsigned int bits_per_sel[] = {6, 10, 14, 34};
 
   uint64_t val = thisptr->buffered;
   uint32_t sel = val & 0x3;
@@ -382,27 +380,27 @@ uint32_t FUN_ATTRIBUTE demogobbler_bitstream_read_ubitvar(bitstream* thisptr) {
 #else
   uint32_t sel = bitstream_read_uint(thisptr, 2);
 
-  switch(sel) {
-    case 0:
-      return bitstream_read_uint(thisptr, 4);
-    case 1:
-      return bitstream_read_uint(thisptr, 8);
-    case 2:
-      return bitstream_read_uint(thisptr, 12);
-    default:
-      return bitstream_read_uint(thisptr, 32);
+  switch (sel) {
+  case 0:
+    return bitstream_read_uint(thisptr, 4);
+  case 1:
+    return bitstream_read_uint(thisptr, 8);
+  case 2:
+    return bitstream_read_uint(thisptr, 12);
+  default:
+    return bitstream_read_uint(thisptr, 32);
   }
 #endif
 }
 
-demogobbler_bitcellcoord FUN_ATTRIBUTE demogobbler_bitstream_read_bitcellcoord(bitstream *thisptr, bool is_int,
-                                                                bool lp, unsigned bits) {
-  demogobbler_bitcellcoord output;
+dg_bitcellcoord FUN_ATTRIBUTE dg_bitstream_read_bitcellcoord(dg_bitstream *thisptr, bool is_int,
+                                                             bool lp, unsigned bits) {
+  dg_bitcellcoord output;
   memset(&output, 0, sizeof(output));
   output.int_val = bitstream_read_uint(thisptr, bits);
 
-  if(!is_int) {
-    if(lp) {
+  if (!is_int) {
+    if (lp) {
       output.fract_val = bitstream_read_uint(thisptr, FRAC_BITS_LP);
     } else {
       output.fract_val = bitstream_read_uint(thisptr, FRAC_BITS);
@@ -412,9 +410,9 @@ demogobbler_bitcellcoord FUN_ATTRIBUTE demogobbler_bitstream_read_bitcellcoord(b
   return output;
 }
 
-demogobbler_bitcoordmp FUN_ATTRIBUTE demogobbler_bitstream_read_bitcoordmp(bitstream *thisptr, bool is_int,
-                                                             bool lp) {
-  demogobbler_bitcoordmp output;
+dg_bitcoordmp FUN_ATTRIBUTE dg_bitstream_read_bitcoordmp(dg_bitstream *thisptr, bool is_int,
+                                                         bool lp) {
+  dg_bitcoordmp output;
   memset(&output, 0, sizeof(output));
   output.inbounds = bitstream_read_bit(thisptr);
   if (is_int) {
@@ -440,7 +438,7 @@ demogobbler_bitcoordmp FUN_ATTRIBUTE demogobbler_bitstream_read_bitcoordmp(bitst
       }
     }
 
-    if(lp) {
+    if (lp) {
       output.frac_val = bitstream_read_uint(thisptr, FRAC_BITS_LP);
     } else {
       output.frac_val = bitstream_read_uint(thisptr, FRAC_BITS);
@@ -450,8 +448,8 @@ demogobbler_bitcoordmp FUN_ATTRIBUTE demogobbler_bitstream_read_bitcoordmp(bitst
   return output;
 }
 
-demogobbler_bitnormal FUN_ATTRIBUTE demogobbler_bitstream_read_bitnormal(bitstream *thisptr) {
-  demogobbler_bitnormal output;
+dg_bitnormal FUN_ATTRIBUTE dg_bitstream_read_bitnormal(dg_bitstream *thisptr) {
+  dg_bitnormal output;
   memset(&output, 0, sizeof(output));
   const size_t frac_bits = 11;
   output.sign = bitstream_read_bit(thisptr);
@@ -460,36 +458,36 @@ demogobbler_bitnormal FUN_ATTRIBUTE demogobbler_bitstream_read_bitnormal(bitstre
   return output;
 }
 
-int32_t FUN_ATTRIBUTE demogobbler_bitstream_read_field_index(bitstream *thisptr, int32_t last_index, bool new_way) {
-  if(new_way && bitstream_read_bit(thisptr))
+int32_t FUN_ATTRIBUTE dg_bitstream_read_field_index(dg_bitstream *thisptr, int32_t last_index,
+                                                    bool new_way) {
+  if (new_way && bitstream_read_bit(thisptr))
     return last_index + 1;
-  
+
   int32_t ret;
 
-  if(new_way && bitstream_read_bit(thisptr)) {
+  if (new_way && bitstream_read_bit(thisptr)) {
     ret = bitstream_read_uint(thisptr, 3);
   } else {
     ret = bitstream_read_uint(thisptr, 5);
     uint32_t sw = bitstream_read_uint(thisptr, 2);
 
-    switch(sw) {
-      case 1:
-        ret |= bitstream_read_uint(thisptr, 2) << 5;
-        break;
-      case 2:
-        ret |= bitstream_read_uint(thisptr, 4) << 5;
-        break;
-      case 3:
-        ret |= bitstream_read_uint(thisptr, 7) << 5;
-        break;
-      default:
-        break;
+    switch (sw) {
+    case 1:
+      ret |= bitstream_read_uint(thisptr, 2) << 5;
+      break;
+    case 2:
+      ret |= bitstream_read_uint(thisptr, 4) << 5;
+      break;
+    case 3:
+      ret |= bitstream_read_uint(thisptr, 7) << 5;
+      break;
+    default:
+      break;
     }
   }
 
-  if(ret == 0xFFF)
+  if (ret == 0xFFF)
     return -1;
-  
+
   return last_index + 1 + ret;
 }
-

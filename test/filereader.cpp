@@ -45,15 +45,15 @@ void read_data_filereader(void *ptr, std::size_t size, const char *filepath) {
 TEST_F(FileReaderTest, readdata_works) {
   char BUFFER[1024];
   strcpy(BUFFER, "This is a test");
-  write_data_fstream(BUFFER, 1024, "./tmp/demogobbler_test.bin");
+  write_data_fstream(BUFFER, 1024, "./tmp/dg_test.bin");
 
   char INPUT_BUFFER[1024];
-  read_data_filereader(INPUT_BUFFER, 1024, "./tmp/demogobbler_test.bin");
+  read_data_filereader(INPUT_BUFFER, 1024, "./tmp/dg_test.bin");
   EXPECT_EQ(strcmp(INPUT_BUFFER, BUFFER), 0);
 }
 
 TEST_F(FileReaderTest, readint32_works) {
-  auto filepath = "./tmp/demogobbler_test.bin";
+  auto filepath = "./tmp/dg_test.bin";
   const int count = 1000;
   write_data_ints(count, filepath);
 
@@ -74,7 +74,7 @@ TEST_F(FileReaderTest, readint32_works) {
 }
 
 TEST_F(FileReaderTest, skipbytes_works) {
-  auto filepath = "./tmp/demogobbler_test.bin";
+  auto filepath = "./tmp/dg_test.bin";
   const int count = 1000;
   write_data_ints(count, filepath);
 
@@ -96,7 +96,7 @@ TEST_F(FileReaderTest, skipbytes_works) {
 }
 
 TEST_F(FileReaderTest, skipto_works) {
-  auto filepath = "./tmp/demogobbler_test.bin";
+  auto filepath = "./tmp/dg_test.bin";
   const int count = 10000;
   write_data_ints(count, filepath);
 

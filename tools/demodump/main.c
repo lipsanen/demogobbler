@@ -41,9 +41,9 @@ void print_customdata(parser_state *a, demogobbler_customdata *message) {
 void print_packet_orig(parser_state *a, demogobbler_packet *message) {
   dump_state *state = a->client_state;
   if (message->preamble.type == demogobbler_type_signon) {
-    printf("Signon: Tick %d, Slot %d\n", message->preamble.tick, message->preamble.slot);
+    printf("Signon: Tick %d, Slot %d, SizeBytes %d\n", message->preamble.tick, message->preamble.slot, message->size_bytes);
   } else {
-    printf("Packet: Tick %d, Slot %d\n", message->preamble.tick, message->preamble.slot);
+    printf("Packet: Tick %d, Slot %d, SizeBytes %d\n", message->preamble.tick, message->preamble.slot, message->size_bytes);
   }
 
   for (int i = 0; i < state->version_data.cmdinfo_size; ++i) {
@@ -74,7 +74,7 @@ void print_packet(parser_state *a, packet_parsed *message) {
     packet_net_message *netmsg = message->messages + i;
     if(netmsg->mtype == svc_create_stringtable) {
       struct demogobbler_svc_create_stringtable msg = netmsg->message_svc_create_stringtable;
-      printf("\tsvc_create_stringtable %s, %u entries", msg.name, msg.num_entries);
+      printf("\tsvc_create_stringtable %s, %u entries\n", msg.name, msg.num_entries);
     } else if(netmsg->mtype == svc_serverinfo) {
       struct demogobbler_svc_serverinfo* msg = netmsg->message_svc_serverinfo;
       printf("\tsvc_serverinfo\n");
@@ -153,7 +153,7 @@ void print_packet(parser_state *a, packet_parsed *message) {
 
 void print_stringtables_parsed(parser_state *a, demogobbler_stringtables_parsed *message) {
   uint64_t hash = XXH64(message->orig.data, message->orig.size_bytes, 0);
-  printf("Stringtables: Tick %d, Slot %d, Hash 0x%lx\n", message->orig.preamble.tick, message->orig.preamble.slot, hash);
+  printf("Stringtables: Tick %d, Slot %d, Hash 0x%lx, SizeBytes %d\n", message->orig.preamble.tick, message->orig.preamble.slot, hash, message->orig.size_bytes);
 
   for(size_t i=0; i < message->tables_count; ++i) {
     stringtable* table = message->tables + i;
@@ -296,7 +296,7 @@ void print_prop(demogobbler_sendprop *prop) {
 
 void print_datatables_parsed(parser_state *a, demogobbler_datatables_parsed *message) {
   uint64_t hash = XXH64(message->_raw_buffer, message->_raw_buffer_bytes, 0);
-  printf("Datatables: Tick %d, Slot %d, Hash 0x%lx\n", message->preamble.tick, message->preamble.slot, hash);
+  printf("Datatables: Tick %d, Slot %d, Hash 0x%lx SizeBytes %lu\n", message->preamble.tick, message->preamble.slot, hash, message->_raw_buffer_bytes);
 
   for (size_t i = 0; i < message->sendtable_count; ++i) {
     demogobbler_sendtable *table = message->sendtables + i;

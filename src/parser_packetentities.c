@@ -1,5 +1,6 @@
 #include "parser_packetentities.h"
 #include "arena.h"
+#include "demogobbler.h"
 #include "demogobbler/bitstream.h"
 #include "demogobbler/bitwriter.h"
 #include "demogobbler/entity_types.h"
@@ -9,7 +10,7 @@
 #include <string.h>
 
 #ifdef DEBUG_BREAK_PROP
-int CURRENT_DEBUG_INDEX = 0;
+int DG_CURRENT_DEBUG_INDEX = 0;
 static int BREAK_INDEX = 20;
 #endif
 
@@ -212,11 +213,11 @@ static void write_prop(bitwriter *thisptr, prop_value value) {
 
 static prop_value read_prop(prop_parse_state *state, dg_sendprop *prop) {
 #ifdef DEBUG_BREAK_PROP
-  ++CURRENT_DEBUG_INDEX;
+  ++DG_CURRENT_DEBUG_INDEX;
 #endif
 
 #ifdef DEBUG_BREAK_PROP
-  if (BREAK_INDEX == CURRENT_DEBUG_INDEX) {
+  if (BREAK_INDEX == DG_CURRENT_DEBUG_INDEX) {
     ; // Set a breakpoint here
   }
 #endif
@@ -549,7 +550,7 @@ end:;
 
   if (thisptr->error) {
 #ifdef DEBUG_BREAK_PROP
-    printf("Failed at %d, %u / %u bits parsed, error %s\n", CURRENT_DEBUG_INDEX,
+    printf("Failed at %d, %u / %u bits parsed, error %s\n", DG_CURRENT_DEBUG_INDEX,
            stream.bitoffset - message->data.bitoffset, message->data_length,
            thisptr->error_message);
 #endif

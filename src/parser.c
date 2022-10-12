@@ -30,15 +30,36 @@ void _parse_customdata(dg_parser *thisptr);
 void _parse_datatables(dg_parser *thisptr);
 void _parse_packet(dg_parser *thisptr, enum dg_type type);
 void _parse_stop(dg_parser *thisptr);
-void _parse_stringtables(dg_parser *thisptr, int32_t type);
+void _parse_stringtables(dg_parser *thisptr, enum dg_type type);
 void _parse_synctick(dg_parser *thisptr);
 void _parse_usercmd(dg_parser *thisptr);
 bool _parse_anymessage(dg_parser *thisptr);
+
+static void init_parsing_funcs(dg_parser *thisptr) {
+  if (thisptr->_parser_funcs.parse_consolecmd == NULL)
+    thisptr->_parser_funcs.parse_consolecmd = _parse_consolecmd;
+  if (thisptr->_parser_funcs.parse_customdata == NULL)
+    thisptr->_parser_funcs.parse_customdata = _parse_customdata;
+  if (thisptr->_parser_funcs.parse_datatables == NULL)
+    thisptr->_parser_funcs.parse_datatables = _parse_datatables;
+  if (thisptr->_parser_funcs.parse_packet == NULL)
+    thisptr->_parser_funcs.parse_packet = _parse_packet;
+  if (thisptr->_parser_funcs.parse_stop == NULL)
+    thisptr->_parser_funcs.parse_stop = _parse_stop;
+  if (thisptr->_parser_funcs.parse_stringtables == NULL)
+    thisptr->_parser_funcs.parse_stringtables = _parse_stringtables;
+  if (thisptr->_parser_funcs.parse_synctick == NULL)
+    thisptr->_parser_funcs.parse_synctick = _parse_synctick;
+  if (thisptr->_parser_funcs.parse_usercmd == NULL)
+    thisptr->_parser_funcs.parse_usercmd = _parse_usercmd;
+}
 
 void dg_parser_init(dg_parser *thisptr, dg_settings *settings) {
   memset(thisptr, 0, sizeof(*thisptr));
   thisptr->state.client_state = settings->client_state;
   thisptr->m_settings = *settings;
+  thisptr->_parser_funcs = settings->funcs;
+  init_parsing_funcs(thisptr);
 
   const size_t INITIAL_SIZE = 1 << 17;
   const size_t INITIAL_TEMP_SIZE = 1 << 17;
@@ -114,35 +135,35 @@ bool _parse_anymessage(dg_parser *thisptr) {
 
   switch (type) {
   case dg_type_consolecmd:
-    _parse_consolecmd(thisptr);
+    thisptr->_parser_funcs.parse_consolecmd(thisptr);
     break;
   case dg_type_datatables:
-    _parse_datatables(thisptr);
+    thisptr->_parser_funcs.parse_datatables(thisptr);
     break;
   case dg_type_packet:
-    _parse_packet(thisptr, type);
+    thisptr->_parser_funcs.parse_packet(thisptr, type);
     break;
   case dg_type_signon:
-    _parse_packet(thisptr, type);
+    thisptr->_parser_funcs.parse_packet(thisptr, type);
     break;
   case dg_type_stop:
-    _parse_stop(thisptr);
+    thisptr->_parser_funcs.parse_stop(thisptr);
     break;
   case dg_type_synctick:
-    _parse_synctick(thisptr);
+    thisptr->_parser_funcs.parse_synctick(thisptr);
     break;
   case dg_type_usercmd:
-    _parse_usercmd(thisptr);
+    thisptr->_parser_funcs.parse_usercmd(thisptr);
     break;
   case 8:
     if (thisptr->demo_version.demo_protocol < 4) {
-      _parse_stringtables(thisptr, 8);
+      thisptr->_parser_funcs.parse_stringtables(thisptr, 8);
     } else {
-      _parse_customdata(thisptr);
+      thisptr->_parser_funcs.parse_customdata(thisptr);
     }
     break;
   case 9:
-    _parse_stringtables(thisptr, 9);
+    thisptr->_parser_funcs.parse_stringtables(thisptr, 9);
     break;
   default:
     thisptr->error = true;
@@ -163,7 +184,7 @@ static void parser_free_state(dg_parser *thisptr) {
 }
 
 #define PARSE_PREAMBLE()                                                                           \
-  message.preamble.tick = dg_filereader_readint32(thisreader);                                        \
+  message.preamble.tick = dg_filereader_readint32(thisreader);                                     \
   if (thisptr->demo_version.has_slot_in_preamble)                                                  \
     message.preamble.slot = dg_filereader_readbyte(thisreader);
 
@@ -220,7 +241,7 @@ void _parser_mainloop(dg_parser *thisptr) {
 
 #define READ_MESSAGE_DATA()                                                                        \
   {                                                                                                \
-    size_t read_bytes = dg_filereader_readdata(thisreader, block, message.size_bytes);                \
+    size_t read_bytes = dg_filereader_readdata(thisreader, block, message.size_bytes);             \
     if (read_bytes != message.size_bytes) {                                                        \
       thisptr->error = true;                                                                       \
       thisptr->error_message = "Message could not be read fully, reached end of file.";            \
@@ -305,7 +326,7 @@ static void _parse_cmdinfo(dg_parser *thisptr, dg_packet *packet, size_t i) {
       !thisptr->demo_version.l4d2_version_finalized || thisptr->parse_netmessages;
   if (thisptr->m_settings.packet_handler || should_parse_netmessages) {
     dg_filereader_readdata(thisreader, packet->cmdinfo_raw[i].data,
-                        sizeof(packet->cmdinfo_raw[i].data));
+                           sizeof(packet->cmdinfo_raw[i].data));
   } else {
     dg_filereader_skipbytes(thisreader, sizeof(struct dg_cmdinfo_raw));
   }
@@ -372,7 +393,7 @@ void _parse_stop(dg_parser *thisptr) {
   }
 }
 
-void _parse_stringtables(dg_parser *thisptr, int32_t type) {
+void _parse_stringtables(dg_parser *thisptr, enum dg_type type) {
   dg_stringtables message;
   message.preamble.type = type;
   message.preamble.converted_type = dg_type_stringtables;

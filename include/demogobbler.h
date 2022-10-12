@@ -12,52 +12,11 @@ extern "C" {
 #include "demogobbler/io.h"
 #include "demogobbler/packet_netmessages.h"
 #include "demogobbler/packettypes.h"
+#include "demogobbler/parser.h"
 #include "demogobbler/parser_types.h"
 #include "demogobbler/stringtable_types.h"
 #include <stdbool.h>
 #include <stdio.h>
-
-typedef struct dg_parser_state parser_state;
-
-typedef void (*func_dg_consolecmd)(parser_state *state, dg_consolecmd *ptr);
-typedef void (*func_dg_customdata)(parser_state *state, dg_customdata *ptr);
-typedef void (*func_dg_datatables)(parser_state *state, dg_datatables *ptr);
-typedef void (*func_dg_demover)(parser_state *state, dg_demver_data version);
-typedef void (*func_dg_header)(parser_state *state, dg_header *header);
-typedef void (*func_dg_packet)(parser_state *state, dg_packet *ptr);
-typedef void (*func_dg_packet_parsed)(parser_state *state, packet_parsed *ptr);
-typedef void (*func_dg_synctick)(parser_state *state, dg_synctick *ptr);
-typedef void (*func_dg_stop)(parser_state *state, dg_stop *ptr);
-typedef void (*func_dg_stringtables)(parser_state *state, dg_stringtables *header);
-typedef void (*func_dg_stringtables_parsed)(parser_state *state, dg_stringtables_parsed *message);
-typedef void (*func_dg_usercmd)(parser_state *state, dg_usercmd *ptr);
-typedef void (*func_dg_datatables_parsed)(parser_state *state, dg_datatables_parsed *message);
-typedef void (*func_dg_packetentities_parsed)(parser_state *state,
-                                              dg_svc_packetentities_parsed *message);
-typedef void (*func_dg_estate_init)(parser_state *state);
-
-struct dg_settings {
-  func_dg_consolecmd consolecmd_handler;
-  func_dg_customdata customdata_handler;
-  func_dg_datatables datatables_handler;
-  func_dg_datatables_parsed datatables_parsed_handler;
-  func_dg_packetentities_parsed packetentities_parsed_handler;
-  func_dg_demover demo_version_handler;
-  func_dg_estate_init flattened_props_handler; // Called after parsing prop flattening stuff
-  func_dg_header header_handler;
-  func_dg_packet packet_handler;
-  func_dg_packet_parsed packet_parsed_handler;
-  func_dg_synctick synctick_handler;
-  func_dg_stop stop_handler;
-  func_dg_stringtables stringtables_handler;
-  func_dg_stringtables_parsed stringtables_parsed_handler;
-  func_dg_usercmd usercmd_handler;
-  bool store_ents;
-  bool store_props;
-  void *client_state;
-};
-
-typedef struct dg_settings dg_settings;
 
 void dg_settings_init(dg_settings *settings);
 dg_demver_data dg_get_demo_version(dg_header *header);
@@ -105,22 +64,16 @@ void dg_write_usercmd(writer *thisptr, dg_usercmd *message);
 void dg_writer_free(writer *thisptr);
 
 typedef struct {
-  dg_demver_data *version_data;
-  dg_datatables_parsed *message;
-  bool flatten_datatables;
-  bool should_store_props;
-} estate_init_args;
-
-typedef struct {
   dg_arena *memory_arena;
   dg_stringtables *message;
 } stringtable_parse_args;
 
 typedef struct {
-  dg_pes excluded_props;
-  dg_hashtable dts_with_excludes;
-  dg_hashtable dt_hashtable;
-} entity_parse_scrap;
+  dg_demver_data *version_data;
+  dg_datatables_parsed *message;
+  bool flatten_datatables;
+  bool should_store_props;
+} estate_init_args;
 
 dg_datatables_parsed_rval dg_parse_datatables(dg_demver_data *state, dg_arena *a,
                                               dg_datatables *message);

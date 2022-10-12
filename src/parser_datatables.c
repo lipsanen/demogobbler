@@ -1,6 +1,7 @@
 #include "parser_datatables.h"
 #include "alignof_wrapper.h"
 #include "arena.h"
+#include "demogobbler.h"
 #include "demogobbler/bitstream.h"
 #include "demogobbler/bitwriter.h"
 #include "demogobbler/datatable_types.h"

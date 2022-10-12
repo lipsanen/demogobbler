@@ -383,7 +383,7 @@ dg_datatables_parsed_rval dg_parse_datatables(dg_demver_data *version_data,
   return rval;
 }
 
-void parse_datatables(parser *thisptr, dg_datatables *input) {
+void parse_datatables(dg_parser *thisptr, dg_datatables *input) {
   dg_arena *memory_arena;
   bool init_entity_state;
   if (thisptr->state.entity_state.edicts == NULL && thisptr->m_settings.store_ents) {

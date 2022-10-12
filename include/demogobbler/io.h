@@ -16,7 +16,7 @@ struct dg_input_interface {
   dg_input_seek seek;
 };
 
-typedef struct dg_input_interface input_interface;
+typedef struct dg_input_interface dg_input_interface;
 
 // For writing
 typedef size_t (*dg_output_write)(void *stream, const void *src, size_t bytes);

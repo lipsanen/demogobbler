@@ -130,7 +130,7 @@ dg_parse_result dg_parse_stringtables(dg_stringtables_parsed *message,
   return result;
 }
 
-void dg_parser_parse_stringtables(parser *thisptr, dg_stringtables *input) {
+void dg_parser_parse_stringtables(dg_parser *thisptr, dg_stringtables *input) {
   dg_stringtables_parsed out;
   stringtable_parse_args args;
   memset(&out, 0, sizeof(out));

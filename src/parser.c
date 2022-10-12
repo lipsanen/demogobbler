@@ -1,9 +1,9 @@
-#include "parser.h"
+#include "demogobbler/parser.h"
 #include "alignof_wrapper.h"
 #include "arena.h"
 #include "demogobbler.h"
+#include "demogobbler/filereader.h"
 #include "demogobbler/packettypes.h"
-#include "filereader.h"
 #include "hashtable.h"
 #include "parser_datatables.h"
 #include "parser_netmessages.h"
@@ -23,19 +23,19 @@ static_assert(alignof(struct dg_cmdinfo_raw) == 4, "Bad alignment in cmdinfo_raw
 static_assert(alignof(struct dg_cmdinfo_raw) == alignof(dg_cmdinfo),
               "Bad alignment in cmdinfo_raw");
 
-void _parser_mainloop(parser *thisptr);
-void _parse_header(parser *thisptr);
-void _parse_consolecmd(parser *thisptr);
-void _parse_customdata(parser *thisptr);
-void _parse_datatables(parser *thisptr);
-void _parse_packet(parser *thisptr, enum dg_type type);
-void _parse_stop(parser *thisptr);
-void _parse_stringtables(parser *thisptr, int32_t type);
-void _parse_synctick(parser *thisptr);
-void _parse_usercmd(parser *thisptr);
-bool _parse_anymessage(parser *thisptr);
+void _parser_mainloop(dg_parser *thisptr);
+void _parse_header(dg_parser *thisptr);
+void _parse_consolecmd(dg_parser *thisptr);
+void _parse_customdata(dg_parser *thisptr);
+void _parse_datatables(dg_parser *thisptr);
+void _parse_packet(dg_parser *thisptr, enum dg_type type);
+void _parse_stop(dg_parser *thisptr);
+void _parse_stringtables(dg_parser *thisptr, int32_t type);
+void _parse_synctick(dg_parser *thisptr);
+void _parse_usercmd(dg_parser *thisptr);
+bool _parse_anymessage(dg_parser *thisptr);
 
-void parser_init(parser *thisptr, dg_settings *settings) {
+void dg_parser_init(dg_parser *thisptr, dg_settings *settings) {
   memset(thisptr, 0, sizeof(*thisptr));
   thisptr->state.client_state = settings->client_state;
   thisptr->m_settings = *settings;
@@ -47,17 +47,17 @@ void parser_init(parser *thisptr, dg_settings *settings) {
   thisptr->temp_arena = dg_arena_create(INITIAL_TEMP_SIZE);
 }
 
-void parser_parse(parser *thisptr, void *stream, input_interface input) {
+void dg_parser_parse(dg_parser *thisptr, void *stream, dg_input_interface input) {
   if (stream) {
     enum { FILE_BUFFER_SIZE = 1 << 15 };
     uint8_t buffer[FILE_BUFFER_SIZE / sizeof(uint8_t)];
-    filereader_init(thisreader, buffer, sizeof(buffer), stream, input);
+    dg_filereader_init(thisreader, buffer, sizeof(buffer), stream, input);
     _parse_header(thisptr);
     _parser_mainloop(thisptr);
   }
 }
 
-void parser_update_l4d2_version(parser *thisptr, int l4d2_version) {
+void dg_parser_update_l4d2_version(dg_parser *thisptr, int l4d2_version) {
   thisptr->demo_version.l4d2_version = l4d2_version;
   thisptr->demo_version.l4d2_version_finalized = true;
   version_update_build_info(&thisptr->demo_version);
@@ -66,8 +66,8 @@ void parser_update_l4d2_version(parser *thisptr, int l4d2_version) {
   }
 }
 
-size_t _parser_read_length(parser *thisptr) {
-  int32_t result = filereader_readint32(thisreader);
+size_t _parser_read_length(dg_parser *thisptr) {
+  int32_t result = dg_filereader_readint32(thisreader);
   int32_t max_len = 1 << 25; // more than 32 megabytes is probably an error
   if (result < 0 || result > max_len) {
     thisptr->error = true;
@@ -78,20 +78,20 @@ size_t _parser_read_length(parser *thisptr) {
   }
 }
 
-void _parse_header(parser *thisptr) {
+void _parse_header(dg_parser *thisptr) {
   dg_header header;
-  filereader_readdata(thisreader, header.ID, 8);
-  header.demo_protocol = filereader_readint32(thisreader);
-  header.net_protocol = filereader_readint32(thisreader);
+  dg_filereader_readdata(thisreader, header.ID, 8);
+  header.demo_protocol = dg_filereader_readint32(thisreader);
+  header.net_protocol = dg_filereader_readint32(thisreader);
 
-  filereader_readdata(thisreader, header.server_name, 260);
-  filereader_readdata(thisreader, header.client_name, 260);
-  filereader_readdata(thisreader, header.map_name, 260);
-  filereader_readdata(thisreader, header.game_directory, 260);
-  header.seconds = filereader_readfloat(thisreader);
-  header.tick_count = filereader_readint32(thisreader);
-  header.frame_count = filereader_readint32(thisreader);
-  header.signon_length = filereader_readint32(thisreader);
+  dg_filereader_readdata(thisreader, header.server_name, 260);
+  dg_filereader_readdata(thisreader, header.client_name, 260);
+  dg_filereader_readdata(thisreader, header.map_name, 260);
+  dg_filereader_readdata(thisreader, header.game_directory, 260);
+  header.seconds = dg_filereader_readfloat(thisreader);
+  header.tick_count = dg_filereader_readint32(thisreader);
+  header.frame_count = dg_filereader_readint32(thisreader);
+  header.signon_length = dg_filereader_readint32(thisreader);
 
   // Add null terminators if they are missing
   header.ID[7] = header.server_name[259] = header.client_name[259] = header.map_name[259] =
@@ -108,8 +108,8 @@ void _parse_header(parser *thisptr) {
   }
 }
 
-bool _parse_anymessage(parser *thisptr) {
-  uint8_t type = filereader_readbyte(thisreader);
+bool _parse_anymessage(dg_parser *thisptr) {
+  uint8_t type = dg_filereader_readbyte(thisreader);
   dg_arena_clear(&thisptr->temp_arena);
 
   switch (type) {
@@ -154,7 +154,7 @@ bool _parse_anymessage(parser *thisptr) {
          !thisptr->error; // Return false when done parsing demo, or when at eof
 }
 
-static void parser_free_state(parser *thisptr) {
+static void parser_free_state(dg_parser *thisptr) {
   dg_arena_free(&thisptr->temp_arena);
   dg_hashtable_free(&thisptr->ent_scrap.dt_hashtable);
   dg_hashtable_free(&thisptr->ent_scrap.dts_with_excludes);
@@ -163,11 +163,11 @@ static void parser_free_state(parser *thisptr) {
 }
 
 #define PARSE_PREAMBLE()                                                                           \
-  message.preamble.tick = filereader_readint32(thisreader);                                        \
+  message.preamble.tick = dg_filereader_readint32(thisreader);                                        \
   if (thisptr->demo_version.has_slot_in_preamble)                                                  \
-    message.preamble.slot = filereader_readbyte(thisreader);
+    message.preamble.slot = dg_filereader_readbyte(thisreader);
 
-void _parser_mainloop(parser *thisptr) {
+void _parser_mainloop(dg_parser *thisptr) {
   // Add check if the only thing we care about is the header
 
   dg_settings *settings = &thisptr->m_settings;
@@ -220,7 +220,7 @@ void _parser_mainloop(parser *thisptr) {
 
 #define READ_MESSAGE_DATA()                                                                        \
   {                                                                                                \
-    size_t read_bytes = filereader_readdata(thisreader, block, message.size_bytes);                \
+    size_t read_bytes = dg_filereader_readdata(thisreader, block, message.size_bytes);                \
     if (read_bytes != message.size_bytes) {                                                        \
       thisptr->error = true;                                                                       \
       thisptr->error_message = "Message could not be read fully, reached end of file.";            \
@@ -228,7 +228,7 @@ void _parser_mainloop(parser *thisptr) {
     message.data = block;                                                                          \
   }
 
-void _parse_consolecmd(parser *thisptr) {
+void _parse_consolecmd(dg_parser *thisptr) {
   dg_consolecmd message;
   message.preamble.type = message.preamble.converted_type = dg_type_consolecmd;
   PARSE_PREAMBLE();
@@ -246,7 +246,7 @@ void _parse_consolecmd(parser *thisptr) {
       }
 
     } else {
-      filereader_skipbytes(thisreader, message.size_bytes);
+      dg_filereader_skipbytes(thisreader, message.size_bytes);
     }
   } else {
     thisptr->error = true;
@@ -254,12 +254,12 @@ void _parse_consolecmd(parser *thisptr) {
   }
 }
 
-void _parse_customdata(parser *thisptr) {
+void _parse_customdata(dg_parser *thisptr) {
   dg_customdata message;
   message.preamble.type = message.preamble.converted_type = dg_type_customdata;
   PARSE_PREAMBLE();
 
-  message.unknown = filereader_readint32(thisreader);
+  message.unknown = dg_filereader_readint32(thisreader);
   message.size_bytes = _parser_read_length(thisptr);
 
   if (thisptr->m_settings.customdata_handler && message.size_bytes > 0) {
@@ -269,11 +269,11 @@ void _parse_customdata(parser *thisptr) {
       thisptr->m_settings.customdata_handler(&thisptr->state, &message);
     }
   } else {
-    filereader_skipbytes(thisreader, message.size_bytes);
+    dg_filereader_skipbytes(thisreader, message.size_bytes);
   }
 }
 
-void _parse_datatables(parser *thisptr) {
+void _parse_datatables(dg_parser *thisptr) {
   dg_datatables message;
   message.preamble.type = message.preamble.converted_type = dg_type_datatables;
   PARSE_PREAMBLE();
@@ -296,22 +296,22 @@ void _parse_datatables(parser *thisptr) {
         parse_datatables(thisptr, &message);
     }
   } else {
-    filereader_skipbytes(thisreader, message.size_bytes);
+    dg_filereader_skipbytes(thisreader, message.size_bytes);
   }
 }
 
-static void _parse_cmdinfo(parser *thisptr, dg_packet *packet, size_t i) {
+static void _parse_cmdinfo(dg_parser *thisptr, dg_packet *packet, size_t i) {
   bool should_parse_netmessages =
       !thisptr->demo_version.l4d2_version_finalized || thisptr->parse_netmessages;
   if (thisptr->m_settings.packet_handler || should_parse_netmessages) {
-    filereader_readdata(thisreader, packet->cmdinfo_raw[i].data,
+    dg_filereader_readdata(thisreader, packet->cmdinfo_raw[i].data,
                         sizeof(packet->cmdinfo_raw[i].data));
   } else {
-    filereader_skipbytes(thisreader, sizeof(struct dg_cmdinfo_raw));
+    dg_filereader_skipbytes(thisreader, sizeof(struct dg_cmdinfo_raw));
   }
 }
 
-void _parse_packet(parser *thisptr, enum dg_type type) {
+void _parse_packet(dg_parser *thisptr, enum dg_type type) {
   dg_packet message;
   message.preamble.type = message.preamble.converted_type = type;
   PARSE_PREAMBLE();
@@ -323,8 +323,8 @@ void _parse_packet(parser *thisptr, enum dg_type type) {
     _parse_cmdinfo(thisptr, &message, i);
   }
 
-  message.in_sequence = filereader_readint32(thisreader);
-  message.out_sequence = filereader_readint32(thisreader);
+  message.in_sequence = dg_filereader_readint32(thisreader);
+  message.out_sequence = dg_filereader_readint32(thisreader);
   message.size_bytes = _parser_read_length(thisptr);
 
   if ((thisptr->m_settings.packet_handler || should_parse_netmessages) && message.size_bytes > 0) {
@@ -342,11 +342,11 @@ void _parse_packet(parser *thisptr, enum dg_type type) {
     }
 
   } else {
-    filereader_skipbytes(thisreader, message.size_bytes);
+    dg_filereader_skipbytes(thisreader, message.size_bytes);
   }
 }
 
-void _parse_stop(parser *thisptr) {
+void _parse_stop(dg_parser *thisptr) {
 
   if (thisptr->m_settings.stop_handler) {
     dg_stop message;
@@ -362,7 +362,7 @@ void _parse_stop(parser *thisptr) {
       ptr = dg_arena_reallocate(&thisptr->temp_arena, ptr, bytes_reserved, new_reserve_size, 1);
       bytes_reserved = new_reserve_size;
 
-      bytesReadIt = filereader_readdata(thisreader, (uint8_t *)ptr + bytes, bytes_per_read);
+      bytesReadIt = dg_filereader_readdata(thisreader, (uint8_t *)ptr + bytes, bytes_per_read);
       bytes += bytesReadIt;
     } while (bytesReadIt == bytes_per_read);
     message.size_bytes = bytes;
@@ -372,7 +372,7 @@ void _parse_stop(parser *thisptr) {
   }
 }
 
-void _parse_stringtables(parser *thisptr, int32_t type) {
+void _parse_stringtables(dg_parser *thisptr, int32_t type) {
   dg_stringtables message;
   message.preamble.type = type;
   message.preamble.converted_type = dg_type_stringtables;
@@ -392,11 +392,11 @@ void _parse_stringtables(parser *thisptr, int32_t type) {
       }
     }
   } else {
-    filereader_skipbytes(thisreader, message.size_bytes);
+    dg_filereader_skipbytes(thisreader, message.size_bytes);
   }
 }
 
-void _parse_synctick(parser *thisptr) {
+void _parse_synctick(dg_parser *thisptr) {
   dg_synctick message;
   message.preamble.type = message.preamble.converted_type = dg_type_synctick;
   PARSE_PREAMBLE();
@@ -406,13 +406,13 @@ void _parse_synctick(parser *thisptr) {
   }
 }
 
-void _parse_usercmd(parser *thisptr) {
+void _parse_usercmd(dg_parser *thisptr) {
   dg_usercmd message;
   message.preamble.type = message.preamble.converted_type = dg_type_usercmd;
   PARSE_PREAMBLE();
 
-  message.cmd = filereader_readint32(thisreader);
-  message.size_bytes = filereader_readint32(thisreader);
+  message.cmd = dg_filereader_readint32(thisreader);
+  message.size_bytes = dg_filereader_readint32(thisreader);
 
   if (thisptr->m_settings.usercmd_handler) {
     if (message.size_bytes > 0) {
@@ -425,6 +425,6 @@ void _parse_usercmd(parser *thisptr) {
       thisptr->m_settings.usercmd_handler(&thisptr->state, &message);
     }
   } else {
-    filereader_skipbytes(thisreader, message.size_bytes);
+    dg_filereader_skipbytes(thisreader, message.size_bytes);
   }
 }

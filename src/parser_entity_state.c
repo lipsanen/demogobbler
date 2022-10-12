@@ -524,7 +524,7 @@ void dg_estate_free(estate *thisptr) {
   dg_arena_free(&thisptr->memory_arena);
 }
 
-void dg_parser_init_estate(parser *thisptr, dg_datatables_parsed *message) {
+void dg_parser_init_estate(dg_parser *thisptr, dg_datatables_parsed *message) {
   estate_init_args args;
   args.should_store_props = thisptr->m_settings.store_props;
   args.flatten_datatables = thisptr->m_settings.flattened_props_handler != NULL;
@@ -543,7 +543,7 @@ void dg_parser_init_estate(parser *thisptr, dg_datatables_parsed *message) {
   }
 }
 
-dg_serverclass_data *dg_estate_serverclass_data(parser *thisptr, size_t index) {
+dg_serverclass_data *dg_estate_serverclass_data(dg_parser *thisptr, size_t index) {
   estate_init_state state;
   memset(&state, 0, sizeof(state));
   state.args.version_data = &thisptr->demo_version;

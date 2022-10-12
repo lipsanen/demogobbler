@@ -14,7 +14,7 @@ static int BREAK_INDEX = 20;
 #endif
 
 typedef struct {
-  parser *thisptr;
+  dg_parser *thisptr;
   dg_bitstream *stream;
   dg_arena *a;
   dg_ent_update *update;
@@ -264,7 +264,7 @@ static void write_props_prot4(bitwriter *thisptr, struct write_packetentities_ar
 }
 
 static void parse_props_prot4(prop_parse_state *state) {
-  parser *thisptr = state->thisptr;
+  dg_parser *thisptr = state->thisptr;
   dg_bitstream *stream = state->stream;
   dg_serverclass_data *datas = dg_estate_serverclass_data(thisptr, state->update->datatable_id);
   int i = -1;
@@ -303,7 +303,7 @@ static void write_props_old(bitwriter *thisptr, struct write_packetentities_args
 }
 
 static void parse_props_old(prop_parse_state *state) {
-  parser *thisptr = state->thisptr;
+  dg_parser *thisptr = state->thisptr;
   dg_serverclass_data *data = dg_estate_serverclass_data(thisptr, state->update->datatable_id);
   int i = -1;
 
@@ -437,7 +437,7 @@ void dg_bitwriter_write_packetentities(bitwriter *thisptr, struct write_packeten
   }
 }
 
-void dg_parse_packetentities(parser *thisptr, struct dg_svc_packet_entities *message) {
+void dg_parse_packetentities(dg_parser *thisptr, struct dg_svc_packet_entities *message) {
   if (!thisptr->state.entity_state.edicts) {
     thisptr->error = true;
     thisptr->error_message = "Tried to parse packetentities without datatables";

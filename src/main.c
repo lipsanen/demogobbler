@@ -1,18 +1,18 @@
 #include "demogobbler.h"
-#include "parser.h"
+#include "demogobbler/parser.h"
 #include "streams.h"
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 
-dg_parse_result dg_parse(dg_settings *settings, void *stream, input_interface input_interface) {
+dg_parse_result dg_parse(dg_settings *settings, void *stream, dg_input_interface dg_input_interface) {
   dg_parse_result out;
   memset(&out, 0, sizeof(out));
-  parser parser;
-  parser_init(&parser, settings);
-  parser_parse(&parser, stream, input_interface);
-  out.error = parser.error;
-  out.error_message = parser.error_message;
+  dg_parser dg_parser;
+  dg_parser_init(&dg_parser, settings);
+  dg_parser_parse(&dg_parser, stream, dg_input_interface);
+  out.error = dg_parser.error;
+  out.error_message = dg_parser.error_message;
 
   return out;
 }
@@ -23,7 +23,7 @@ dg_parse_result dg_parse_file(dg_settings *settings, const char *filepath) {
   FILE *file = fopen(filepath, "rb");
 
   if (file) {
-    input_interface input;
+    dg_input_interface input;
     input.read = fstream_read;
     input.seek = fstream_seek;
 
@@ -43,7 +43,7 @@ dg_parse_result dg_parse_buffer(dg_settings *settings, void *buffer, size_t size
   memset(&out, 0, sizeof(out));
 
   if (buffer) {
-    input_interface input;
+    dg_input_interface input;
     input.read = buffer_stream_read;
     input.seek = buffer_stream_seek;
 

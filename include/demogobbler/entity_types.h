@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "demogobbler/arena.h"
 #include "demogobbler/floats.h"
 #include <stddef.h>
@@ -160,3 +164,7 @@ struct dg_parser_state {
   const char *error_message;
   bool error;
 };
+
+#ifdef __cplusplus
+}
+#endif

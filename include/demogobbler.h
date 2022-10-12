@@ -71,7 +71,7 @@ typedef struct dg_parse_result dg_parse_result;
 
 dg_parse_result dg_parse_file(dg_settings *settings, const char *filepath);
 dg_parse_result dg_parse_buffer(dg_settings *settings, void *buffer, size_t size);
-dg_parse_result dg_parse(dg_settings *settings, void *stream, input_interface input_interface);
+dg_parse_result dg_parse(dg_settings *settings, void *stream, dg_input_interface dg_input_interface);
 
 struct dg_writer {
   void *_stream;

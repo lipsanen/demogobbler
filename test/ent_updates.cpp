@@ -4,12 +4,12 @@
 #include "gtest/gtest.h"
 
 extern "C" {
-#include "parser.h"
+#include "demogobbler/parser.h"
 #include "parser_packetentities.h"
 }
 
 void handle_packetentities(parser_state *state, dg_svc_packetentities_parsed *parsed) {
-  parser *thisptr = (parser *)((size_t)(state)-offsetof(parser, state)); // dont try this at home
+  dg_parser *thisptr = (dg_parser *)((size_t)(state)-offsetof(dg_parser, state)); // dont try this at home
   bitwriter writer;
   bitwriter_init(&writer, parsed->orig->data_length);
   write_packetentities_args args;

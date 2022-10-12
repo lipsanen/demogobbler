@@ -29,7 +29,7 @@ typedef struct {
   size_t size;
 } blk;
 
-static void handle_net_nop(parser *thisptr, dg_bitstream *stream, packet_net_message *message,
+static void handle_net_nop(dg_parser *thisptr, dg_bitstream *stream, packet_net_message *message,
                            blk *scrap) {
   SEND_MESSAGE();
 }
@@ -37,7 +37,7 @@ static void handle_net_nop(parser *thisptr, dg_bitstream *stream, packet_net_mes
 static void write_net_nop(bitwriter *writer, dg_demver_data *version,
                           packet_net_message *message) {}
 
-static void handle_net_disconnect(parser *thisptr, dg_bitstream *stream,
+static void handle_net_disconnect(dg_parser *thisptr, dg_bitstream *stream,
                                   packet_net_message *message, blk *scrap) {
   struct dg_net_disconnect *ptr = &message->message_net_disconnect;
   COPY_STRING(ptr->text);
@@ -50,7 +50,7 @@ static void write_net_disconnect(bitwriter *writer, dg_demver_data *version,
   bitwriter_write_cstring(writer, ptr->text);
 }
 
-static void handle_net_file(parser *thisptr, dg_bitstream *stream, packet_net_message *message,
+static void handle_net_file(dg_parser *thisptr, dg_bitstream *stream, packet_net_message *message,
                             blk *scrap) {
   struct dg_net_file *ptr = &message->message_net_file;
 
@@ -68,7 +68,7 @@ static void write_net_file(bitwriter *writer, dg_demver_data *version,
   bitwriter_write_uint(writer, ptr->file_requested, version->net_file_bits);
 }
 
-static void handle_net_tick(parser *thisptr, dg_bitstream *stream, packet_net_message *message,
+static void handle_net_tick(dg_parser *thisptr, dg_bitstream *stream, packet_net_message *message,
                             blk *scrap) {
   struct dg_net_tick *ptr = &message->message_net_tick;
   ptr->tick = bitstream_read_uint32(stream);
@@ -90,7 +90,7 @@ static void write_net_tick(bitwriter *writer, dg_demver_data *version,
   }
 }
 
-static void handle_net_stringcmd(parser *thisptr, dg_bitstream *stream, packet_net_message *message,
+static void handle_net_stringcmd(dg_parser *thisptr, dg_bitstream *stream, packet_net_message *message,
                                  blk *scrap) {
   struct dg_net_stringcmd *ptr = &message->message_net_stringcmd;
   COPY_STRING(ptr->command);
@@ -103,7 +103,7 @@ static void write_net_stringcmd(bitwriter *writer, dg_demver_data *version,
   bitwriter_write_cstring(writer, ptr->command);
 }
 
-static void handle_net_setconvar(parser *thisptr, dg_bitstream *stream, packet_net_message *message,
+static void handle_net_setconvar(dg_parser *thisptr, dg_bitstream *stream, packet_net_message *message,
                                  blk *scrap) {
   // Reserve space on stack for maximum amount of convars
   struct dg_net_setconvar *ptr = &message->message_net_setconvar;
@@ -130,7 +130,7 @@ static void write_net_setconvar(bitwriter *writer, dg_demver_data *version,
   }
 }
 
-static void handle_net_signonstate(parser *thisptr, dg_bitstream *stream,
+static void handle_net_signonstate(dg_parser *thisptr, dg_bitstream *stream,
                                    packet_net_message *message, blk *scrap) {
   struct dg_net_signonstate *ptr = &message->message_net_signonstate;
   ptr->signon_state = bitstream_read_uint(stream, 8);
@@ -172,7 +172,7 @@ static void write_net_signonstate(bitwriter *writer, dg_demver_data *version,
   }
 }
 
-static void handle_svc_print(parser *thisptr, dg_bitstream *stream, packet_net_message *message,
+static void handle_svc_print(dg_parser *thisptr, dg_bitstream *stream, packet_net_message *message,
                              blk *scrap) {
   struct dg_svc_print *ptr = &message->message_svc_print;
 
@@ -183,9 +183,9 @@ static void handle_svc_print(parser *thisptr, dg_bitstream *stream, packet_net_m
     get_l4d2_build(ptr->message, &l4d2_build);
 
     if (l4d2_build == 4710) {
-      parser_update_l4d2_version(thisptr, 2091);
+      dg_parser_update_l4d2_version(thisptr, 2091);
     } else if (l4d2_build == 6403) {
-      parser_update_l4d2_version(thisptr, 2147);
+      dg_parser_update_l4d2_version(thisptr, 2147);
     }
   }
 
@@ -198,7 +198,7 @@ static void write_svc_print(bitwriter *writer, dg_demver_data *version,
   bitwriter_write_cstring(writer, ptr->message);
 }
 
-static void handle_svc_serverinfo(parser *thisptr, dg_bitstream *stream,
+static void handle_svc_serverinfo(dg_parser *thisptr, dg_bitstream *stream,
                                   packet_net_message *message, blk *scrap) {
   message->message_svc_serverinfo = dg_arena_allocate(
       &thisptr->temp_arena, sizeof(struct dg_svc_serverinfo), alignof(struct dg_svc_serverinfo));
@@ -294,7 +294,7 @@ static void write_svc_serverinfo(bitwriter *writer, dg_demver_data *version,
     bitwriter_write_bit(writer, ptr->has_replay);
 }
 
-static void handle_svc_sendtable(parser *thisptr, dg_bitstream *stream, packet_net_message *message,
+static void handle_svc_sendtable(dg_parser *thisptr, dg_bitstream *stream, packet_net_message *message,
                                  blk *scrap) {
   struct dg_svc_sendtable *ptr = &message->message_svc_sendtable;
   ptr->needs_decoder = bitstream_read_bit(stream);
@@ -309,7 +309,7 @@ static void write_svc_sendtable(bitwriter *writer, dg_demver_data *version,
   writer->error_message = "Writing not implemented for svc_sendtable";
 }
 
-static void handle_svc_classinfo(parser *thisptr, dg_bitstream *stream, packet_net_message *message,
+static void handle_svc_classinfo(dg_parser *thisptr, dg_bitstream *stream, packet_net_message *message,
                                  blk *scrap) {
   struct dg_svc_classinfo *ptr = &message->message_svc_classinfo;
   ptr->length = bitstream_read_uint(stream, 16);
@@ -347,7 +347,7 @@ static void write_svc_classinfo(bitwriter *writer, dg_demver_data *version,
   }
 }
 
-static void handle_svc_setpause(parser *thisptr, dg_bitstream *stream, packet_net_message *message,
+static void handle_svc_setpause(dg_parser *thisptr, dg_bitstream *stream, packet_net_message *message,
                                 blk *scrap) {
   message->message_svc_setpause.paused = bitstream_read_bit(stream);
   SEND_MESSAGE();
@@ -359,7 +359,7 @@ static void write_svc_setpause(bitwriter *writer, dg_demver_data *version,
   bitwriter_write_bit(writer, ptr->paused);
 }
 
-static void handle_svc_create_stringtable(parser *thisptr, dg_bitstream *stream,
+static void handle_svc_create_stringtable(dg_parser *thisptr, dg_bitstream *stream,
                                           packet_net_message *message, blk *scrap) {
   struct dg_svc_create_stringtable *ptr = &message->message_svc_create_stringtable;
   COPY_STRING(ptr->name);
@@ -423,7 +423,7 @@ static void write_svc_create_stringtable(bitwriter *writer, dg_demver_data *vers
   bitwriter_write_bitstream(writer, &ptr->data);
 }
 
-static void handle_svc_update_stringtable(parser *thisptr, dg_bitstream *stream,
+static void handle_svc_update_stringtable(dg_parser *thisptr, dg_bitstream *stream,
                                           packet_net_message *message, blk *scrap) {
   struct dg_svc_update_stringtable *ptr = &message->message_svc_update_stringtable;
   ptr->table_id =
@@ -463,7 +463,7 @@ static void write_svc_update_stringtable(bitwriter *writer, dg_demver_data *vers
   bitwriter_write_bitstream(writer, &ptr->data);
 }
 
-static void handle_svc_voice_init(parser *thisptr, dg_bitstream *stream,
+static void handle_svc_voice_init(dg_parser *thisptr, dg_bitstream *stream,
                                   packet_net_message *message, blk *scrap) {
   struct dg_svc_voice_init *ptr = &message->message_svc_voice_init;
 
@@ -498,7 +498,7 @@ static void write_svc_voice_init(bitwriter *writer, dg_demver_data *version,
   }
 }
 
-static void handle_svc_voice_data(parser *thisptr, dg_bitstream *stream,
+static void handle_svc_voice_data(dg_parser *thisptr, dg_bitstream *stream,
                                   packet_net_message *message, blk *scrap) {
   struct dg_svc_voice_data *ptr = &message->message_svc_voice_data;
   ptr->client = bitstream_read_uint(stream, 8);
@@ -514,7 +514,7 @@ static void write_svc_voice_data(bitwriter *writer, dg_demver_data *version,
   writer->error_message = "Writing not implemented for svc_voice_data";
 }
 
-static void handle_svc_sounds(parser *thisptr, dg_bitstream *stream, packet_net_message *message,
+static void handle_svc_sounds(dg_parser *thisptr, dg_bitstream *stream, packet_net_message *message,
                               blk *scrap) {
   struct dg_svc_sounds *ptr = &message->message_svc_sounds;
   ptr->reliable_sound = bitstream_read_bit(stream);
@@ -543,7 +543,7 @@ static void write_svc_sounds(bitwriter *writer, dg_demver_data *version,
   bitwriter_write_bitstream(writer, &ptr->data);
 }
 
-static void handle_svc_setview(parser *thisptr, dg_bitstream *stream, packet_net_message *message,
+static void handle_svc_setview(dg_parser *thisptr, dg_bitstream *stream, packet_net_message *message,
                                blk *scrap) {
   struct dg_svc_setview *ptr = &message->message_svc_setview;
   ptr->entity_index = bitstream_read_uint(stream, 11);
@@ -556,7 +556,7 @@ static void write_svc_setview(bitwriter *writer, dg_demver_data *version,
   bitwriter_write_uint(writer, ptr->entity_index, 11);
 }
 
-static void handle_svc_fixangle(parser *thisptr, dg_bitstream *stream, packet_net_message *message,
+static void handle_svc_fixangle(dg_parser *thisptr, dg_bitstream *stream, packet_net_message *message,
                                 blk *scrap) {
   struct dg_svc_fixangle *ptr = &message->message_svc_fixangle;
   ptr->relative = bitstream_read_bit(stream);
@@ -571,7 +571,7 @@ static void write_svc_fixangle(bitwriter *writer, dg_demver_data *version,
   bitwriter_write_bitvector(writer, ptr->angle);
 }
 
-static void handle_svc_crosshair_angle(parser *thisptr, dg_bitstream *stream,
+static void handle_svc_crosshair_angle(dg_parser *thisptr, dg_bitstream *stream,
                                        packet_net_message *message, blk *scrap) {
   struct dg_svc_crosshair_angle *ptr = &message->message_svc_crosshair_angle;
   ptr->angle = bitstream_read_bitvector(stream, 16);
@@ -584,7 +584,7 @@ static void write_svc_crosshair_angle(bitwriter *writer, dg_demver_data *version
   bitwriter_write_bitvector(writer, ptr->angle);
 }
 
-static void handle_svc_bsp_decal(parser *thisptr, dg_bitstream *stream, packet_net_message *message,
+static void handle_svc_bsp_decal(dg_parser *thisptr, dg_bitstream *stream, packet_net_message *message,
                                  blk *scrap) {
   struct dg_svc_bsp_decal *ptr = &message->message_svc_bsp_decal;
   ptr->pos = bitstream_read_coordvector(stream);
@@ -614,7 +614,7 @@ static void write_svc_bsp_decal(bitwriter *writer, dg_demver_data *version,
   bitwriter_write_bit(writer, ptr->lowpriority);
 }
 
-static void handle_svc_user_message(parser *thisptr, dg_bitstream *stream,
+static void handle_svc_user_message(dg_parser *thisptr, dg_bitstream *stream,
                                     packet_net_message *message, blk *scrap) {
   struct dg_svc_user_message *ptr = &message->message_svc_user_message;
   ptr->msg_type = bitstream_read_uint(stream, 8);
@@ -631,7 +631,7 @@ static void write_svc_user_message(bitwriter *writer, dg_demver_data *version,
   bitwriter_write_bitstream(writer, &ptr->data);
 }
 
-static void handle_svc_entity_message(parser *thisptr, dg_bitstream *stream,
+static void handle_svc_entity_message(dg_parser *thisptr, dg_bitstream *stream,
                                       packet_net_message *message, blk *scrap) {
   struct dg_svc_entity_message *ptr = &message->message_svc_entity_message;
   ptr->entity_index = bitstream_read_uint(stream, 11);
@@ -650,7 +650,7 @@ static void write_svc_entity_message(bitwriter *writer, dg_demver_data *version,
   bitwriter_write_bitstream(writer, &ptr->data);
 }
 
-static void handle_svc_game_event(parser *thisptr, dg_bitstream *stream,
+static void handle_svc_game_event(dg_parser *thisptr, dg_bitstream *stream,
                                   packet_net_message *message, blk *scrap) {
   struct dg_svc_game_event *ptr = &message->message_svc_game_event;
   ptr->length = bitstream_read_uint(stream, 11);
@@ -666,7 +666,7 @@ static void write_svc_game_event(bitwriter *writer, dg_demver_data *version,
   bitwriter_write_bitstream(writer, &ptr->data);
 }
 
-static void handle_svc_packet_entities(parser *thisptr, dg_bitstream *stream,
+static void handle_svc_packet_entities(dg_parser *thisptr, dg_bitstream *stream,
                                        packet_net_message *message, blk *scrap) {
   struct dg_svc_packet_entities *ptr = &message->message_svc_packet_entities;
   ptr->max_entries = bitstream_read_uint(stream, 11);
@@ -706,7 +706,7 @@ static void write_svc_packet_entities(bitwriter *writer, dg_demver_data *version
   bitwriter_write_bitstream(writer, &ptr->data);
 }
 
-static void handle_svc_temp_entities(parser *thisptr, dg_bitstream *stream,
+static void handle_svc_temp_entities(dg_parser *thisptr, dg_bitstream *stream,
                                      packet_net_message *message, blk *scrap) {
   struct dg_svc_temp_entities *ptr = &message->message_svc_temp_entities;
   ptr->num_entries = bitstream_read_uint(stream, 8);
@@ -738,7 +738,7 @@ static void write_svc_temp_entities(bitwriter *writer, dg_demver_data *version,
   bitwriter_write_bitstream(writer, &ptr->data);
 }
 
-static void handle_svc_prefetch(parser *thisptr, dg_bitstream *stream, packet_net_message *message,
+static void handle_svc_prefetch(dg_parser *thisptr, dg_bitstream *stream, packet_net_message *message,
                                 blk *scrap) {
   struct dg_svc_prefetch *ptr = &message->message_svc_prefetch;
   ptr->sound_index = bitstream_read_uint(stream, thisptr->demo_version.svc_prefetch_bits);
@@ -751,7 +751,7 @@ static void write_svc_prefetch(bitwriter *writer, dg_demver_data *version,
   bitwriter_write_uint(writer, ptr->sound_index, version->svc_prefetch_bits);
 }
 
-static void handle_svc_menu(parser *thisptr, dg_bitstream *stream, packet_net_message *message,
+static void handle_svc_menu(dg_parser *thisptr, dg_bitstream *stream, packet_net_message *message,
                             blk *scrap) {
   struct dg_svc_menu *ptr = &message->message_svc_menu;
   ptr->menu_type = bitstream_read_uint(stream, 16);
@@ -766,7 +766,7 @@ static void write_svc_menu(bitwriter *writer, dg_demver_data *version,
   writer->error_message = "Writing not implemented for svc_menu";
 }
 
-static void handle_svc_game_event_list(parser *thisptr, dg_bitstream *stream,
+static void handle_svc_game_event_list(dg_parser *thisptr, dg_bitstream *stream,
                                        packet_net_message *message, blk *scrap) {
   struct dg_svc_game_event_list *ptr = &message->message_svc_game_event_list;
   ptr->events = bitstream_read_uint(stream, 9);
@@ -783,7 +783,7 @@ static void write_svc_game_event_list(bitwriter *writer, dg_demver_data *version
   bitwriter_write_bitstream(writer, &ptr->data);
 }
 
-static void handle_svc_get_cvar_value(parser *thisptr, dg_bitstream *stream,
+static void handle_svc_get_cvar_value(dg_parser *thisptr, dg_bitstream *stream,
                                       packet_net_message *message, blk *scrap) {
   struct dg_svc_get_cvar_value *ptr = &message->message_svc_get_cvar_value;
   ptr->cookie = bitstream_read_sint32(stream);
@@ -798,7 +798,7 @@ static void write_svc_get_cvar_value(bitwriter *writer, dg_demver_data *version,
   bitwriter_write_cstring(writer, ptr->cvar_name);
 }
 
-static void handle_net_splitscreen_user(parser *thisptr, dg_bitstream *stream,
+static void handle_net_splitscreen_user(dg_parser *thisptr, dg_bitstream *stream,
                                         packet_net_message *message, blk *scrap) {
   message->message_net_splitscreen_user.unk = bitstream_read_bit(stream);
   SEND_MESSAGE();
@@ -810,7 +810,7 @@ static void write_net_splitscreen_user(bitwriter *writer, dg_demver_data *versio
   writer->error_message = "Writing not implemented for net_splitscreen_user";
 }
 
-static void handle_svc_splitscreen(parser *thisptr, dg_bitstream *stream,
+static void handle_svc_splitscreen(dg_parser *thisptr, dg_bitstream *stream,
                                    packet_net_message *message, blk *scrap) {
   struct dg_svc_splitscreen *ptr = &message->message_svc_splitscreen;
   ptr->remove_user = bitstream_read_bit(stream);
@@ -825,7 +825,7 @@ static void write_svc_splitscreen(bitwriter *writer, dg_demver_data *version,
   writer->error_message = "Writing not implemented for svc_splitscreen";
 }
 
-static void handle_svc_paintmap_data(parser *thisptr, dg_bitstream *stream,
+static void handle_svc_paintmap_data(dg_parser *thisptr, dg_bitstream *stream,
                                      packet_net_message *message, blk *scrap) {
   struct dg_svc_paintmap_data *ptr = &message->message_svc_paintmap_data;
   ptr->data_length = bitstream_read_uint32(stream);
@@ -840,7 +840,7 @@ static void write_svc_paintmap_data(bitwriter *writer, dg_demver_data *version,
   bitwriter_write_bitstream(writer, &ptr->data);
 }
 
-static void handle_svc_cmd_key_values(parser *thisptr, dg_bitstream *stream,
+static void handle_svc_cmd_key_values(dg_parser *thisptr, dg_bitstream *stream,
                                       packet_net_message *message, blk *scrap) {
   struct dg_svc_cmd_key_values *ptr = &message->message_svc_cmd_key_values;
   ptr->data_length = bitstream_read_uint32(stream);
@@ -855,7 +855,7 @@ static void write_svc_cmd_key_values(bitwriter *writer, dg_demver_data *version,
   bitwriter_write_bitstream(writer, &ptr->data);
 }
 
-static net_message_type version_get_message_type(parser *thisptr, unsigned int value) {
+static net_message_type version_get_message_type(dg_parser *thisptr, unsigned int value) {
   net_message_type *list = thisptr->demo_version.netmessage_array;
   size_t count = thisptr->demo_version.netmessage_count;
 
@@ -909,7 +909,7 @@ static dg_vector_array init_netmsg_array(dg_arena *a) {
   return arr;
 }
 
-void parse_netmessages(parser *thisptr, dg_packet *packet) {
+void parse_netmessages(dg_parser *thisptr, dg_packet *packet) {
 #ifdef DEBUG
 #define MAX_HISTORY 256
   net_message_type type_history[MAX_HISTORY];

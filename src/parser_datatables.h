@@ -1,5 +1,5 @@
 #pragma once
 
-#include "parser.h"
+#include "demogobbler/parser.h"
 
-void parse_datatables(parser *thisptr, dg_datatables *input);
+void parse_datatables(dg_parser *thisptr, dg_datatables *input);

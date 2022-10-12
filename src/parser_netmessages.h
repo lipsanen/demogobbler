@@ -1,5 +1,5 @@
 #pragma once
 
-#include "parser.h"
+#include "demogobbler/parser.h"
 
-void parse_netmessages(parser *thisptr, dg_packet *packet);
+void parse_netmessages(dg_parser *thisptr, dg_packet *packet);

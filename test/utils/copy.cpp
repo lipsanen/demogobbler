@@ -63,7 +63,7 @@ void copy_demo_test(const char *filepath) {
     settings.client_state = &w;
     settings.store_props = true;
 
-    input_interface input_funcs = {memory_stream_read, memory_stream_seek};
+    dg_input_interface input_funcs = {memory_stream_read, memory_stream_seek};
 
     auto out = dg_parse(&settings, &input, input_funcs);
     EXPECT_EQ(out.error, false) << out.error_message;

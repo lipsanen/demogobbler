@@ -452,31 +452,84 @@ void handle_version(parser_state *a, dg_demver_data message) {
   state->version_data = message;
 }
 
+void print_help() {
+  printf("Usage: demodump <filepath>\n");
+  printf("\t--filter <string of different filters> - if filter is found within the given string then "
+         "its output is included. By default all outputs are emitted\n");
+  printf("\tFilters: flattened, datatables, consolecmd, customdata, header, packet"
+  "stop, stringtables, synctick, usercmd, packetentities\n");
+}
+
+static bool check_if_enabled(const char* arg, const char* filter) {
+  if(arg == NULL) {
+    return true;
+  } else {
+    return strstr(arg, filter) != NULL;
+  }
+}
+
+void get_settings(const char *arg, dg_settings *settings) {
+  if(check_if_enabled(arg, "flattened"))
+    settings->flattened_props_handler = print_flattened_props;
+  if(check_if_enabled(arg, "datatables"))
+    settings->datatables_parsed_handler = print_datatables_parsed;
+  if(check_if_enabled(arg, "consolecmd"))
+    settings->consolecmd_handler = print_consolecmd;
+  if(check_if_enabled(arg, "customdata"))
+    settings->customdata_handler = print_customdata;
+  if(check_if_enabled(arg, "header"))
+    settings->header_handler = print_header;
+  if(check_if_enabled(arg, "packet"))
+    settings->packet_parsed_handler = print_packet;
+  if(check_if_enabled(arg, "stop"))
+    settings->stop_handler = print_stop;
+  if(check_if_enabled(arg, "stringtables"))
+    settings->stringtables_parsed_handler = print_stringtables_parsed;
+  if(check_if_enabled(arg, "synctick"))
+    settings->synctick_handler = print_synctick;
+  if(check_if_enabled(arg, "usercmd"))
+    settings->usercmd_handler = print_usercmd;
+  if(check_if_enabled(arg, "packetentities"))
+    settings->packetentities_parsed_handler = print_packetentities_parsed;
+}
+
 int main(int argc, char **argv) {
   if (argc <= 1) {
     printf("Usage: demodump <filepath>\n");
     return 0;
   }
 
-  dump_state dump;
-  memset(&dump, 0, sizeof(dump_state));
   dg_settings settings;
   dg_settings_init(&settings);
-  settings.flattened_props_handler = print_flattened_props;
-  settings.datatables_parsed_handler = print_datatables_parsed;
-  settings.store_ents = true;
-  settings.consolecmd_handler = print_consolecmd;
-  settings.customdata_handler = print_customdata;
-  settings.header_handler = print_header;
-  settings.packet_parsed_handler = print_packet;
-  settings.stop_handler = print_stop;
-  settings.stringtables_parsed_handler = print_stringtables_parsed;
-  settings.synctick_handler = print_synctick;
-  settings.usercmd_handler = print_usercmd;
-  settings.packetentities_parsed_handler = print_packetentities_parsed;
+  bool settings_init = false;
+
+  for (int i = 1; i < argc; ++i) {
+    const char *arg = argv[i];
+    if (strcmp(arg, "--help") == 0) {
+      print_help();
+      return 0;
+    }
+    if (strcmp(arg, "--filter") == 0) {
+      if (i == argc - 2) {
+        fprintf(stderr, "No argument provided for --filter\n");
+        return 1;
+      } else {
+        get_settings(argv[i+1], &settings);
+        settings_init = true;
+      }
+    }
+  }
+
+  if(!settings_init) {
+    get_settings(NULL, &settings);
+  }
+
+  const char *filepath = argv[argc - 1];
+  dump_state dump;
+  memset(&dump, 0, sizeof(dump_state));
   settings.client_state = &dump;
 
-  dg_parse_result result = dg_parse_file(&settings, argv[1]);
+  dg_parse_result result = dg_parse_file(&settings, filepath);
 
   if (result.error) {
     printf("%s\n", result.error_message);

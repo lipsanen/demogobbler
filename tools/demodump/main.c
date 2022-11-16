@@ -489,7 +489,7 @@ void get_settings(const char *arg, dg_settings *settings) {
     settings->synctick_handler = print_synctick;
   if(check_if_enabled(arg, "usercmd"))
     settings->usercmd_handler = print_usercmd;
-  if(check_if_enabled(arg, "packetentities"))
+  if(check_if_enabled(arg, "entupdates"))
     settings->packetentities_parsed_handler = print_packetentities_parsed;
 }
 

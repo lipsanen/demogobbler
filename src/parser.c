@@ -207,6 +207,7 @@ void _parser_mainloop(dg_parser *thisptr) {
   NULL_CHECK(synctick);
   NULL_CHECK(stop);
   NULL_CHECK(stringtables);
+  NULL_CHECK(stringtables_parsed);
   NULL_CHECK(usercmd);
 
   if (settings->store_props) {

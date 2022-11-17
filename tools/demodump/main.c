@@ -6,6 +6,19 @@
 #include <stdio.h>
 #include <string.h>
 
+void print_data(const void* data, size_t bytes) {
+  uint8_t* ptr = (uint8_t*)data;
+  printf("uint8_t msg[] = { ");
+  for(size_t i=0; i < bytes; ++i) {
+    if(i == 0) {
+      printf("0x%x", ptr[i]);
+    } else {
+      printf(", 0x%x", ptr[i]);
+    }
+  }
+  printf(" };\n");
+}
+
 void print_header(parser_state *a, dg_header *header) {
   printf("ID: %s\n", header->ID);
   printf("Demo protocol: %d\n", header->demo_protocol);
@@ -22,6 +35,7 @@ void print_header(parser_state *a, dg_header *header) {
 
 struct dump_state {
   dg_demver_data version_data;
+  bool print_raw_data;
 };
 
 typedef struct dump_state dump_state;
@@ -66,6 +80,9 @@ void print_packet_orig(parser_state *a, dg_packet *message) {
   }
 
   printf("In sequence: %d, Out sequence: %d\n", message->in_sequence, message->out_sequence);
+  if(state->print_raw_data) {
+    print_data(message->data, message->size_bytes);
+  }
   printf("Messages:\n");
 }
 
@@ -153,9 +170,15 @@ void print_packet(parser_state *a, packet_parsed *message) {
 }
 
 void print_stringtables_parsed(parser_state *a, dg_stringtables_parsed *message) {
+  dump_state *state = a->client_state;
+
   uint64_t hash = XXH64(message->orig.data, message->orig.size_bytes, 0);
   printf("Stringtables: Tick %d, Slot %d, Hash 0x%lx, SizeBytes %d\n", message->orig.preamble.tick,
          message->orig.preamble.slot, hash, message->orig.size_bytes);
+
+  if(state->print_raw_data) {
+    print_data(message->orig.data, message->orig.size_bytes);
+  }
 
   for (size_t i = 0; i < message->tables_count; ++i) {
     dg_stringtable *table = message->tables + i;
@@ -180,11 +203,23 @@ void print_stringtables_parsed(parser_state *a, dg_stringtables_parsed *message)
   }
 }
 
-void print_stop(parser_state *a, dg_stop *message) { printf("stop:\n"); }
+void print_stop(parser_state *a, dg_stop *message) {
+  dump_state* state = a->client_state;
+  if(state->print_raw_data)
+    print_data(message->data, message->size_bytes);
+  printf("stop:\n");
+}
 
 void print_synctick(parser_state *a, dg_synctick *message) { PRINT_MESSAGE_PREAMBLE(synctick); }
 
-void print_usercmd(parser_state *a, dg_usercmd *message) { PRINT_MESSAGE_PREAMBLE(usercmd); }
+void print_usercmd(parser_state *a, dg_usercmd *message) {
+  dump_state *state = a->client_state;
+  PRINT_MESSAGE_PREAMBLE(usercmd); 
+
+  if(state->print_raw_data) {
+    print_data(message->data, message->size_bytes);
+  }
+}
 
 static const char *message_type_name(dg_sendproptype proptype) {
 
@@ -293,9 +328,14 @@ void print_prop(dg_sendprop *prop) {
 }
 
 void print_datatables_parsed(parser_state *a, dg_datatables_parsed *message) {
+  dump_state* state = a->client_state;
   uint64_t hash = XXH64(message->_raw_buffer, message->_raw_buffer_bytes, 0);
   printf("Datatables: Tick %d, Slot %d, Hash 0x%lx SizeBytes %lu\n", message->preamble.tick,
          message->preamble.slot, hash, message->_raw_buffer_bytes);
+
+  if(state->print_raw_data) {
+    print_data(message->_raw_buffer, message->_raw_buffer_bytes);
+  }
 
   for (size_t i = 0; i < message->sendtable_count; ++i) {
     dg_sendtable *table = message->sendtables + i;
@@ -469,6 +509,7 @@ static bool check_if_enabled(const char* arg, const char* filter) {
 }
 
 void get_settings(const char *arg, dg_settings *settings) {
+  dump_state* state = (dump_state*)settings->client_state;
   if(check_if_enabled(arg, "flattened"))
     settings->flattened_props_handler = print_flattened_props;
   if(check_if_enabled(arg, "datatables"))
@@ -491,6 +532,8 @@ void get_settings(const char *arg, dg_settings *settings) {
     settings->usercmd_handler = print_usercmd;
   if(check_if_enabled(arg, "entupdates"))
     settings->packetentities_parsed_handler = print_packetentities_parsed;
+  if(check_if_enabled(arg, "raw"))
+    state->print_raw_data = true;
 }
 
 int main(int argc, char **argv) {
@@ -501,7 +544,11 @@ int main(int argc, char **argv) {
 
   dg_settings settings;
   dg_settings_init(&settings);
+  dump_state dump;
+  memset(&dump, 0, sizeof(dump_state));
+  settings.client_state = &dump;
   bool settings_init = false;
+
 
   for (int i = 1; i < argc; ++i) {
     const char *arg = argv[i];
@@ -525,9 +572,6 @@ int main(int argc, char **argv) {
   }
 
   const char *filepath = argv[argc - 1];
-  dump_state dump;
-  memset(&dump, 0, sizeof(dump_state));
-  settings.client_state = &dump;
 
   dg_parse_result result = dg_parse_file(&settings, filepath);
 

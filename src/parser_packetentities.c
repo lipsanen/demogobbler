@@ -25,92 +25,121 @@ typedef struct {
   bool new_way;
 } prop_parse_state;
 
-static prop_value read_prop(prop_parse_state *state, dg_sendprop *prop);
-static void write_prop(bitwriter *writer, prop_value value);
+static prop_value read_prop(prop_parse_state *state, dg_sendprop *props, dg_sendprop* prop);
+static void write_prop(bitwriter *writer, dg_prop_value_inner value);
 
-static void write_int(bitwriter *thisptr, prop_value value) {
-  if (value.prop->flag_normal) {
-    bitwriter_write_varuint32(thisptr, value.value.unsigned_val);
-  } else if (value.prop->flag_unsigned) {
-    bitwriter_write_uint(thisptr, value.value.unsigned_val, value.prop->prop_numbits);
+static void write_int(bitwriter *thisptr, dg_prop_value_inner value) {
+  if (value.type == dg_int_varuint32) {
+    bitwriter_write_varuint32(thisptr, value.unsigned_val);
+  } else if (value.type == dg_int_unsigned) {
+    bitwriter_write_uint(thisptr, value.unsigned_val, value.prop_numbits);
   } else {
-    bitwriter_write_sint(thisptr, value.value.signed_val, value.prop->prop_numbits);
+    bitwriter_write_sint(thisptr, value.signed_val, value.prop_numbits);
   }
 }
 
 static void read_int(prop_parse_state *state, dg_sendprop *prop, dg_prop_value_inner *value) {
+  value->prop_numbits = prop->prop_numbits;
   if (prop->flag_normal) {
+    value->type = dg_int_varuint32;
     value->unsigned_val = dg_bitstream_read_varuint32(state->stream);
   } else if (prop->flag_unsigned) {
+    value->type = dg_int_unsigned;
     value->unsigned_val = dg_bitstream_read_uint(state->stream, prop->prop_numbits);
   } else {
+    value->type = dg_int_signed;
     value->signed_val = dg_bitstream_read_sint(state->stream, prop->prop_numbits);
   }
 }
 
-static void write_float(bitwriter *thisptr, dg_sendprop *prop, dg_prop_value_inner value) {
-  if (prop->flag_coord) {
-    bitwriter_write_bitcoord(thisptr, value.bitcoord_val);
-  } else if (prop->flag_coordmp) {
-    dg_bitwriter_write_bitcoordmp(thisptr, value.bitcoordmp_val, false, false);
-  } else if (prop->flag_coordmplp) {
-    dg_bitwriter_write_bitcoordmp(thisptr, value.bitcoordmp_val, false, true);
-  } else if (prop->flag_coordmpint) {
-    dg_bitwriter_write_bitcoordmp(thisptr, value.bitcoordmp_val, true, false);
-  } else if (prop->flag_noscale) {
-    bitwriter_write_float(thisptr, value.float_val);
-  } else if (prop->flag_normal) {
-    dg_bitwriter_write_bitnormal(thisptr, value.bitnormal_val);
-  } else if (prop->flag_cellcoord) {
-    dg_bitwriter_write_bitcellcoord(thisptr, value.bitcellcoord_val, false, false,
-                                    prop->prop_numbits);
-  } else if (prop->flag_cellcoordlp) {
-    dg_bitwriter_write_bitcellcoord(thisptr, value.bitcellcoord_val, false, true,
-                                    prop->prop_numbits);
-  } else if (prop->flag_cellcoordint) {
-    dg_bitwriter_write_bitcellcoord(thisptr, value.bitcellcoord_val, true, false,
-                                    prop->prop_numbits);
-  } else {
-    bitwriter_write_uint(thisptr, value.unsigned_val, prop->prop_numbits);
+static void write_float(bitwriter *thisptr, dg_prop_value_inner value) {
+  switch(value.type)
+  {
+    case dg_float_bitcoord:
+      bitwriter_write_bitcoord(thisptr, value.bitcoord_val);
+      break;
+    case dg_float_bitcoordmp:
+      dg_bitwriter_write_bitcoordmp(thisptr, value.bitcoordmp_val, false, false);
+      break;
+    case dg_float_bitcoordmplp:
+      dg_bitwriter_write_bitcoordmp(thisptr, value.bitcoordmp_val, false, true);
+      break;
+    case dg_float_bitcoordmpint:
+      dg_bitwriter_write_bitcoordmp(thisptr, value.bitcoordmp_val, true, false);
+      break;
+    case dg_float_noscale:
+      bitwriter_write_float(thisptr, value.float_val);
+      break;
+    case dg_float_bitnormal:
+      dg_bitwriter_write_bitnormal(thisptr, value.bitnormal_val);
+      break;
+    case dg_float_bitcellcoord:
+      dg_bitwriter_write_bitcellcoord(thisptr, value.bitcellcoord_val, false, false,
+                                      value.prop_numbits);
+      break;
+    case dg_float_bitcellcoordlp:
+      dg_bitwriter_write_bitcellcoord(thisptr, value.bitcellcoord_val, false, true,
+                                    value.prop_numbits);
+      break;
+    case dg_float_bitcellcoordint:
+      dg_bitwriter_write_bitcellcoord(thisptr, value.bitcellcoord_val, true, false,
+                                    value.prop_numbits);
+      break;
+    case dg_float_unsigned:
+      bitwriter_write_uint(thisptr, value.unsigned_val, value.prop_numbits);
+      break;
+
   }
 }
 
 static void read_float(prop_parse_state *state, dg_sendprop *prop, dg_prop_value_inner *value) {
   dg_bitstream *stream = state->stream;
+  value->prop_numbits = prop->prop_numbits;
   if (prop->flag_coord) {
+    value->type = dg_float_bitcoord;
     value->bitcoord_val = dg_bitstream_read_bitcoord(stream);
   } else if (prop->flag_coordmp) {
+    value->type = dg_float_bitcoordmp;
     value->bitcoordmp_val = dg_bitstream_read_bitcoordmp(stream, false, false);
   } else if (prop->flag_coordmplp) {
+    value->type = dg_float_bitcoordmplp;
     value->bitcoordmp_val = dg_bitstream_read_bitcoordmp(stream, false, true);
   } else if (prop->flag_coordmpint) {
+    value->type = dg_float_bitcoordmpint;
     value->bitcoordmp_val = dg_bitstream_read_bitcoordmp(stream, true, false);
   } else if (prop->flag_noscale) {
+    value->type = dg_float_noscale;
     value->float_val = dg_bitstream_read_float(stream);
   } else if (prop->flag_normal) {
+    value->type = dg_float_bitnormal;
     value->bitnormal_val = dg_bitstream_read_bitnormal(stream);
   } else if (prop->flag_cellcoord) {
+    value->type = dg_float_bitcellcoord;
     value->bitcellcoord_val =
         dg_bitstream_read_bitcellcoord(stream, false, false, prop->prop_numbits);
   } else if (prop->flag_cellcoordlp) {
+    value->type = dg_float_bitcellcoordlp;
     value->bitcellcoord_val =
         dg_bitstream_read_bitcellcoord(stream, false, true, prop->prop_numbits);
   } else if (prop->flag_cellcoordint) {
+    value->type = dg_float_bitcellcoordint;
     value->bitcellcoord_val =
         dg_bitstream_read_bitcellcoord(stream, true, false, prop->prop_numbits);
   } else {
+    value->type = dg_float_unsigned;
     value->unsigned_val = dg_bitstream_read_uint(stream, prop->prop_numbits);
   }
 }
 
-static void write_vector3(bitwriter *thisptr, prop_value value) {
-  write_float(thisptr, value.prop, value.value.v3_val->x);
-  write_float(thisptr, value.prop, value.value.v3_val->y);
+static void write_vector3(bitwriter *thisptr, dg_prop_value_inner value) {
+  write_float(thisptr, value.v3_val->x);
+  write_float(thisptr, value.v3_val->y);
 
-  if (value.prop->flag_normal) {
-    bitwriter_write_bit(thisptr, value.value.v3_val->sign);
+  if (value.v3_val->_sign != dg_vector3_sign_no) {
+    bool sign = value.v3_val->_sign == dg_vector3_sign_pos;
+    bitwriter_write_bit(thisptr, sign);
   } else {
-    write_float(thisptr, value.prop, value.value.v3_val->z);
+    write_float(thisptr, value.v3_val->z);
   }
 }
 
@@ -122,15 +151,16 @@ static void read_vector3(prop_parse_state *state, dg_sendprop *prop, dg_prop_val
   read_float(state, prop, &value->v3_val->y);
 
   if (prop->flag_normal) {
-    value->v3_val->sign = bitstream_read_bit(state->stream);
+    value->v3_val->_sign = bitstream_read_bit(state->stream) ? dg_vector3_sign_pos : dg_vector3_sign_neg;
   } else {
     read_float(state, prop, &value->v3_val->z);
+    value->v3_val->_sign = dg_vector3_sign_no;
   }
 }
 
-static void write_vector2(bitwriter *thisptr, prop_value value) {
-  write_float(thisptr, value.prop, value.value.v2_val->x);
-  write_float(thisptr, value.prop, value.value.v2_val->y);
+static void write_vector2(bitwriter *thisptr, dg_prop_value_inner value) {
+  write_float(thisptr, value.v2_val->x);
+  write_float(thisptr, value.v2_val->y);
 }
 
 static void read_vector2(prop_parse_state *state, dg_sendprop *prop, dg_prop_value_inner *value) {
@@ -143,9 +173,9 @@ static void read_vector2(prop_parse_state *state, dg_sendprop *prop, dg_prop_val
 
 static const size_t dt_max_string_bits = 9;
 
-static void write_string(bitwriter *thisptr, prop_value value) {
-  bitwriter_write_uint(thisptr, value.value.str_val->len, dt_max_string_bits);
-  bitwriter_write_bits(thisptr, value.value.str_val->str, 8 * value.value.str_val->len);
+static void write_string(bitwriter *thisptr, dg_prop_value_inner value) {
+  bitwriter_write_uint(thisptr, value.str_val->len, dt_max_string_bits);
+  bitwriter_write_bits(thisptr, value.str_val->str, 8 * value.str_val->len);
 }
 
 static void read_string(prop_parse_state *state, dg_sendprop *prop, dg_prop_value_inner *value) {
@@ -156,21 +186,19 @@ static void read_string(prop_parse_state *state, dg_sendprop *prop, dg_prop_valu
   value->str_val->str[len] = '\0'; // make sure we have zero terminated string
 }
 
-static void write_array(bitwriter *thisptr, prop_value value) {
-  struct dg_array_value *arr = value.value.arr_val;
-  unsigned int bits = highest_bit_index(value.prop->array_num_elements) + 1;
+static void write_array(bitwriter *thisptr, dg_prop_value_inner value) {
+  struct dg_array_value *arr = value.arr_val;
+  unsigned int bits = highest_bit_index(value.array_num_elements ) + 1;
   bitwriter_write_uint(thisptr, arr->array_size, bits);
-  prop_value temp;
-  memset(&temp, 0, sizeof(temp));
-  temp.prop = value.prop->array_prop;
 
   for (size_t i = 0; i < arr->array_size; ++i) {
-    temp.value = arr->values[i];
-    write_prop(thisptr, temp);
+    write_prop(thisptr, arr->values[i]);
   }
 }
 
-static void read_array(prop_parse_state *state, dg_sendprop *prop, dg_prop_value_inner *value) {
+static void read_array(prop_parse_state *state, dg_sendprop *props, uint32_t prop_index, dg_prop_value_inner *value) {
+  dg_sendprop* prop = props + prop_index;
+  value->array_num_elements = prop->array_num_elements;
   value->arr_val = dg_arena_allocate(state->a, sizeof(dg_array_value), alignof(dg_array_value));
   value->arr_val->array_size =
       bitstream_read_uint(state->stream, highest_bit_index(prop->array_num_elements) + 1);
@@ -179,13 +207,13 @@ static void read_array(prop_parse_state *state, dg_sendprop *prop, dg_prop_value
                         alignof(dg_prop_value_inner));
 
   for (size_t i = 0; i < value->arr_val->array_size; ++i) {
-    prop_value temp = read_prop(state, prop->array_prop);
+    prop_value temp = read_prop(state, props, prop->array_prop);
     value->arr_val->values[i] = temp.value;
   }
 }
 
-static void write_prop(bitwriter *thisptr, prop_value value) {
-  dg_sendproptype type = value.prop->proptype;
+static void write_prop(bitwriter *thisptr, dg_prop_value_inner value) {
+  dg_sendproptype type = value.proptype;
   switch (type) {
   case sendproptype_array:
     write_array(thisptr, value);
@@ -197,7 +225,7 @@ static void write_prop(bitwriter *thisptr, prop_value value) {
     write_vector2(thisptr, value);
     break;
   case sendproptype_float:
-    write_float(thisptr, value.prop, value.value);
+    write_float(thisptr, value);
     break;
   case sendproptype_string:
     write_string(thisptr, value);
@@ -212,7 +240,7 @@ static void write_prop(bitwriter *thisptr, prop_value value) {
   }
 }
 
-static prop_value read_prop(prop_parse_state *state, dg_sendprop *prop) {
+static prop_value read_prop(prop_parse_state *state, dg_sendprop *props, dg_sendprop *prop) {
 #ifdef DEBUG_BREAK_PROP
   ++DG_CURRENT_DEBUG_INDEX;
 #endif
@@ -225,9 +253,10 @@ static prop_value read_prop(prop_parse_state *state, dg_sendprop *prop) {
 
   prop_value value;
   memset(&value, 0, sizeof(value));
-  value.prop = prop;
+  value.prop_index = prop - props;
+  value.value.proptype = prop->proptype;
   if (prop->proptype == sendproptype_array) {
-    read_array(state, prop, &value.value);
+    read_array(state, props, value.prop_index, &value.value);
   } else if (prop->proptype == sendproptype_vector3) {
     read_vector3(state, prop, &value.value);
   } else if (prop->proptype == sendproptype_vector2) {
@@ -248,18 +277,16 @@ static prop_value read_prop(prop_parse_state *state, dg_sendprop *prop) {
 
 static void write_props_prot4(bitwriter *thisptr, struct write_packetentities_args args,
                               const dg_ent_update *update) {
-  const dg_serverclass_data *data = args.entity_state->class_datas + update->datatable_id;
-
   if (args.version->game != l4d) {
     bitwriter_write_bit(thisptr, update->new_way);
   }
 
   int last_prop_index = -1;
   for (size_t i = 0; i < update->prop_value_array_size; ++i) {
-    int prop_index = update->prop_value_array[i].prop - data->props;
+    int prop_index = update->prop_value_array[i].prop_index;
     dg_bitwriter_write_field_index(thisptr, prop_index, last_prop_index, update->new_way);
     last_prop_index = prop_index;
-    write_prop(thisptr, update->prop_value_array[i]);
+    write_prop(thisptr, update->prop_value_array[i].value);
   }
 
   dg_bitwriter_write_field_index(thisptr, -1, last_prop_index, update->new_way);
@@ -284,22 +311,21 @@ static void parse_props_prot4(prop_parse_state *state) {
     if (i == -1 || thisptr->error || stream->overflow)
       break;
 
-    prop_value value = read_prop(state, datas->props + i);
+    prop_value value = read_prop(state, datas->props, datas->props + i);
     dg_va_push_back(&state->prop_array, &value);
   }
 }
 
 static void write_props_old(bitwriter *thisptr, struct write_packetentities_args args,
                             const dg_ent_update *update) {
-  const dg_serverclass_data *data = args.entity_state->class_datas + update->datatable_id;
   int old_prop_index = -1;
   for (size_t i = 0; i < update->prop_value_array_size; ++i) {
     bitwriter_write_bit(thisptr, true);
-    int prop_index = update->prop_value_array[i].prop - data->props;
+    int prop_index = update->prop_value_array[i].prop_index;
     uint32_t diffy = prop_index - (old_prop_index + 1);
     old_prop_index = prop_index;
     dg_bitwriter_write_ubitvar(thisptr, diffy);
-    write_prop(thisptr, update->prop_value_array[i]);
+    write_prop(thisptr, update->prop_value_array[i].value);
   }
   bitwriter_write_bit(thisptr, false);
 }
@@ -319,7 +345,7 @@ static void parse_props_old(prop_parse_state *state) {
     if (i == -1 || state->thisptr->error || state->stream->overflow)
       break;
 
-    prop_value value = read_prop(state, data->props + i);
+    prop_value value = read_prop(state, data->props, data->props + i);
     dg_va_push_back(&state->prop_array, &value);
   }
 }

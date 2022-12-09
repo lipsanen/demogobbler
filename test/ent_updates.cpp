@@ -14,7 +14,6 @@ void handle_packetentities(parser_state *state, dg_svc_packetentities_parsed *pa
   bitwriter_init(&writer, parsed->orig->data_length);
   write_packetentities_args args;
   args.data = parsed->data;
-  args.entity_state = &state->entity_state;
   args.is_delta = parsed->orig->is_delta;
   args.version = &thisptr->demo_version;
 #ifdef GROUND_TRUTH_CHECK

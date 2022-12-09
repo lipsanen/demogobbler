@@ -405,7 +405,7 @@ static void print_vec3(dg_sendprop *prop, dg_prop_value_inner value) {
   print_float(prop, v3_val->y);
 
   if (prop->flag_normal) {
-    printf("), sign: %d", v3_val->sign);
+    printf("), sign: %d", v3_val->_sign);
   } else {
     printf(", ");
     print_float(prop, v3_val->z);
@@ -456,11 +456,12 @@ static void print_inner_prop_value(dg_sendprop *prop, dg_prop_value_inner value)
 }
 
 static void print_prop_value(prop_value *value) {
+  /*
   dg_sendprop *prop = value->prop;
   const char *prop_name = get_prop_name(prop);
   printf("\t%s = ", prop_name);
   print_inner_prop_value(prop, value->value);
-  printf("\n");
+  printf("\n");*/
 }
 
 static void print_packetentities_parsed(parser_state *state,

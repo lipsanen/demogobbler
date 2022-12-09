@@ -101,7 +101,6 @@ static void handle_packetentities(parser_state *_state, dg_svc_packetentities_pa
   writer_state *state = (writer_state *)_state->client_state;
   write_packetentities_args args;
   args.data = message->data;
-  args.entity_state = &_state->entity_state;
   args.is_delta = message->orig->is_delta;
   args.version = &state->demo_writer.version;
 

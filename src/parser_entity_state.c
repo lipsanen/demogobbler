@@ -586,12 +586,12 @@ static void copy_into_inner_value(dg_prop_value_inner *dest, const dg_prop_value
   }
 }
 
-static void copy_into_prop(dg_prop_value_inner *dest, const prop_value *value) {
-  dg_sendproptype prop_type = value->prop->proptype;
+static void copy_into_prop(dg_prop_value_inner *dest, const prop_value *value, const dg_sendprop* prop) {
+  dg_sendproptype prop_type = prop->proptype;
   if (prop_type != sendproptype_array) {
     copy_into_inner_value(dest, &value->value, prop_type);
   } else {
-    dg_sendproptype array_prop_type = value->prop->array_prop->proptype;
+    dg_sendproptype array_prop_type = prop->array_prop->proptype;
     for (size_t i = 0; i < value->value.arr_val->array_size; ++i) {
       copy_into_inner_value(dest->arr_val->values + i, value->value.arr_val->values + i,
                             array_prop_type);
@@ -669,8 +669,9 @@ static dg_prop_value_inner *getinsert_prop(dg_edict *ent, uint16_t index, dg_sen
 static void update_props(dg_edict *ent, const dg_ent_update *update, dg_serverclass_data *data) {
   for (size_t i = 0; i < update->prop_value_array_size; ++i) {
     const prop_value *value = update->prop_value_array + i;
-    dg_prop_value_inner *dest = getinsert_prop(ent, value->prop - data->props, value->prop);
-    copy_into_prop(dest, value);
+    dg_sendprop* prop = data->props + value->prop_index;
+    dg_prop_value_inner *dest = getinsert_prop(ent, prop - data->props, prop);
+    copy_into_prop(dest, value, prop);
   }
 }
 #endif

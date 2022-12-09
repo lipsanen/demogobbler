@@ -42,27 +42,36 @@ typedef struct dg_array_value dg_array_value;
 typedef struct dg_vector2_value dg_vector2_value;
 typedef struct dg_vector3_value dg_vector3_value;
 typedef struct dg_string_value dg_string_value;
+typedef struct dg_float dg_float;
+
+enum dg_proptype { dg_float_bitcoord, dg_float_bitcoordmp, dg_float_bitcellcoord, dg_float_bitnormal, dg_float_noscale, dg_float_bitcoordmplp,
+dg_float_bitcoordmpint, dg_float_bitcellcoordlp, dg_float_bitcellcoordint, dg_float_unsigned, dg_int_varuint32, dg_int_unsigned, dg_int_signed };
 
 typedef struct {
   union {
     uint32_t unsigned_val;
     int32_t signed_val;
+    float float_val;
     dg_bitcoord bitcoord_val;
     dg_bitcoordmp bitcoordmp_val;
     dg_bitcellcoord bitcellcoord_val;
     dg_bitnormal bitnormal_val;
-    float float_val;
     struct dg_string_value *str_val; // strings
     // vector and array types, use pointer here to reduce the size of the prop_value struct
     struct dg_array_value *arr_val;
     struct dg_vector2_value *v2_val;
     struct dg_vector3_value *v3_val;
   };
+  unsigned type : 8;
+  unsigned prop_numbits : 7;
+  unsigned array_num_elements : 10;
+  unsigned proptype : 6;
 } dg_prop_value_inner;
 
 typedef struct {
   dg_prop_value_inner value; // Actual value
-  struct dg_sendprop *prop;  // Pointer to sendprop containing all the metadata
+  uint32_t prop_index;
+  //struct dg_sendprop *prop;  // Pointer to sendprop containing all the metadata
 } prop_value;
 
 struct dg_string_value {
@@ -74,12 +83,11 @@ struct dg_vector2_value {
   dg_prop_value_inner x, y;
 };
 
+enum dg_vector3_sign { dg_vector3_sign_no, dg_vector3_sign_pos, dg_vector3_sign_neg };
+
 struct dg_vector3_value {
-  dg_prop_value_inner x, y;
-  union {
-    bool sign;
-    dg_prop_value_inner z;
-  };
+  dg_prop_value_inner x, y, z;
+  enum dg_vector3_sign _sign;
 };
 
 struct dg_array_value {

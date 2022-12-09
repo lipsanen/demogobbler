@@ -538,13 +538,24 @@ end:;
 #else
   if (!thisptr->error) {
 #endif
-    if (thisptr->m_settings.packetentities_parsed_handler) {
-      dg_svc_packetentities_parsed parsed;
-      memset(&parsed, 0, sizeof(parsed));
-      parsed.data = state.output;
-      parsed.orig = message;
-      thisptr->m_settings.packetentities_parsed_handler(&thisptr->state, &parsed);
+    dg_svc_packetentities_parsed temp;
+    dg_svc_packetentities_parsed* parsed_ptr;
+    if(thisptr->m_settings.packet_parsed_handler)
+    {
+      message->parsed = parsed_ptr = dg_arena_allocate(state.a, sizeof(dg_svc_packetentities_parsed), alignof(dg_svc_packetentities_parsed));
     }
+    else
+    {
+      parsed_ptr = &temp;
+    }
+      
+    memset(parsed_ptr, 0, sizeof(*parsed_ptr));
+    if (thisptr->m_settings.packetentities_parsed_handler) {
+      parsed_ptr->data = state.output;
+      parsed_ptr->orig = message;
+      thisptr->m_settings.packetentities_parsed_handler(&thisptr->state, parsed_ptr);
+    }
+
     dg_estate_update(&thisptr->state.entity_state, &state.output);
   }
 

@@ -685,11 +685,11 @@ static void handle_svc_packet_entities(dg_parser *thisptr, dg_bitstream *stream,
   ptr->data_length = bitstream_read_uint(stream, 20);
   ptr->update_baseline = bitstream_read_bit(stream);
   ptr->data = bitstream_fork_and_advance(stream, ptr->data_length);
-  SEND_MESSAGE();
 
   if (thisptr->m_settings.store_ents) {
     dg_parse_packetentities(thisptr, ptr);
   }
+  SEND_MESSAGE();
 }
 
 static void write_svc_packet_entities(bitwriter *writer, dg_demver_data *version,
@@ -902,15 +902,6 @@ void dg_bitwriter_write_netmessage(bitwriter *writer, dg_demver_data *version,
 #undef DECLARE_SWITCH_STATEMENT
 }
 
-static dg_vector_array init_netmsg_array(dg_arena *a) {
-  const size_t initial_size = sizeof(packet_net_message) * 256;
-  void *ptr = dg_arena_allocate(a, initial_size, alignof(packet_net_message));
-  dg_vector_array arr =
-      dg_va_create_(ptr, initial_size, sizeof(packet_net_message), alignof(packet_net_message));
-
-  return arr;
-}
-
 void parse_netmessages(dg_parser *thisptr, dg_packet *packet) {
 #ifdef DEBUG
 #define MAX_HISTORY 256
@@ -932,7 +923,8 @@ void parse_netmessages(dg_parser *thisptr, dg_packet *packet) {
   scrap_blk.size = size;
   unsigned int bits = thisptr->demo_version.netmessage_type_bits;
 
-  dg_vector_array packet_arr = init_netmsg_array(arena);
+  packet_net_message initial_array[64];
+  dg_vector_array packet_arr = dg_va_create(initial_array, packet_net_message);
 
   while (dg_bitstream_bits_left(&stream) > bits && !thisptr->error && !stream.overflow) {
     if (scrap_blk.address == NULL) {
@@ -980,7 +972,17 @@ void parse_netmessages(dg_parser *thisptr, dg_packet *packet) {
   if (!thisptr->error) {
     packet_parsed parsed;
     memset(&parsed, 0, sizeof(parsed));
-    parsed.messages = packet_arr.ptr;
+
+    if(thisptr->m_settings.user_arena)
+    {
+      parsed.messages = dg_arena_allocate(arena, packet_arr.count_elements * sizeof(packet_net_message), alignof(packet_net_message));
+      memcpy(parsed.messages, packet_arr.ptr, packet_arr.count_elements * sizeof(packet_net_message));
+    }
+    else
+    {
+      parsed.messages = packet_arr.ptr;
+    }
+
     parsed.message_count = packet_arr.count_elements;
     parsed.orig = *packet;
     parsed.leftover_bits = stream;

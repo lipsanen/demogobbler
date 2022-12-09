@@ -243,6 +243,7 @@ struct dg_svc_packet_entities {
   bool base_line;
   bool is_delta;
   dg_bitstream data;
+  dg_svc_packetentities_parsed* parsed;
 };
 
 struct dg_svc_splitscreen {

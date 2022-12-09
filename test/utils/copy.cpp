@@ -39,10 +39,6 @@ void handle_version(parser_state *state, dg_demver_data version) {
 
 void copy_demo_freddie(const char *filepath) {
   freddie::demo testdemo;
-  dg_input_interface interface;
-  interface.read = dg_fstream_read;
-  interface.seek = dg_fstream_seek;
-
   void* stream = dg_fstream_init(filepath, "rb");
   EXPECT_NE(stream, nullptr);
 

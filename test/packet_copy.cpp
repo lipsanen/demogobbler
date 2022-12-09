@@ -36,7 +36,7 @@ static void version_handler(parser_state *state, dg_demver_data data) {
 
 static void packet_handler(parser_state *state, packet_parsed *packet_parsed) {
   packet_copy_tester *tester = (packet_copy_tester *)state->client_state;
-  dg_packet *packet = packet_parsed->orig;
+  dg_packet *packet = &packet_parsed->orig;
 
   if (packet->size_bytes > (int32_t)tester->current_data_size) {
     free(tester->current_data);

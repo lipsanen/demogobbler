@@ -1,6 +1,6 @@
 #include "demogobbler.h"
 #include "demogobbler/parser.h"
-#include "streams.h"
+#include "demogobbler/streams.h"
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,8 +24,8 @@ dg_parse_result dg_parse_file(dg_settings *settings, const char *filepath) {
 
   if (file) {
     dg_input_interface input;
-    input.read = fstream_read;
-    input.seek = fstream_seek;
+    input.read = dg_fstream_read;
+    input.seek = dg_fstream_seek;
 
     out = dg_parse(settings, file, input);
 
@@ -44,11 +44,11 @@ dg_parse_result dg_parse_buffer(dg_settings *settings, void *buffer, size_t size
 
   if (buffer) {
     dg_input_interface input;
-    input.read = buffer_stream_read;
-    input.seek = buffer_stream_seek;
+    input.read = dg_buffer_stream_read;
+    input.seek = dg_buffer_stream_seek;
 
     buffer_stream stream;
-    buffer_stream_init(&stream, buffer, size);
+    dg_buffer_stream_init(&stream, buffer, size);
     out = dg_parse(settings, &stream, input);
   } else {
     out.error = true;

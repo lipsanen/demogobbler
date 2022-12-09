@@ -35,6 +35,22 @@ void _parse_synctick(dg_parser *thisptr);
 void _parse_usercmd(dg_parser *thisptr);
 bool _parse_anymessage(dg_parser *thisptr);
 
+dg_arena* dg_parser_tempa(dg_parser *thisptr)
+{
+  return thisptr->m_settings.user_arena ? thisptr->m_settings.user_arena : &thisptr->temp_arena;
+}
+
+dg_arena* dg_parser_perma(dg_parser *thisptr)
+{
+  return thisptr->m_settings.user_arena ? thisptr->m_settings.user_arena : &thisptr->permanent_arena;
+}
+
+void* dg_parser_temp_allocate(dg_parser *thisptr, uint32_t size, uint32_t alignment)
+{
+  dg_arena* a = dg_parser_tempa(thisptr);
+  return dg_arena_allocate(a, size, alignment);
+}
+
 static void init_parsing_funcs(dg_parser *thisptr) {
   if (thisptr->_parser_funcs.parse_consolecmd == NULL)
     thisptr->_parser_funcs.parse_consolecmd = _parse_consolecmd;
@@ -64,7 +80,7 @@ void dg_parser_init(dg_parser *thisptr, dg_settings *settings) {
   const size_t INITIAL_SIZE = 1 << 17;
   const size_t INITIAL_TEMP_SIZE = 1 << 17;
   // Does lazy allocation, only allocates stuff if requested
-  thisptr->state.entity_state.memory_arena = dg_arena_create(INITIAL_SIZE);
+  thisptr->permanent_arena = dg_arena_create(INITIAL_SIZE);
   thisptr->temp_arena = dg_arena_create(INITIAL_TEMP_SIZE);
 }
 
@@ -181,6 +197,7 @@ static void parser_free_state(dg_parser *thisptr) {
   dg_hashtable_free(&thisptr->ent_scrap.dts_with_excludes);
   dg_pes_free(&thisptr->ent_scrap.excluded_props);
   dg_estate_free(&thisptr->state.entity_state);
+  dg_arena_free(&thisptr->permanent_arena);
 }
 
 #define PARSE_PREAMBLE()                                                                           \
@@ -259,7 +276,7 @@ void _parse_consolecmd(dg_parser *thisptr) {
   if (message.size_bytes > 0) {
     ;
     if (thisptr->m_settings.consolecmd_handler) {
-      void *block = dg_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
+      void *block = dg_parser_temp_allocate(thisptr, message.size_bytes, 1);
       READ_MESSAGE_DATA();
 
       if (!thisptr->error) {
@@ -285,7 +302,7 @@ void _parse_customdata(dg_parser *thisptr) {
   message.size_bytes = _parser_read_length(thisptr);
 
   if (thisptr->m_settings.customdata_handler && message.size_bytes > 0) {
-    void *block = dg_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
+    void *block = dg_parser_temp_allocate(thisptr, message.size_bytes, 1);
     READ_MESSAGE_DATA();
     if (!thisptr->error) {
       thisptr->m_settings.customdata_handler(&thisptr->state, &message);
@@ -307,7 +324,7 @@ void _parse_datatables(dg_parser *thisptr) {
                                thisptr->m_settings.store_ents;
 
   if (has_datatable_handler && message.size_bytes > 0) {
-    void *block = dg_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
+    void *block = dg_parser_temp_allocate(thisptr, message.size_bytes, 1);
     READ_MESSAGE_DATA();
     if (!thisptr->error) {
 
@@ -350,7 +367,7 @@ void _parse_packet(dg_parser *thisptr, enum dg_type type) {
   message.size_bytes = _parser_read_length(thisptr);
 
   if ((thisptr->m_settings.packet_handler || should_parse_netmessages) && message.size_bytes > 0) {
-    void *block = dg_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
+    void *block = dg_parser_temp_allocate(thisptr, message.size_bytes, 1);
     READ_MESSAGE_DATA();
     if (!thisptr->error) {
 
@@ -381,7 +398,8 @@ void _parse_stop(dg_parser *thisptr) {
 
     do {
       size_t new_reserve_size = bytes_reserved + bytes_per_read;
-      ptr = dg_arena_reallocate(&thisptr->temp_arena, ptr, bytes_reserved, new_reserve_size, 1);
+      dg_arena* a = dg_parser_tempa(thisptr);
+      ptr = dg_arena_reallocate(a, ptr, bytes_reserved, new_reserve_size, 1);
       bytes_reserved = new_reserve_size;
 
       bytesReadIt = dg_filereader_readdata(thisreader, (uint8_t *)ptr + bytes, bytes_per_read);
@@ -404,7 +422,7 @@ void _parse_stringtables(dg_parser *thisptr, enum dg_type type) {
       thisptr->m_settings.stringtables_parsed_handler || thisptr->m_settings.stringtables_handler;
 
   if (should_parse && message.size_bytes > 0) {
-    void *block = dg_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
+    void *block = dg_parser_temp_allocate(thisptr, message.size_bytes, 1);
     READ_MESSAGE_DATA();
     if (!thisptr->error) {
       if (thisptr->m_settings.stringtables_handler)
@@ -438,7 +456,7 @@ void _parse_usercmd(dg_parser *thisptr) {
 
   if (thisptr->m_settings.usercmd_handler) {
     if (message.size_bytes > 0) {
-      void *block = dg_arena_allocate(&thisptr->temp_arena, message.size_bytes, 1);
+      void *block = dg_parser_temp_allocate(thisptr, message.size_bytes, 1);
       READ_MESSAGE_DATA();
     } else {
       message.data = NULL;

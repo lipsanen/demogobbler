@@ -167,6 +167,7 @@ typedef struct {
   estate_init_args args;
   estate *entity_state;
   entity_parse_scrap *ent_scrap;
+  dg_arena* arena;
   const char *error_message;
   bool error;
 } estate_init_state;
@@ -415,7 +416,7 @@ static void parse_serverclass(estate_init_state *thisptr, size_t i) {
   CHECK_ERR();
 
   thisptr->entity_state->class_datas[i].props =
-      dg_arena_allocate(&thisptr->entity_state->memory_arena, sizeof(dg_sendprop) * data.max_props,
+      dg_arena_allocate(thisptr->arena, sizeof(dg_sendprop) * data.max_props,
                         alignof(dg_sendprop));
   thisptr->entity_state->class_datas[i].prop_count = 0;
   thisptr->entity_state->class_datas[i].dt_name =
@@ -441,11 +442,8 @@ dg_parse_result dg_estate_init(estate *thisptr, entity_parse_scrap *scrap, estat
   thisptr->serverclasses = args.message->serverclasses;
   thisptr->serverclass_count = args.message->serverclass_count;
   thisptr->sendtable_count = args.message->sendtable_count;
-  if (thisptr->memory_arena.first_block_size == 0) {
-    thisptr->memory_arena = dg_arena_create(1 << 15);
-  }
   thisptr->edicts =
-      dg_arena_allocate(&thisptr->memory_arena, sizeof(dg_edict) * MAX_EDICTS, alignof(dg_edict));
+      dg_arena_allocate(args.arena, sizeof(dg_edict) * MAX_EDICTS, alignof(dg_edict));
   memset(thisptr->edicts, 0, sizeof(dg_edict) * MAX_EDICTS);
 
   estate_init_state state;
@@ -465,7 +463,7 @@ dg_parse_result dg_estate_init(estate *thisptr, entity_parse_scrap *scrap, estat
     }
     size_t array_size = sizeof(dg_serverclass_data) * thisptr->serverclass_count;
     thisptr->class_datas =
-        dg_arena_allocate(&thisptr->memory_arena, array_size, alignof(dg_serverclass_data));
+        dg_arena_allocate(args.arena, array_size, alignof(dg_serverclass_data));
     memset(thisptr->class_datas, 0, array_size);
 
     if (args.flatten_datatables) {
@@ -522,7 +520,6 @@ void dg_estate_free(estate *thisptr) {
     }
     memset(thisptr->edicts, 0, sizeof(dg_edict) * MAX_EDICTS);
   }
-  dg_arena_free(&thisptr->memory_arena);
 }
 
 void dg_parser_init_estate(dg_parser *thisptr, dg_datatables_parsed *message) {
@@ -531,6 +528,7 @@ void dg_parser_init_estate(dg_parser *thisptr, dg_datatables_parsed *message) {
   args.flatten_datatables = thisptr->m_settings.flattened_props_handler != NULL;
   args.message = message;
   args.version_data = &thisptr->demo_version;
+  args.arena = dg_parser_perma(thisptr);
 
   dg_parse_result result = dg_estate_init(&thisptr->state.entity_state, &thisptr->ent_scrap, args);
 
@@ -549,6 +547,7 @@ dg_serverclass_data *dg_estate_serverclass_data(dg_parser *thisptr, size_t index
   memset(&state, 0, sizeof(state));
   state.args.version_data = &thisptr->demo_version;
   state.ent_scrap = &thisptr->ent_scrap;
+  state.arena = dg_parser_perma(thisptr);
 
   state.entity_state = &thisptr->state.entity_state;
 

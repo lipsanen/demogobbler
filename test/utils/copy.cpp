@@ -1,4 +1,6 @@
 #include "demogobbler.h"
+#include "demogobbler/freddie.hpp"
+#include "demogobbler/streams.h"
 #include "memory_stream.hpp"
 #include "gtest/gtest.h"
 #include <algorithm>
@@ -33,6 +35,35 @@ void handle_stringtables_parsed(parser_state *state, dg_stringtables_parsed *mes
 
 void handle_version(parser_state *state, dg_demver_data version) {
   ((writer *)state->client_state)->version = version;
+}
+
+void copy_demo_freddie(const char *filepath) {
+  freddie::demo testdemo;
+  dg_input_interface interface;
+  interface.read = dg_fstream_read;
+  interface.seek = dg_fstream_seek;
+
+  void* stream = dg_fstream_init(filepath, "rb");
+  EXPECT_NE(stream, nullptr);
+
+  if(stream)
+  {
+    auto result = freddie::demo::parse_demo(&testdemo, stream, {dg_fstream_read, dg_fstream_seek});
+    EXPECT_EQ(result.error, false);
+    // Steampipe demos have some garbage in the last tick, causes this test to fail
+    if(!result.error && testdemo.demver_data.game != steampipe)
+    {
+      memory_stream output;
+      memory_stream input;
+      output.ground_truth = &input;
+      input.fill_with_file(filepath);
+      auto writeresult = testdemo.write_demo(&output, {memory_stream_write});
+
+      EXPECT_EQ(writeresult.error, false);
+    }
+  }
+
+  dg_fstream_free(stream);
 }
 
 void copy_demo_test(const char *filepath) {

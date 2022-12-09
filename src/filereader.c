@@ -1,5 +1,5 @@
 #include "demogobbler/filereader.h"
-#include "streams.h"
+#include "demogobbler/streams.h"
 #include "utils.h"
 
 #include <stdlib.h>

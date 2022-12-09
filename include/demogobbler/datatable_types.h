@@ -93,6 +93,7 @@ typedef struct {
   dg_serverclass *serverclasses;
   size_t serverclass_count;
 
+  dg_datatables orig;
   void *_raw_buffer;
   size_t _raw_buffer_bytes;
 } dg_datatables_parsed;

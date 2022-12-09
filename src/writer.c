@@ -1,7 +1,7 @@
 #include "demogobbler.h"
 #include "demogobbler/bitstream.h"
 #include "demogobbler/bitwriter.h"
-#include "streams.h"
+#include "demogobbler/streams.h"
 #include "utils.h"
 #include "version_utils.h"
 #include <stdlib.h>
@@ -14,7 +14,7 @@ void dg_writer_init(writer *thisptr) {
 
 void dg_writer_open_file(writer *thisptr, const char *filepath) {
   thisptr->_stream = fopen(filepath, "wb");
-  thisptr->output_funcs = (output_interface){fstream_write};
+  thisptr->output_funcs = (output_interface){dg_fstream_write};
   thisptr->_custom_stream = false;
 
   if (!thisptr->_stream) {
@@ -29,6 +29,7 @@ void dg_writer_open(writer *thisptr, void *stream, output_interface output_inter
 }
 
 void dg_writer_close(writer *thisptr) {
+  dg_bitwriter_free(&thisptr->bitwriter);
   if (!thisptr->_custom_stream && thisptr->_stream) {
     fclose(thisptr->_stream);
     thisptr->_stream = NULL;
@@ -113,9 +114,12 @@ void dg_write_packet(writer *thisptr, dg_packet *message) {
 }
 
 void dg_write_packet_parsed(writer *thisptr, packet_parsed *message_parsed) {
-  dg_packet *message = message_parsed->orig;
+  dg_packet *message = &message_parsed->orig;
   thisptr->bitwriter.bitoffset = 0;
-  WRITE_PREAMBLE();
+  WRITE_BYTE(preamble.type);
+  WRITE_INT32(preamble.tick);
+  if (thisptr->version.has_slot_in_preamble)
+    WRITE_BYTE(preamble.slot);
 
   for (int i = 0; i < thisptr->version.cmdinfo_size; ++i) {
     dg_cmdinfo *cmdinfo = &message->cmdinfo[i];

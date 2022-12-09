@@ -106,10 +106,11 @@ static void write_net_stringcmd(bitwriter *writer, dg_demver_data *version,
 static void handle_net_setconvar(dg_parser *thisptr, dg_bitstream *stream, packet_net_message *message,
                                  blk *scrap) {
   // Reserve space on stack for maximum amount of convars
+  dg_arena* arena = dg_parser_tempa(thisptr);
   struct dg_net_setconvar *ptr = &message->message_net_setconvar;
   ptr->count = bitstream_read_uint(stream, 8);
   ptr->convars =
-      dg_arena_allocate(&thisptr->temp_arena, sizeof(struct dg_net_setconvar_convar) * ptr->count,
+      dg_arena_allocate(arena, sizeof(struct dg_net_setconvar_convar) * ptr->count,
                         alignof(struct dg_net_setconvar_convar));
   for (size_t i = 0; i < message->message_net_setconvar.count; ++i) {
     COPY_STRING(ptr->convars[i].name);
@@ -200,8 +201,9 @@ static void write_svc_print(bitwriter *writer, dg_demver_data *version,
 
 static void handle_svc_serverinfo(dg_parser *thisptr, dg_bitstream *stream,
                                   packet_net_message *message, blk *scrap) {
+  dg_arena* arena = dg_parser_tempa(thisptr);
   message->message_svc_serverinfo = dg_arena_allocate(
-      &thisptr->temp_arena, sizeof(struct dg_svc_serverinfo), alignof(struct dg_svc_serverinfo));
+      arena, sizeof(struct dg_svc_serverinfo), alignof(struct dg_svc_serverinfo));
   struct dg_svc_serverinfo *ptr = message->message_svc_serverinfo;
   ptr->network_protocol = bitstream_read_uint(stream, 16);
   ptr->server_count = bitstream_read_uint32(stream);
@@ -901,7 +903,7 @@ void dg_bitwriter_write_netmessage(bitwriter *writer, dg_demver_data *version,
 }
 
 static dg_vector_array init_netmsg_array(dg_arena *a) {
-  const size_t initial_size = sizeof(packet_net_message) * 32;
+  const size_t initial_size = sizeof(packet_net_message) * 256;
   void *ptr = dg_arena_allocate(a, initial_size, alignof(packet_net_message));
   dg_vector_array arr =
       dg_va_create_(ptr, initial_size, sizeof(packet_net_message), alignof(packet_net_message));
@@ -924,12 +926,13 @@ void parse_netmessages(dg_parser *thisptr, dg_packet *packet) {
   // We allocate a single scrap buffer for the duration of parsing the packet that is as large as
   // the whole packet. Should never run out of space as long as we don't make things larger as we
   // read it out
+  dg_arena* arena = dg_parser_tempa(thisptr);
   blk scrap_blk;
-  scrap_blk.address = dg_arena_allocate(&thisptr->temp_arena, size, 1);
+  scrap_blk.address = dg_arena_allocate(arena, size, 1);
   scrap_blk.size = size;
   unsigned int bits = thisptr->demo_version.netmessage_type_bits;
 
-  dg_vector_array packet_arr = init_netmsg_array(&thisptr->temp_arena);
+  dg_vector_array packet_arr = init_netmsg_array(arena);
 
   while (dg_bitstream_bits_left(&stream) > bits && !thisptr->error && !stream.overflow) {
     if (scrap_blk.address == NULL) {
@@ -979,7 +982,7 @@ void parse_netmessages(dg_parser *thisptr, dg_packet *packet) {
     memset(&parsed, 0, sizeof(parsed));
     parsed.messages = packet_arr.ptr;
     parsed.message_count = packet_arr.count_elements;
-    parsed.orig = packet;
+    parsed.orig = *packet;
     parsed.leftover_bits = stream;
 
     if (thisptr->m_settings.packet_parsed_handler) {

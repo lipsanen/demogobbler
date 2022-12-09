@@ -1,5 +1,5 @@
 goblin_includes = include_directories(['../include', '.'])
-goblin_lib_files = ['arena.c', 'bitstream.c', 'conversions.c', 'bitwriter.c', 'filereader.c', 'freddie_demosplicer.c', 
+goblin_lib_files = ['arena.c', 'bitstream.c', 'conversions.c', 'bitwriter.c', 'filereader.c', 'freddie.cpp', 'freddie_demosplicer.cpp', 
   'hashtable.c', 'main.c', 'parser.c', 'parser_datatables.c', 'parser_entity_state.c', 'parser_netmessages.c', 
   'parser_packetentities.c', 'parser_stringtables.c', 'parser_usercmd.c', 'streams.c', 'utils.c', 'vector_array.c', 'version_utils.c', 'writer.c']
 

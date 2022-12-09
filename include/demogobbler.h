@@ -71,6 +71,7 @@ typedef struct {
 typedef struct {
   dg_demver_data *version_data;
   dg_datatables_parsed *message;
+  dg_arena* arena;
   bool flatten_datatables;
   bool should_store_props;
 } estate_init_args;

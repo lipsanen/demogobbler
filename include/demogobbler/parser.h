@@ -80,6 +80,7 @@ struct dg_settings {
   dg_parser_funcs funcs;
   bool store_ents;
   bool store_props;
+  dg_arena* user_arena;
   void *client_state;
 };
 
@@ -95,6 +96,7 @@ struct dg_parser {
   dg_parser_funcs _parser_funcs;
   dg_filereader m_reader;
   dg_arena temp_arena;
+  dg_arena permanent_arena;
   dg_demver_data demo_version;
   const char *error_message;
   bool error;
@@ -108,6 +110,8 @@ void dg_parser_init(dg_parser *thisptr, dg_settings *settings);
 void dg_parser_arena_check_init(dg_parser *thisptr);
 void dg_parser_parse(dg_parser *thisptr, void *stream, dg_input_interface input);
 void dg_parser_update_l4d2_version(dg_parser *thisptr, int l4d2_version);
+dg_arena* dg_parser_tempa(dg_parser *thisptr);
+dg_arena* dg_parser_perma(dg_parser *thisptr);
 
 #ifdef __cplusplus
 }

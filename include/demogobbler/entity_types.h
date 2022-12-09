@@ -154,7 +154,7 @@ typedef struct {
   dg_edict *edicts;
   uint32_t sendtable_count;
   uint32_t serverclass_count;
-  dg_arena memory_arena;
+  //dg_arena memory_arena;
   bool should_store_props;
 } estate;
 

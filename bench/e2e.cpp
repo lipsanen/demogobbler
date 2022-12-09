@@ -1,4 +1,6 @@
 #include "benchmark/benchmark.h"
+#include "demogobbler/freddie.hpp"
+#include "demogobbler/streams.h"
 #include "demogobbler.h"
 #include "test_demos.hpp"
 #include <filesystem>
@@ -116,7 +118,24 @@ static void testdemos_header_only(benchmark::State &state) {
   get_bytes(state);
 }
 
+static void testdemos_freddie(benchmark::State &state) {
+  auto demos = get_test_demos();
+
+  for (auto _ : state) {
+    for (auto &file : demos) {
+      freddie::demo demo;
+      auto stream = dg_fstream_init(file.c_str(), "rb");
+      freddie::demo::parse_demo(&demo, stream, {dg_fstream_read, dg_fstream_seek} );
+      dg_fstream_free(stream);
+    }
+  }
+
+  get_bytes(state);
+}
+
+
 BENCHMARK(testdemos_parse_only);
 BENCHMARK(testdemos_packet_only);
 BENCHMARK(testdemos_header_only);
 BENCHMARK(testdemos_parse_everything);
+BENCHMARK(testdemos_freddie);

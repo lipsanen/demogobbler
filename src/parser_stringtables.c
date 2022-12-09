@@ -3,7 +3,7 @@
 #include "arena.h"
 #include "demogobbler.h"
 #include "demogobbler/bitstream.h"
-#include "streams.h"
+#include "demogobbler/streams.h"
 #include "writer.h"
 #include <string.h>
 
@@ -136,7 +136,7 @@ void dg_parser_parse_stringtables(dg_parser *thisptr, dg_stringtables *input) {
   memset(&out, 0, sizeof(out));
   memset(&args, 0, sizeof(args));
 
-  args.memory_arena = &thisptr->temp_arena;
+  args.memory_arena = dg_parser_tempa(thisptr);
   args.message = input;
 
   dg_parse_result result = dg_parse_stringtables(&out, args);

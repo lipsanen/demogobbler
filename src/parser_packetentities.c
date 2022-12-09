@@ -18,6 +18,7 @@ typedef struct {
   dg_parser *thisptr;
   dg_bitstream *stream;
   dg_arena *a;
+  dg_arena *permanent_arena;
   dg_ent_update *update;
   dg_vector_array prop_array;
   dg_packetentities_data output;
@@ -449,7 +450,8 @@ void dg_parse_packetentities(dg_parser *thisptr, struct dg_svc_packet_entities *
   prop_parse_state state;
   memset(&state, 0, sizeof(state));
   state.thisptr = thisptr;
-  state.a = &thisptr->temp_arena;
+  state.a = dg_parser_tempa(thisptr);
+  state.permanent_arena = dg_parser_perma(thisptr);
   state.stream = &stream;
 
   state.output.ent_updates_count = message->updated_entries;

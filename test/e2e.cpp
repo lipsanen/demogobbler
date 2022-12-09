@@ -10,6 +10,13 @@ TEST(E2E, copy_demos) {
   }
 }
 
+TEST(E2E, freddie) {
+  for (auto &demo : get_test_demos()) {
+    std::cout << "[----------] " << demo << std::endl;
+    copy_demo_freddie(demo.c_str());
+  }
+}
+
 static void packet_handler(parser_state *, dg_packet *) {}
 
 TEST(E2E, buffer_stream_test) {

@@ -1,7 +1,8 @@
-#include "demogobbler/freddie.h"
+#include "demogobbler/freddie.hpp"
 #include <stdio.h>
 
 // TODO: This is still completely broken at doesnt work at all
+using namespace freddie;
 
 int main(int argc, char **argv) {
   if (argc < 3) {
@@ -9,7 +10,7 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-  dg_parse_result result = freddie_splice_demos(argv[1], (const char **)argv + 2, argc - 2);
+  dg_parse_result result = splice_demos(argv[1], (const char **)argv + 2, argc - 2);
 
   if (result.error) {
     printf("Error splicing demos: %s\n", result.error_message);

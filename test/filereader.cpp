@@ -2,8 +2,8 @@
 #include <filesystem>
 extern "C" {
 #include "demogobbler/filereader.h"
-#include "streams.h"
 }
+#include "demogobbler/streams.h"
 
 struct FileReaderTest : ::testing::Test {
   static void SetUpTestSuite() { std::filesystem::create_directory("./tmp"); }
@@ -33,8 +33,8 @@ void write_data_ints(int count, const char *filepath) {
 void read_data_filereader(void *ptr, std::size_t size, const char *filepath) {
   FILE *input = fopen(filepath, "rb");
   dg_input_interface iface;
-  iface.read = fstream_read;
-  iface.seek = fstream_seek;
+  iface.read = dg_fstream_read;
+  iface.seek = dg_fstream_seek;
   dg_filereader reader;
   char buffer[256];
   dg_filereader_init(&reader, buffer, sizeof(buffer), input, iface);
@@ -60,8 +60,8 @@ TEST_F(FileReaderTest, readint32_works) {
   FILE *input = fopen(filepath, "rb");
   dg_filereader reader;
   dg_input_interface iface;
-  iface.read = fstream_read;
-  iface.seek = fstream_seek;
+  iface.read = dg_fstream_read;
+  iface.seek = dg_fstream_seek;
   char buffer[256];
   dg_filereader_init(&reader, buffer, sizeof(buffer), input, iface);
 
@@ -81,8 +81,8 @@ TEST_F(FileReaderTest, skipbytes_works) {
   FILE *input = fopen(filepath, "rb");
   dg_filereader reader;
   dg_input_interface iface;
-  iface.read = fstream_read;
-  iface.seek = fstream_seek;
+  iface.read = dg_fstream_read;
+  iface.seek = dg_fstream_seek;
   char buffer[256];
   dg_filereader_init(&reader, buffer, sizeof(buffer), input, iface);
   dg_filereader_skipbytes(&reader, sizeof(int) * 256);
@@ -103,8 +103,8 @@ TEST_F(FileReaderTest, skipto_works) {
   FILE *input = fopen(filepath, "rb");
   dg_filereader reader;
   dg_input_interface iface;
-  iface.read = fstream_read;
-  iface.seek = fstream_seek;
+  iface.read = dg_fstream_read;
+  iface.seek = dg_fstream_seek;
   char buffer[256];
   dg_filereader_init(&reader, buffer, sizeof(buffer), input, iface);
 

@@ -87,7 +87,7 @@ void print_packet_orig(parser_state *a, dg_packet *message) {
 }
 
 void print_packet(parser_state *a, packet_parsed *message) {
-  print_packet_orig(a, message->orig);
+  print_packet_orig(a, &message->orig);
 
   for (size_t i = 0; i < message->message_count; ++i) {
     packet_net_message *netmsg = message->messages + i;
@@ -408,7 +408,7 @@ static void print_vec3(dg_sendprop *prop, dg_prop_value_inner value) {
     printf("), sign: %d", v3_val->sign);
   } else {
     printf(", ");
-    print_float(prop, v3_val->y);
+    print_float(prop, v3_val->z);
     printf(")");
   }
 }
@@ -510,6 +510,7 @@ static bool check_if_enabled(const char* arg, const char* filter) {
 
 void get_settings(const char *arg, dg_settings *settings) {
   dump_state* state = (dump_state*)settings->client_state;
+  settings->demo_version_handler = handle_version;
   if(check_if_enabled(arg, "flattened"))
     settings->flattened_props_handler = print_flattened_props;
   if(check_if_enabled(arg, "datatables"))

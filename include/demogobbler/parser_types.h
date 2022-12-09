@@ -381,7 +381,7 @@ struct packet_parsed {
   packet_net_message *messages;
   uint32_t message_count;
   dg_bitstream leftover_bits;
-  struct dg_packet *orig;
+  struct dg_packet orig;
 };
 
 typedef struct packet_parsed packet_parsed;

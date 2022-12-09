@@ -385,13 +385,13 @@ dg_datatables_parsed_rval dg_parse_datatables(dg_demver_data *version_data,
 }
 
 void parse_datatables(dg_parser *thisptr, dg_datatables *input) {
-  dg_arena *memory_arena;
+  dg_arena* memory_arena;
   bool init_entity_state;
   if (thisptr->state.entity_state.edicts == NULL && thisptr->m_settings.store_ents) {
-    memory_arena = &thisptr->state.entity_state.memory_arena;
+    memory_arena = dg_parser_perma(thisptr);
     init_entity_state = false;
   } else {
-    memory_arena = &thisptr->temp_arena;
+    memory_arena = dg_parser_tempa(thisptr);
     init_entity_state = true;
   }
 
@@ -404,9 +404,5 @@ void parse_datatables(dg_parser *thisptr, dg_datatables *input) {
     if (!init_entity_state) {
       dg_parser_init_estate(thisptr, &value.output);
     }
-  }
-
-  if (init_entity_state) {
-    dg_arena_free(memory_arena);
   }
 }

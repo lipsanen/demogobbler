@@ -38,39 +38,38 @@ void handle_version(parser_state *state, dg_demver_data version) {
 }
 
 void copy_demo_freddie(const char *filepath) {
-  freddie::demo testdemo;
-  void* stream = dg_fstream_init(filepath, "rb");
-  EXPECT_NE(stream, nullptr);
+  freddie::demo_t testdemo;
 
-  if(stream)
+  auto result = freddie::demo_t::parse_demo(&testdemo, filepath);
+  EXPECT_EQ(result.error, false) << result.error_message;
+  // Steampipe demos have some garbage in the last tick, causes this test to fail
+  if(!result.error && testdemo.demver_data.game != steampipe)
   {
-    auto result = freddie::demo::parse_demo(&testdemo, stream, {dg_fstream_read, dg_fstream_seek});
-    EXPECT_EQ(result.error, false);
-    // Steampipe demos have some garbage in the last tick, causes this test to fail
-    if(!result.error && testdemo.demver_data.game != steampipe)
-    {
-      memory_stream output;
-      memory_stream input;
-      output.ground_truth = &input;
-      input.fill_with_file(filepath);
-      auto writeresult = testdemo.write_demo(&output, {memory_stream_write});
+    wrapped_memory_stream output;
+    wrapped_memory_stream input;
+    output.underlying.ground_truth = &input.underlying;
+    input.underlying.fill_with_file(filepath);
+    auto writeresult = testdemo.write_demo(&output.underlying, {freddie::memory_stream_write});
+    EXPECT_EQ(writeresult.error, false) << writeresult.error_message;
 
-      EXPECT_EQ(writeresult.error, false);
-    }
+    // Try conversion: should result in nothing being changed
+    wrapped_memory_stream output2;
+    output.underlying.ground_truth = &input.underlying;
+    freddie::convert_demo(&testdemo, &testdemo);
+    writeresult = testdemo.write_demo(&output2.underlying, {freddie::memory_stream_write});
+    EXPECT_EQ(writeresult.error, false) << writeresult.error_message;
   }
-
-  dg_fstream_free(stream);
 }
 
 void copy_demo_test(const char *filepath) {
   writer w;
-  memory_stream output;
-  memory_stream input;
-  output.ground_truth = &input;
-  input.fill_with_file(filepath);
+  wrapped_memory_stream output;
+  wrapped_memory_stream input;
+  output.underlying.ground_truth = &input.underlying;
+  input.underlying.fill_with_file(filepath);
 
   dg_writer_init(&w);
-  dg_writer_open(&w, &output, {memory_stream_write});
+  dg_writer_open(&w, &output.underlying, {freddie::memory_stream_write});
   if (!w.error) {
     dg_settings settings;
     dg_settings_init(&settings);
@@ -90,7 +89,7 @@ void copy_demo_test(const char *filepath) {
     settings.client_state = &w;
     settings.store_props = true;
 
-    dg_input_interface input_funcs = {memory_stream_read, memory_stream_seek};
+    dg_input_interface input_funcs = {freddie::memory_stream_read, freddie::memory_stream_seek};
 
     auto out = dg_parse(&settings, &input, input_funcs);
     EXPECT_EQ(out.error, false) << out.error_message;
@@ -100,11 +99,11 @@ void copy_demo_test(const char *filepath) {
   }
   dg_writer_free(&w);
 
-  EXPECT_EQ(output.file_size, input.file_size) << "Output and Input file sizes did not match "
-                                               << output.file_size << " vs. " << input.file_size;
-  std::size_t size = std::min(output.file_size, input.file_size);
-  uint8_t *ptr1 = (uint8_t *)output.buffer;
-  uint8_t *ptr2 = (uint8_t *)input.buffer;
+  EXPECT_EQ(output.underlying.file_size, input.underlying.file_size) << "Output and Input file sizes did not match "
+                                               << output.underlying.file_size << " vs. " << input.underlying.file_size;
+  std::size_t size = std::min(output.underlying.file_size, input.underlying.file_size);
+  uint8_t *ptr1 = (uint8_t *)output.underlying.buffer;
+  uint8_t *ptr2 = (uint8_t *)input.underlying.buffer;
 
   for (std::size_t i = 0; i < size; ++i) {
     if (ptr1[i] != ptr2[i]) {

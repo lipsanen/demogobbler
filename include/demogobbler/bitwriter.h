@@ -32,7 +32,6 @@ typedef struct dg_bitwriter bitwriter;
 
 struct write_packetentities_args {
   dg_packetentities_data data;
-  const estate *entity_state;
   const dg_demver_data *version;
   bool is_delta;
 };

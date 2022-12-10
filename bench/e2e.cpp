@@ -118,24 +118,62 @@ static void testdemos_header_only(benchmark::State &state) {
   get_bytes(state);
 }
 
-static void testdemos_freddie(benchmark::State &state) {
+static void testdemos_freddie_parse(benchmark::State &state) {
   auto demos = get_test_demos();
 
   for (auto _ : state) {
     for (auto &file : demos) {
-      freddie::demo demo;
-      auto stream = dg_fstream_init(file.c_str(), "rb");
-      freddie::demo::parse_demo(&demo, stream, {dg_fstream_read, dg_fstream_seek} );
-      dg_fstream_free(stream);
+      freddie::demo_t demo;
+      freddie::demo_t::parse_demo(&demo, file.c_str());
     }
   }
 
   get_bytes(state);
 }
 
+static void testdemos_freddie_write(benchmark::State &state) {
+  auto demos = get_test_demos();
+  std::vector<std::shared_ptr<freddie::demo_t>> demo_vec;
+  for (auto &file : demos) {
+    std::shared_ptr<freddie::demo_t> ptr = std::make_shared<freddie::demo_t>();
+    freddie::demo_t::parse_demo(ptr.get(), file.c_str());
+    demo_vec.emplace_back(ptr);
+  }
+
+  for (auto _ : state) {
+    for (auto demo : demo_vec) {
+      freddie::memory_stream output;
+      auto result = demo->write_demo(&output, {freddie::memory_stream_write});
+      if(result.error)
+        abort();
+    }
+  }
+
+  get_bytes(state);
+}
+
+static void testdemos_freddie_convert(benchmark::State &state) {
+  auto demos = get_test_demos();
+  std::vector<std::shared_ptr<freddie::demo_t>> demo_vec;
+  for (auto &file : demos) {
+    std::shared_ptr<freddie::demo_t> ptr = std::make_shared<freddie::demo_t>();
+    freddie::demo_t::parse_demo(ptr.get(), file.c_str());
+    demo_vec.emplace_back(ptr);
+  }
+
+  for (auto _ : state) {
+    for (auto demo : demo_vec) {
+      freddie::convert_demo(demo.get(), demo.get());
+    }
+  }
+
+  get_bytes(state);
+}
 
 BENCHMARK(testdemos_parse_only);
 BENCHMARK(testdemos_packet_only);
 BENCHMARK(testdemos_header_only);
 BENCHMARK(testdemos_parse_everything);
-BENCHMARK(testdemos_freddie);
+BENCHMARK(testdemos_freddie_parse);
+BENCHMARK(testdemos_freddie_write);
+BENCHMARK(testdemos_freddie_convert);

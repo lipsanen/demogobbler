@@ -110,6 +110,7 @@ typedef struct {
   size_t ent_updates_count;
   int *explicit_deletes;
   size_t explicit_deletes_count;
+  uint32_t serverclass_bits;
 } dg_packetentities_data;
 
 typedef struct {

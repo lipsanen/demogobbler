@@ -423,7 +423,7 @@ static bool game_has_new_deletes(const dg_demver_data *version) {
 }
 
 void dg_bitwriter_write_packetentities(bitwriter *thisptr, struct write_packetentities_args args) {
-  unsigned bits = Q_log2(args.entity_state->serverclass_count) + 1;
+  unsigned bits = args.data.serverclass_bits;
   int index = -1;
   size_t i;
   for (i = 0; i < args.data.ent_updates_count && !thisptr->error; ++i) {
@@ -488,7 +488,7 @@ void dg_parse_packetentities(dg_parser *thisptr, struct dg_svc_packet_entities *
   prop_value props_array[64];
   state.prop_array = dg_va_create(props_array, prop_value);
 
-  unsigned bits = Q_log2(thisptr->state.entity_state.serverclass_count) + 1;
+  state.output.serverclass_bits = Q_log2(thisptr->state.entity_state.serverclass_count) + 1;
 
   if (!thisptr->state.entity_state.class_datas) {
     thisptr->error = true;
@@ -524,7 +524,7 @@ void dg_parse_packetentities(dg_parser *thisptr, struct dg_svc_packet_entities *
       parse_props(&state, i);
     } else if (update_type == 2) {
       // enter pvs
-      update->datatable_id = bitstream_read_uint(&stream, bits);
+      update->datatable_id = bitstream_read_uint(&stream, state.output.serverclass_bits);
       update->handle = bitstream_read_uint(&stream, HANDLE_BITS);
 
       if (update->datatable_id >= thisptr->state.entity_state.serverclass_count) {

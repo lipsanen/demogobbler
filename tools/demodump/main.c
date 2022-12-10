@@ -455,13 +455,12 @@ static void print_inner_prop_value(dg_sendprop *prop, dg_prop_value_inner value)
   }
 }
 
-static void print_prop_value(prop_value *value) {
-  /*
-  dg_sendprop *prop = value->prop;
+static void print_prop_value(prop_value *value, dg_serverclass_data* data) {
+  dg_sendprop *prop = data->props + value->prop_index;
   const char *prop_name = get_prop_name(prop);
   printf("\t%s = ", prop_name);
   print_inner_prop_value(prop, value->value);
-  printf("\n");*/
+  printf("\n");
 }
 
 static void print_packetentities_parsed(parser_state *state,
@@ -471,6 +470,7 @@ static void print_packetentities_parsed(parser_state *state,
 
   for (size_t i = 0; i < message->data.ent_updates_count; ++i) {
     dg_ent_update *update = message->data.ent_updates + i;
+    dg_serverclass_data* data = state->entity_state.class_datas + update->datatable_id;
 
     printf("[%lu] Entity %d, update: %s, props %lu\n", i, update->ent_index,
            update_name(update->update_type), update->prop_value_array_size);
@@ -482,7 +482,7 @@ static void print_packetentities_parsed(parser_state *state,
     if (update->prop_value_array_size > 0) {
       for (size_t u = 0; u < update->prop_value_array_size; ++u) {
         prop_value *value = update->prop_value_array + u;
-        print_prop_value(value);
+        print_prop_value(value, data);
       }
     }
   }

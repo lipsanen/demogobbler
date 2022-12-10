@@ -451,6 +451,7 @@ dg_parse_result dg_estate_init(estate *thisptr, entity_parse_scrap *scrap, estat
   state.args = args;
   state.entity_state = thisptr;
   state.ent_scrap = scrap;
+  state.arena = args.arena;
 
   create_dt_hashtable(&state);
 

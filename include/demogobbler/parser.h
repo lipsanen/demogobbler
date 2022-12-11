@@ -84,12 +84,6 @@ struct dg_settings {
   void *client_state;
 };
 
-typedef struct {
-  dg_pes excluded_props;
-  dg_hashtable dts_with_excludes;
-  dg_hashtable dt_hashtable;
-} entity_parse_scrap;
-
 struct dg_parser {
   parser_state state;
   dg_settings m_settings;
@@ -99,7 +93,6 @@ struct dg_parser {
   const char *error_message;
   bool error;
   bool parse_netmessages;
-  entity_parse_scrap ent_scrap;
 };
 
 typedef struct dg_parser dg_parser;

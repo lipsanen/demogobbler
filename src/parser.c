@@ -274,9 +274,6 @@ bool _parse_anymessage(dg_parser *thisptr) {
 }
 
 static void parser_free_state(dg_parser *thisptr) {
-  dg_hashtable_free(&thisptr->ent_scrap.dt_hashtable);
-  dg_hashtable_free(&thisptr->ent_scrap.dts_with_excludes);
-  dg_pes_free(&thisptr->ent_scrap.excluded_props);
   dg_estate_free(&thisptr->state.entity_state);
 }
 

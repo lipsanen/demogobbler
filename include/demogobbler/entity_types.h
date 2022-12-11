@@ -157,12 +157,19 @@ typedef struct {
 } dg_serverclass_data;
 
 typedef struct {
+  dg_pes excluded_props;
+  dg_hashtable dts_with_excludes;
+  dg_hashtable dt_hashtable;
+} entity_parse_scrap;
+
+typedef struct {
   dg_serverclass_data *class_datas;
   struct dg_sendtable *sendtables;
   struct dg_serverclass *serverclasses;
   dg_edict *edicts;
   uint32_t sendtable_count;
   uint32_t serverclass_count;
+  entity_parse_scrap scrap;
   bool should_store_props;
 } estate;
 

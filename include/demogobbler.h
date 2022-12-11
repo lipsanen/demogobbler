@@ -78,7 +78,7 @@ typedef struct {
 
 dg_datatables_parsed_rval dg_parse_datatables(dg_demver_data *state, dg_alloc_state *allocator,
                                               dg_datatables *message);
-dg_parse_result dg_estate_init(estate *thisptr, entity_parse_scrap *scrap, estate_init_args args);
+dg_parse_result dg_estate_init(estate *thisptr, estate_init_args args);
 dg_parse_result dg_parse_stringtables(dg_stringtables_parsed *out, stringtable_parse_args args);
 dg_parse_result dg_estate_update(estate *entity_state, const dg_packetentities_data *data);
 void dg_estate_free(estate *thisptr);

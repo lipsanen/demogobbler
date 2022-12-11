@@ -429,7 +429,7 @@ static void parse_serverclass(estate_init_state *thisptr, size_t i) {
 end:;
 }
 
-dg_parse_result dg_estate_init(estate *thisptr, entity_parse_scrap *scrap, estate_init_args args) {
+dg_parse_result dg_estate_init(estate *thisptr, estate_init_args args) {
   dg_parse_result result;
   if (thisptr->edicts != NULL) {
     result.error = true;
@@ -450,17 +450,17 @@ dg_parse_result dg_estate_init(estate *thisptr, entity_parse_scrap *scrap, estat
   memset(&state, 0, sizeof(state));
   state.args = args;
   state.entity_state = thisptr;
-  state.ent_scrap = scrap;
+  state.ent_scrap = &thisptr->scrap;
   state.allocator = args.allocator;
 
   create_dt_hashtable(&state);
 
   if (!state.error) {
-    if (scrap->excluded_props.arr == NULL) {
-      scrap->excluded_props = dg_pes_create(256);
+    if (thisptr->scrap.excluded_props.arr == NULL) {
+      thisptr->scrap.excluded_props = dg_pes_create(256);
     }
-    if (scrap->dts_with_excludes.arr == NULL) {
-      scrap->dts_with_excludes = dg_hashtable_create(256);
+    if (thisptr->scrap.dts_with_excludes.arr == NULL) {
+      thisptr->scrap.dts_with_excludes = dg_hashtable_create(256);
     }
     size_t array_size = sizeof(dg_serverclass_data) * thisptr->serverclass_count;
     thisptr->class_datas =
@@ -521,6 +521,9 @@ void dg_estate_free(estate *thisptr) {
     }
     memset(thisptr->edicts, 0, sizeof(dg_edict) * MAX_EDICTS);
   }
+  dg_hashtable_free(&thisptr->scrap.dt_hashtable);
+  dg_hashtable_free(&thisptr->scrap.dts_with_excludes);
+  dg_pes_free(&thisptr->scrap.excluded_props);
 }
 
 void dg_parser_init_estate(dg_parser *thisptr, dg_datatables_parsed *message) {
@@ -531,7 +534,7 @@ void dg_parser_init_estate(dg_parser *thisptr, dg_datatables_parsed *message) {
   args.version_data = &thisptr->demo_version;
   args.allocator = dg_parser_perm_allocator(thisptr);
 
-  dg_parse_result result = dg_estate_init(&thisptr->state.entity_state, &thisptr->ent_scrap, args);
+  dg_parse_result result = dg_estate_init(&thisptr->state.entity_state, args);
 
   if (result.error) {
     thisptr->error = true;
@@ -547,7 +550,7 @@ dg_serverclass_data *dg_estate_serverclass_data(dg_parser *thisptr, size_t index
   estate_init_state state;
   memset(&state, 0, sizeof(state));
   state.args.version_data = &thisptr->demo_version;
-  state.ent_scrap = &thisptr->ent_scrap;
+  state.ent_scrap = &thisptr->state.entity_state.scrap;
   state.allocator = dg_parser_perm_allocator(thisptr);
 
   state.entity_state = &thisptr->state.entity_state;

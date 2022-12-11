@@ -303,14 +303,10 @@ void _parser_mainloop(dg_parser *thisptr) {
   NULL_CHECK(stringtables);
   NULL_CHECK(stringtables_parsed);
   NULL_CHECK(usercmd);
+  NULL_CHECK(flattened_props);
 
-  if (settings->store_props) {
-    settings->store_ents = true;
-  }
-
-  if (settings->flattened_props_handler || settings->store_ents ||
-      settings->packetentities_parsed_handler) {
-    settings->store_ents = true; // Entity state init handler => we should store ents
+  if (settings->parse_packetentities || settings->packetentities_parsed_handler) {
+    settings->parse_packetentities = true; // Entity state init handler => we should store ents
     should_parse = true;
     thisptr->parse_netmessages = true;
   }
@@ -398,7 +394,8 @@ void _parse_datatables(dg_parser *thisptr) {
 
   bool has_datatable_handler = thisptr->m_settings.datatables_handler ||
                                thisptr->m_settings.datatables_parsed_handler ||
-                               thisptr->m_settings.store_ents;
+                               thisptr->m_settings.parse_packetentities ||
+                               thisptr->m_settings.flattened_props_handler;
 
   if (has_datatable_handler && message.size_bytes > 0) {
     void *block = dg_parser_temp_allocate(thisptr, message.size_bytes, 1);
@@ -408,7 +405,7 @@ void _parse_datatables(dg_parser *thisptr) {
       if (thisptr->m_settings.datatables_handler)
         thisptr->m_settings.datatables_handler(&thisptr->state, &message);
 
-      if (thisptr->m_settings.datatables_parsed_handler || thisptr->m_settings.store_ents)
+      if (thisptr->m_settings.datatables_parsed_handler || thisptr->m_settings.parse_packetentities || thisptr->m_settings.flattened_props_handler)
         parse_datatables(thisptr, &message);
     }
   } else {

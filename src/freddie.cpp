@@ -121,7 +121,7 @@ dg_parse_result demo_t::parse_demo(demo_t *output, void *stream, dg_input_interf
   settings.stop_handler = handle_dg_stop;
   settings.synctick_handler = handle_dg_synctick;
   settings.usercmd_handler = handle_dg_usercmd;
-  settings.store_ents = true;
+  settings.parse_packetentities = true;
 
   return dg_parse(&settings, stream, interface);
 }

@@ -387,7 +387,7 @@ dg_datatables_parsed_rval dg_parse_datatables(dg_demver_data *version_data,
 void parse_datatables(dg_parser *thisptr, dg_datatables *input) {
   dg_alloc_state* allocator;
   bool init_entity_state;
-  if (thisptr->state.entity_state.edicts == NULL && thisptr->m_settings.store_ents) {
+  if (thisptr->state.entity_state.edicts == NULL && (thisptr->m_settings.parse_packetentities || thisptr->m_settings.flattened_props_handler)) {
     allocator = dg_parser_perm_allocator(thisptr);
     init_entity_state = false;
   } else {

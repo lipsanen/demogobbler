@@ -79,8 +79,7 @@ struct dg_settings {
   dg_parser_funcs funcs;
   dg_alloc_state temp_alloc_state;
   dg_alloc_state permanent_alloc_state;
-  bool store_ents;
-  bool store_props;
+  bool parse_packetentities;
   void *client_state;
 };
 

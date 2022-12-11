@@ -687,7 +687,7 @@ static void handle_svc_packet_entities(dg_parser *thisptr, dg_bitstream *stream,
   ptr->update_baseline = bitstream_read_bit(stream);
   ptr->data = bitstream_fork_and_advance(stream, ptr->data_length);
 
-  if (thisptr->m_settings.store_ents) {
+  if (thisptr->m_settings.parse_packetentities) {
     dg_parse_packetentities(thisptr, ptr);
   }
   SEND_MESSAGE();

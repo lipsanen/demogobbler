@@ -44,7 +44,7 @@ int main(int argc, char **argv) {
     settings.synctick_handler = print_synctick;
     settings.usercmd_handler = print_usercmd;
     settings.packet_parsed_handler = print_parsed_packet;
-    settings.store_ents = true;
+    settings.parse_packetentities = true;
     ;
     dg_parse_file(&settings, argv[1]);
   }

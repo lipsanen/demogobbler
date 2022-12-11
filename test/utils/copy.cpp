@@ -89,7 +89,6 @@ void copy_demo_test(const char *filepath) {
     settings.usercmd_handler = usercmd_handler;
     settings.demo_version_handler = handle_version;
     settings.client_state = &w;
-    settings.store_props = true;
 
     dg_input_interface input_funcs = {freddie::memory_stream_read, freddie::memory_stream_seek};
 

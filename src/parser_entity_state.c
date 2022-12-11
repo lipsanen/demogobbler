@@ -528,7 +528,7 @@ void dg_estate_free(estate *thisptr) {
 
 void dg_parser_init_estate(dg_parser *thisptr, dg_datatables_parsed *message) {
   estate_init_args args;
-  args.should_store_props = thisptr->m_settings.store_props;
+  args.should_store_props = false;
   args.flatten_datatables = thisptr->m_settings.flattened_props_handler != NULL;
   args.message = message;
   args.version_data = &thisptr->demo_version;

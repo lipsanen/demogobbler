@@ -41,10 +41,6 @@ static void mallocator_clear(void *allocator) {
   arena->pointers.clear();
 }
 
-static void mallocator_free(void *allocator) {
-  // Don't free, we control the memory ourselves
-}
-
 static void mallocator_attach(void *allocator, void *ptr, uint32_t size) {
   mallocator *arena = (mallocator *)allocator;
   arena->pointers.push_back(ptr);
@@ -110,12 +106,9 @@ dg_parse_result demo_t::parse_demo(demo_t *output, void *stream, dg_input_interf
   settings.temp_alloc_state.alloc = mallocator_allocate;
   settings.temp_alloc_state.attach = mallocator_attach;
   settings.temp_alloc_state.clear = mallocator_clear;
-  settings.temp_alloc_state.free = mallocator_free;
   settings.temp_alloc_state.realloc = mallocator_reallocate;
-  settings.temp_alloc_state.free = noop;
   settings.permanent_alloc_state.allocator = &output->arena;
   settings.permanent_alloc_state.clear = noop;
-  settings.permanent_alloc_state.free = noop;
   settings.client_state = output;
   settings.header_handler = handle_header;
   settings.demo_version_handler = handle_version;

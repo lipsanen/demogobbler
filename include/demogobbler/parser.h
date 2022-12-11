@@ -95,8 +95,6 @@ struct dg_parser {
   dg_settings m_settings;
   dg_parser_funcs _parser_funcs;
   dg_filereader m_reader;
-  dg_arena __temp_arena;
-  dg_arena __permanent_arena;
   dg_demver_data demo_version;
   const char *error_message;
   bool error;

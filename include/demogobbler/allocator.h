@@ -36,7 +36,6 @@ struct dg_alloc_state
   func_dg_alloc alloc;
   func_dg_clear clear;
   func_dg_realloc realloc;
-  func_dg_free free;
   func_dg_attach attach;
 };
 
@@ -64,11 +63,6 @@ static inline void* dg_alloc_reallocate(dg_alloc_state* state, void *ptr, uint32
 static inline void dg_alloc_clear(dg_alloc_state* state)
 {
   state->clear(state->allocator);
-}
-
-static inline void dg_alloc_free(dg_alloc_state* state)
-{
-  state->free(state->allocator);
 }
 
 static inline void dg_alloc_attach(dg_alloc_state* state, void *ptr, uint32_t size)

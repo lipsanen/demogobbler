@@ -1,6 +1,6 @@
 #include "parser_packetentities.h"
-#include "arena.h"
 #include "demogobbler.h"
+#include "demogobbler/allocator.h"
 #include "demogobbler/bitstream.h"
 #include "demogobbler/bitwriter.h"
 #include "demogobbler/entity_types.h"
@@ -17,8 +17,8 @@ static int BREAK_INDEX = 20;
 typedef struct {
   dg_parser *thisptr;
   dg_bitstream *stream;
-  dg_arena *a;
-  dg_arena *permanent_arena;
+  dg_alloc_state *a;
+  dg_alloc_state *permanent_arena;
   dg_ent_update *update;
   dg_vector_array prop_array;
   dg_packetentities_data output;
@@ -144,7 +144,7 @@ static void write_vector3(bitwriter *thisptr, dg_prop_value_inner value) {
 }
 
 static void read_vector3(prop_parse_state *state, dg_sendprop *prop, dg_prop_value_inner *value) {
-  value->v3_val = dg_arena_allocate(state->a, sizeof(dg_vector3_value), alignof(dg_vector3_value));
+  value->v3_val = dg_alloc_allocate(state->a, sizeof(dg_vector3_value), alignof(dg_vector3_value));
   memset(value->v3_val, 0, sizeof(dg_vector3_value));
 
   read_float(state, prop, &value->v3_val->x);
@@ -164,7 +164,7 @@ static void write_vector2(bitwriter *thisptr, dg_prop_value_inner value) {
 }
 
 static void read_vector2(prop_parse_state *state, dg_sendprop *prop, dg_prop_value_inner *value) {
-  value->v2_val = dg_arena_allocate(state->a, sizeof(dg_vector2_value), alignof(dg_vector2_value));
+  value->v2_val = dg_alloc_allocate(state->a, sizeof(dg_vector2_value), alignof(dg_vector2_value));
   memset(value->v2_val, 0, sizeof(dg_vector2_value));
 
   read_float(state, prop, &value->v2_val->x);
@@ -179,9 +179,9 @@ static void write_string(bitwriter *thisptr, dg_prop_value_inner value) {
 }
 
 static void read_string(prop_parse_state *state, dg_sendprop *prop, dg_prop_value_inner *value) {
-  value->str_val = dg_arena_allocate(state->a, sizeof(dg_string_value), alignof(dg_string_value));
+  value->str_val = dg_alloc_allocate(state->a, sizeof(dg_string_value), alignof(dg_string_value));
   size_t len = value->str_val->len = bitstream_read_uint(state->stream, dt_max_string_bits);
-  value->str_val->str = dg_arena_allocate(state->a, len + 1, 1);
+  value->str_val->str = dg_alloc_allocate(state->a, len + 1, 1);
   bitstream_read_fixed_string(state->stream, value->str_val->str, len);
   value->str_val->str[len] = '\0'; // make sure we have zero terminated string
 }
@@ -199,11 +199,11 @@ static void write_array(bitwriter *thisptr, dg_prop_value_inner value) {
 static void read_array(prop_parse_state *state, dg_sendprop *props, uint32_t prop_index, dg_prop_value_inner *value) {
   dg_sendprop* prop = props + prop_index;
   value->array_num_elements = prop->array_num_elements;
-  value->arr_val = dg_arena_allocate(state->a, sizeof(dg_array_value), alignof(dg_array_value));
+  value->arr_val = dg_alloc_allocate(state->a, sizeof(dg_array_value), alignof(dg_array_value));
   value->arr_val->array_size =
       bitstream_read_uint(state->stream, highest_bit_index(prop->array_num_elements) + 1);
   value->arr_val->values =
-      dg_arena_allocate(state->a, sizeof(dg_prop_value_inner) * value->arr_val->array_size,
+      dg_alloc_allocate(state->a, sizeof(dg_prop_value_inner) * value->arr_val->array_size,
                         alignof(dg_prop_value_inner));
 
   for (size_t i = 0; i < value->arr_val->array_size; ++i) {
@@ -373,7 +373,7 @@ static void parse_props(prop_parse_state *state, size_t index) {
   if (state->prop_array.count_elements > 0) {
     state->update->prop_value_array_size = state->prop_array.count_elements;
     size_t bytes = sizeof(prop_value) * state->prop_array.count_elements;
-    state->update->prop_value_array = dg_arena_allocate(state->a, bytes, alignof(prop_value));
+    state->update->prop_value_array = dg_alloc_allocate(state->a, bytes, alignof(prop_value));
     memcpy(state->update->prop_value_array, state->prop_array.ptr, bytes);
   }
 }
@@ -383,7 +383,7 @@ static void read_explicit_deletes(prop_parse_state *state, bool new_logic) {
     int32_t nbase = -1;
     uint32_t ncount = bitstream_read_ubitint(state->stream);
     uint32_t bytes = sizeof(int32_t) * ncount;
-    state->output.explicit_deletes = dg_arena_allocate(state->a, bytes, alignof(int));
+    state->output.explicit_deletes = dg_alloc_allocate(state->a, bytes, alignof(int));
     state->output.explicit_deletes_count = ncount;
 
     for (uint32_t i = 0; i < ncount; ++i) {
@@ -398,7 +398,7 @@ static void read_explicit_deletes(prop_parse_state *state, bool new_logic) {
 
     if (max_updates >= 0) {
       size_t bytes = sizeof(int) * max_updates;
-      state->output.explicit_deletes = dg_arena_allocate(state->a, bytes, alignof(int));
+      state->output.explicit_deletes = dg_alloc_allocate(state->a, bytes, alignof(int));
       memset(state->output.explicit_deletes, 0, bytes);
     }
 
@@ -476,13 +476,13 @@ void dg_parse_packetentities(dg_parser *thisptr, struct dg_svc_packet_entities *
   prop_parse_state state;
   memset(&state, 0, sizeof(state));
   state.thisptr = thisptr;
-  state.a = dg_parser_tempa(thisptr);
-  state.permanent_arena = dg_parser_perma(thisptr);
+  state.a = dg_parser_temp_allocator(thisptr);
+  state.permanent_arena = dg_parser_perm_allocator(thisptr);
   state.stream = &stream;
 
   state.output.ent_updates_count = message->updated_entries;
   size_t ent_update_bytes = sizeof(dg_ent_update) * state.output.ent_updates_count;
-  state.output.ent_updates = dg_arena_allocate(state.a, ent_update_bytes, alignof(dg_ent_update));
+  state.output.ent_updates = dg_alloc_allocate(state.a, ent_update_bytes, alignof(dg_ent_update));
   memset(state.output.ent_updates, 0, ent_update_bytes);
 
   prop_value props_array[64];
@@ -565,7 +565,7 @@ end:;
   if (!thisptr->error) {
 #endif
     dg_svc_packetentities_parsed* parsed_ptr;
-    message->parsed = parsed_ptr = dg_arena_allocate(state.a, sizeof(dg_svc_packetentities_parsed), alignof(dg_svc_packetentities_parsed)); 
+    message->parsed = parsed_ptr = dg_alloc_allocate(state.a, sizeof(dg_svc_packetentities_parsed), alignof(dg_svc_packetentities_parsed)); 
     memset(parsed_ptr, 0, sizeof(*parsed_ptr));
     if (thisptr->m_settings.packetentities_parsed_handler) {
       parsed_ptr->data = state.output;

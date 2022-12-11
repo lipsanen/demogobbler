@@ -1,6 +1,6 @@
 #include "gtest/gtest.h"
 extern "C" {
-#include "arena.h"
+#include "demogobbler/allocator.h"
 }
 
 TEST(Arena, Int32Works) {

@@ -2,6 +2,7 @@
 #include "demogobbler/streams.h"
 #include <cstring>
 #include <cstdint>
+#include <iostream>
 
 using namespace freddie;
 
@@ -42,10 +43,17 @@ HANDLE_PACKET(dg_synctick);
 HANDLE_PACKET(dg_usercmd);
 HANDLE_PACKET(packet_parsed);
 
+static void noop(void* allocator) {}
+
 dg_parse_result demo_t::parse_demo(demo_t *output, void *stream, dg_input_interface interface) {
   dg_settings settings;
   dg_settings_init(&settings);
-  settings.user_arena = &output->arena;
+  settings.temp_alloc_state.allocator = &output->arena;
+  settings.temp_alloc_state.clear = noop;
+  settings.temp_alloc_state.free = noop;
+  settings.permanent_alloc_state.allocator = &output->arena;
+  settings.permanent_alloc_state.clear = noop;
+  settings.permanent_alloc_state.free = noop;
   settings.client_state = output;
   settings.header_handler = handle_header;
   settings.demo_version_handler = handle_version;
@@ -129,7 +137,7 @@ dg_parse_result demo_t::write_demo(const char *filepath) {
   FILE *file = fopen(filepath, "wb");
   dg_parse_result result;
 
-  if (file != nullptr) {
+  if (file == nullptr) {
     result.error = true;
     result.error_message = "unable to open file";
   } else {
@@ -174,6 +182,7 @@ static void finalize_stream(dg_bitstream* stream, const dg_bitwriter* writer)
 }
 
 static void fix_packets(demo_t *demo) {
+  demo->bitwriter.bitoffset = 0;
   for (size_t i = 0; i < demo->packets.size(); ++i) {
     demo_packet packet = demo->packets[i];
     if (std::holds_alternative<packet_parsed *>(packet)) {
@@ -188,6 +197,11 @@ static void fix_packets(demo_t *demo) {
           args.data = msg->message_svc_packet_entities.parsed->data;
 
           auto stream = get_start_state(&demo->bitwriter);
+#ifdef GROUND_TRUTH_CHECK
+          demo->bitwriter.truth_data = msg->message_svc_packet_entities.data.data;
+          demo->bitwriter.truth_data_offset = msg->message_svc_packet_entities.data.bitoffset;
+          demo->bitwriter.truth_size_bits = msg->message_svc_packet_entities.data.bitsize;
+#endif
           dg_bitwriter_write_packetentities(&demo->bitwriter, args);
           finalize_stream(&stream, &demo->bitwriter);
         
@@ -302,7 +316,7 @@ std::size_t freddie::memory_stream_write(void *s, const void *src, size_t bytes)
       if (memcmp(dest, comparison_ptr, bytes) != 0) {
         stream->agrees = false;
       if(stream->errfunc)
-        stream->errfunc("Write out of bounds for ground truth");
+        stream->errfunc("Did not match with ground truth");
       }
     }
   }

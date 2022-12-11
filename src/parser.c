@@ -1,6 +1,6 @@
 #include "demogobbler/parser.h"
 #include "alignof_wrapper.h"
-#include "arena.h"
+#include "demogobbler/allocator.h"
 #include "demogobbler.h"
 #include "demogobbler/filereader.h"
 #include "demogobbler/packettypes.h"
@@ -35,20 +35,21 @@ void _parse_synctick(dg_parser *thisptr);
 void _parse_usercmd(dg_parser *thisptr);
 bool _parse_anymessage(dg_parser *thisptr);
 
-dg_arena* dg_parser_tempa(dg_parser *thisptr)
+
+dg_alloc_state* dg_parser_temp_allocator(dg_parser *thisptr)
 {
-  return thisptr->m_settings.user_arena ? thisptr->m_settings.user_arena : &thisptr->temp_arena;
+  return &thisptr->m_settings.temp_alloc_state;
 }
 
-dg_arena* dg_parser_perma(dg_parser *thisptr)
+dg_alloc_state* dg_parser_perm_allocator(dg_parser *thisptr)
 {
-  return thisptr->m_settings.user_arena ? thisptr->m_settings.user_arena : &thisptr->permanent_arena;
+  return &thisptr->m_settings.permanent_alloc_state;
 }
 
 void* dg_parser_temp_allocate(dg_parser *thisptr, uint32_t size, uint32_t alignment)
 {
-  dg_arena* a = dg_parser_tempa(thisptr);
-  return dg_arena_allocate(a, size, alignment);
+  dg_alloc_state *a = dg_parser_temp_allocator(thisptr);
+  return dg_alloc_allocate(a, size, alignment);
 }
 
 static void init_parsing_funcs(dg_parser *thisptr) {
@@ -70,18 +71,44 @@ static void init_parsing_funcs(dg_parser *thisptr) {
     thisptr->_parser_funcs.parse_usercmd = _parse_usercmd;
 }
 
+static void set_allocator_funcs(dg_alloc_state* state)
+{
+  if(state->alloc == NULL)
+    state->alloc = (func_dg_alloc)dg_arena_allocate;
+  if(state->attach == NULL)
+    state->attach = (func_dg_attach)dg_arena_attach;
+  if(state->clear == NULL)
+    state->clear = (func_dg_clear)dg_arena_clear;
+  if(state->free == NULL)
+    state->free = (func_dg_free)dg_arena_free;
+  if(state->realloc == NULL)
+    state->realloc = (func_dg_realloc)dg_arena_reallocate;
+}
+
 void dg_parser_init(dg_parser *thisptr, dg_settings *settings) {
   memset(thisptr, 0, sizeof(*thisptr));
   thisptr->state.client_state = settings->client_state;
   thisptr->m_settings = *settings;
   thisptr->_parser_funcs = settings->funcs;
   init_parsing_funcs(thisptr);
-
   const size_t INITIAL_SIZE = 1 << 17;
   const size_t INITIAL_TEMP_SIZE = 1 << 17;
-  // Does lazy allocation, only allocates stuff if requested
-  thisptr->permanent_arena = dg_arena_create(INITIAL_SIZE);
-  thisptr->temp_arena = dg_arena_create(INITIAL_TEMP_SIZE);
+
+  if(thisptr->m_settings.permanent_alloc_state.allocator == NULL)
+  {
+    thisptr->__permanent_arena = dg_arena_create(INITIAL_SIZE);
+    thisptr->m_settings.permanent_alloc_state.allocator = &thisptr->__permanent_arena;
+  }
+
+  set_allocator_funcs(&thisptr->m_settings.permanent_alloc_state);
+
+  if(thisptr->m_settings.temp_alloc_state.allocator == NULL)
+  {
+    thisptr->__temp_arena = dg_arena_create(INITIAL_TEMP_SIZE);
+    thisptr->m_settings.temp_alloc_state.allocator = &thisptr->__temp_arena;
+  }
+
+  set_allocator_funcs(&thisptr->m_settings.temp_alloc_state);
 }
 
 void dg_parser_parse(dg_parser *thisptr, void *stream, dg_input_interface input) {
@@ -147,7 +174,7 @@ void _parse_header(dg_parser *thisptr) {
 
 bool _parse_anymessage(dg_parser *thisptr) {
   uint8_t type = dg_filereader_readbyte(thisreader);
-  dg_arena_clear(&thisptr->temp_arena);
+  dg_alloc_clear(dg_parser_temp_allocator(thisptr));
 
   switch (type) {
   case dg_type_consolecmd:
@@ -192,12 +219,12 @@ bool _parse_anymessage(dg_parser *thisptr) {
 }
 
 static void parser_free_state(dg_parser *thisptr) {
-  dg_arena_free(&thisptr->temp_arena);
+  dg_alloc_free(dg_parser_temp_allocator(thisptr));
   dg_hashtable_free(&thisptr->ent_scrap.dt_hashtable);
   dg_hashtable_free(&thisptr->ent_scrap.dts_with_excludes);
   dg_pes_free(&thisptr->ent_scrap.excluded_props);
   dg_estate_free(&thisptr->state.entity_state);
-  dg_arena_free(&thisptr->permanent_arena);
+  dg_alloc_free(dg_parser_perm_allocator(thisptr));
 }
 
 #define PARSE_PREAMBLE()                                                                           \
@@ -398,8 +425,8 @@ void _parse_stop(dg_parser *thisptr) {
 
     do {
       size_t new_reserve_size = bytes_reserved + bytes_per_read;
-      dg_arena* a = dg_parser_tempa(thisptr);
-      ptr = dg_arena_reallocate(a, ptr, bytes_reserved, new_reserve_size, 1);
+      dg_alloc_state* a = dg_parser_temp_allocator(thisptr);
+      ptr = dg_alloc_reallocate(a, ptr, bytes_reserved, new_reserve_size, 1);
       bytes_reserved = new_reserve_size;
 
       bytesReadIt = dg_filereader_readdata(thisreader, (uint8_t *)ptr + bytes, bytes_per_read);

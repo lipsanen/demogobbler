@@ -1,4 +1,4 @@
-#include "arena.h"
+#include "demogobbler/allocator.h"
 #include "demogobbler/streams.h"
 #include "utils.h"
 #include <stdio.h>

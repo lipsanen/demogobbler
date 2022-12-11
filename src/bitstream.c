@@ -1,5 +1,5 @@
 #include "demogobbler/bitstream.h"
-#include "arena.h"
+#include "demogobbler/allocator.h"
 #include "utils.h"
 #include <assert.h>
 #include <stdio.h>

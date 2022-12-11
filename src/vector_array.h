@@ -1,6 +1,6 @@
 #pragma once
 
-#include "demogobbler/arena.h"
+#include "demogobbler/allocator.h"
 #include "alignof_wrapper.h"
 #include <stdbool.h>
 #include <stdint.h>
@@ -11,7 +11,7 @@ typedef struct {
   uint32_t count_elements;    // How many elements currently in the vector
   uint32_t bytes_per_element; // How many bytes each element takes up
   bool allocated_by_malloc;   // If on the stack, we dont want to free ptr
-  dg_arena* a;
+  dg_alloc_state* a;
 } dg_vector_array;
 
 dg_vector_array dg_va_create_(void *ptr, uint32_t ptr_bytes, uint32_t bytes_per_element,

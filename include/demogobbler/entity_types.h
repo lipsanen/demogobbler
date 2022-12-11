@@ -4,7 +4,7 @@
 extern "C" {
 #endif
 
-#include "demogobbler/arena.h"
+#include "demogobbler/allocator.h"
 #include "demogobbler/floats.h"
 #include <stddef.h>
 
@@ -163,7 +163,6 @@ typedef struct {
   dg_edict *edicts;
   uint32_t sendtable_count;
   uint32_t serverclass_count;
-  //dg_arena memory_arena;
   bool should_store_props;
 } estate;
 

@@ -1,6 +1,6 @@
 #include "parser_datatables.h"
 #include "alignof_wrapper.h"
-#include "arena.h"
+#include "demogobbler/allocator.h"
 #include "demogobbler.h"
 #include "demogobbler/bitstream.h"
 #include "demogobbler/bitwriter.h"
@@ -72,7 +72,7 @@ static dg_sendproptype raw_to_sendproptype(datatable_parser *thisptr, unsigned i
   return sendproptype_invalid;
 }
 
-static char *parse_cstring(dg_arena *a, dg_bitstream *stream) {
+static char *parse_cstring(dg_alloc_state *a, dg_bitstream *stream) {
   char STRINGBUF[1024];
   size_t size = bitstream_read_cstring(stream, STRINGBUF, sizeof(STRINGBUF));
   char *rval = NULL;
@@ -80,7 +80,7 @@ static char *parse_cstring(dg_arena *a, dg_bitstream *stream) {
   if (size == 0) {
     stream->overflow = true;
   } else if (!stream->overflow) {
-    rval = dg_arena_allocate(a, size, 1);
+    rval = dg_alloc_allocate(a, size, 1);
     memcpy(rval, STRINGBUF, size);
   }
 
@@ -192,7 +192,7 @@ static void write_sendprop(writer *thisptr, bitwriter *writer, dg_sendprop *prop
   }
 }
 
-static void parse_sendprop(datatable_parser *thisptr, dg_arena *a, dg_bitstream *stream,
+static void parse_sendprop(datatable_parser *thisptr, dg_alloc_state *a, dg_bitstream *stream,
                            dg_sendtable *table, dg_sendprop *prop, size_t index) {
   memset(prop, 0, sizeof(dg_sendprop));
   unsigned int raw_value = bitstream_read_uint(stream, 5);
@@ -246,7 +246,7 @@ static void write_sendtable(writer *thisptr, bitwriter *writer, dg_sendtable *pt
 
 #define ERROR_SET (stream->overflow || thisptr->error)
 
-static void parse_sendtable(datatable_parser *thisptr, dg_arena *a, dg_bitstream *stream,
+static void parse_sendtable(datatable_parser *thisptr, dg_alloc_state *a, dg_bitstream *stream,
                             dg_sendtable *ptable) {
   memset(ptable, 0, sizeof(dg_sendtable));
   ptable->needs_decoder = bitstream_read_bit(stream);
@@ -260,7 +260,7 @@ static void parse_sendtable(datatable_parser *thisptr, dg_arena *a, dg_bitstream
 
   ptable->prop_count = bitstream_read_uint(stream, thisptr->demo_version->datatable_propcount_bits);
   ptable->props =
-      dg_arena_allocate(a, ptable->prop_count * sizeof(dg_sendprop), alignof(dg_sendprop));
+      dg_alloc_allocate(a, ptable->prop_count * sizeof(dg_sendprop), alignof(dg_sendprop));
 
   for (size_t i = 0; i < ptable->prop_count && !ERROR_SET; ++i) {
     parse_sendprop(thisptr, a, stream, ptable, ptable->props + i, i);
@@ -273,7 +273,7 @@ static void write_serverclass(bitwriter *writer, dg_serverclass *pclass) {
   bitwriter_write_cstring(writer, pclass->datatable_name);
 }
 
-static void parse_serverclass(datatable_parser *thisptr, dg_arena *a, dg_bitstream *stream,
+static void parse_serverclass(datatable_parser *thisptr, dg_alloc_state *a, dg_bitstream *stream,
                               dg_serverclass *pclass) {
   memset(pclass, 0, sizeof(dg_serverclass));
   pclass->serverclass_id = bitstream_read_uint(stream, 16);
@@ -336,7 +336,7 @@ void dg_write_datatables_parsed(writer *thisptr, dg_datatables_parsed *datatable
 }
 
 dg_datatables_parsed_rval dg_parse_datatables(dg_demver_data *version_data,
-                                              dg_arena *memory_arena, dg_datatables *input) {
+                                              dg_alloc_state *allocator, dg_datatables *input) {
   datatable_parser dparser;
   datatables output;
   memset(&dparser, 0, sizeof(dparser));
@@ -357,18 +357,18 @@ dg_datatables_parsed_rval dg_parse_datatables(dg_demver_data *version_data,
       array_size <<= 1;
       output.sendtables = realloc(output.sendtables, array_size * sizeof(dg_sendtable));
     }
-    parse_sendtable(&dparser, memory_arena, &stream, output.sendtables + output.sendtable_count);
+    parse_sendtable(&dparser, allocator, &stream, output.sendtables + output.sendtable_count);
     ++output.sendtable_count;
   }
 
-  dg_arena_attach(memory_arena, output.sendtables, array_size * sizeof(dg_sendtable));
+  dg_alloc_attach(allocator, output.sendtables, array_size * sizeof(dg_sendtable));
 
   output.serverclass_count = bitstream_read_uint(&stream, 16);
-  output.serverclasses = dg_arena_allocate(
-      memory_arena, output.serverclass_count * sizeof(dg_serverclass), alignof(dg_serverclass));
+  output.serverclasses = dg_alloc_allocate(
+      allocator, output.serverclass_count * sizeof(dg_serverclass), alignof(dg_serverclass));
 
   for (size_t i = 0; i < output.serverclass_count && !dparser.error; ++i) {
-    parse_serverclass(&dparser, memory_arena, &stream, output.serverclasses + i);
+    parse_serverclass(&dparser, allocator, &stream, output.serverclasses + i);
   }
 
   if (stream.overflow && !dparser.error) {
@@ -385,18 +385,18 @@ dg_datatables_parsed_rval dg_parse_datatables(dg_demver_data *version_data,
 }
 
 void parse_datatables(dg_parser *thisptr, dg_datatables *input) {
-  dg_arena* memory_arena;
+  dg_alloc_state* allocator;
   bool init_entity_state;
   if (thisptr->state.entity_state.edicts == NULL && thisptr->m_settings.store_ents) {
-    memory_arena = dg_parser_perma(thisptr);
+    allocator = dg_parser_perm_allocator(thisptr);
     init_entity_state = false;
   } else {
-    memory_arena = dg_parser_tempa(thisptr);
+    allocator = dg_parser_temp_allocator(thisptr);
     init_entity_state = true;
   }
 
   dg_datatables_parsed_rval value =
-      dg_parse_datatables(&thisptr->demo_version, memory_arena, input);
+      dg_parse_datatables(&thisptr->demo_version, allocator, input);
 
   if (!value.error) {
     if (thisptr->m_settings.datatables_parsed_handler)

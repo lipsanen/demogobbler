@@ -1,5 +1,5 @@
 #include "parser_netmessages.h"
-#include "arena.h"
+#include "demogobbler/allocator.h"
 #include "demogobbler/bitstream.h"
 #include "demogobbler/bitwriter.h"
 #include "parser_packetentities.h"
@@ -106,11 +106,11 @@ static void write_net_stringcmd(bitwriter *writer, dg_demver_data *version,
 static void handle_net_setconvar(dg_parser *thisptr, dg_bitstream *stream, packet_net_message *message,
                                  blk *scrap) {
   // Reserve space on stack for maximum amount of convars
-  dg_arena* arena = dg_parser_tempa(thisptr);
+  dg_alloc_state* arena = dg_parser_temp_allocator(thisptr);
   struct dg_net_setconvar *ptr = &message->message_net_setconvar;
   ptr->count = bitstream_read_uint(stream, 8);
   ptr->convars =
-      dg_arena_allocate(arena, sizeof(struct dg_net_setconvar_convar) * ptr->count,
+      dg_alloc_allocate(arena, sizeof(struct dg_net_setconvar_convar) * ptr->count,
                         alignof(struct dg_net_setconvar_convar));
   for (size_t i = 0; i < message->message_net_setconvar.count; ++i) {
     COPY_STRING(ptr->convars[i].name);
@@ -201,8 +201,8 @@ static void write_svc_print(bitwriter *writer, dg_demver_data *version,
 
 static void handle_svc_serverinfo(dg_parser *thisptr, dg_bitstream *stream,
                                   packet_net_message *message, blk *scrap) {
-  dg_arena* arena = dg_parser_tempa(thisptr);
-  message->message_svc_serverinfo = dg_arena_allocate(
+  dg_alloc_state* arena = dg_parser_temp_allocator(thisptr);
+  message->message_svc_serverinfo = dg_alloc_allocate(
       arena, sizeof(struct dg_svc_serverinfo), alignof(struct dg_svc_serverinfo));
   struct dg_svc_serverinfo *ptr = message->message_svc_serverinfo;
   ptr->network_protocol = bitstream_read_uint(stream, 16);
@@ -317,11 +317,12 @@ static void handle_svc_classinfo(dg_parser *thisptr, dg_bitstream *stream, packe
   ptr->length = bitstream_read_uint(stream, 16);
   ptr->create_on_client = bitstream_read_bit(stream);
   unsigned int bits = highest_bit_index(ptr->length) + 1;
+  dg_alloc_state* arena = dg_parser_temp_allocator(thisptr);
 
   // Could in theory have 32768 classes so use the allocator for this
   if (!ptr->create_on_client) {
-    ptr->server_classes = dg_arena_allocate(
-        &thisptr->temp_arena, ptr->length * sizeof(struct dg_svc_classinfo_serverclass), 1);
+    ptr->server_classes = dg_alloc_allocate(
+        arena, ptr->length * sizeof(struct dg_svc_classinfo_serverclass), 1);
     for (unsigned int i = 0; i < ptr->length && !stream->overflow; ++i) {
       ptr->server_classes[i].class_id = bitstream_read_uint(stream, bits);
       COPY_STRING(ptr->server_classes[i].class_name);
@@ -917,9 +918,9 @@ void parse_netmessages(dg_parser *thisptr, dg_packet *packet) {
   // We allocate a single scrap buffer for the duration of parsing the packet that is as large as
   // the whole packet. Should never run out of space as long as we don't make things larger as we
   // read it out
-  dg_arena* arena = dg_parser_tempa(thisptr);
+  dg_alloc_state* arena = dg_parser_temp_allocator(thisptr);
   blk scrap_blk;
-  scrap_blk.address = dg_arena_allocate(arena, size, 1);
+  scrap_blk.address = dg_alloc_allocate(arena, size, 1);
   scrap_blk.size = size;
   unsigned int bits = thisptr->demo_version.netmessage_type_bits;
 
@@ -972,16 +973,8 @@ void parse_netmessages(dg_parser *thisptr, dg_packet *packet) {
   if (!thisptr->error) {
     packet_parsed parsed;
     memset(&parsed, 0, sizeof(parsed));
-
-    if(thisptr->m_settings.user_arena)
-    {
-      parsed.messages = dg_arena_allocate(arena, packet_arr.count_elements * sizeof(packet_net_message), alignof(packet_net_message));
-      memcpy(parsed.messages, packet_arr.ptr, packet_arr.count_elements * sizeof(packet_net_message));
-    }
-    else
-    {
-      parsed.messages = packet_arr.ptr;
-    }
+    parsed.messages = dg_alloc_allocate(arena, packet_arr.count_elements * sizeof(packet_net_message), alignof(packet_net_message));
+    memcpy(parsed.messages, packet_arr.ptr, packet_arr.count_elements * sizeof(packet_net_message));
 
     parsed.message_count = packet_arr.count_elements;
     parsed.orig = *packet;

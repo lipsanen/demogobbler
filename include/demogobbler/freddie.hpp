@@ -2,8 +2,8 @@
 
 // Freddie is a higher level C++ API for demo related stuff
 
-#include "arena.h"
 #include "demogobbler.h"
+#include "demogobbler/allocator.h"
 #include <functional>
 #include <stddef.h>
 #include <variant>

@@ -1,6 +1,6 @@
 #include "parser_stringtables.h"
 #include "alignof_wrapper.h"
-#include "arena.h"
+#include "demogobbler/allocator.h"
 #include "demogobbler.h"
 #include "demogobbler/bitstream.h"
 #include "demogobbler/streams.h"
@@ -61,17 +61,17 @@ void dg_write_stringtables_parsed(writer *thisptr, dg_stringtables_parsed *messa
   dg_write_data(thisptr, thisptr->bitwriter.ptr, bytes);
 }
 
-static const char *read_string(dg_bitstream *stream, dg_arena *memory_arena) {
+static const char *read_string(dg_bitstream *stream, dg_alloc_state *allocator) {
   char BUFFER[1024];
   uint32_t bytes = bitstream_read_cstring(stream, BUFFER, 1024);
-  char *dest = dg_arena_allocate(memory_arena, bytes, 1);
+  char *dest = dg_alloc_allocate(allocator, bytes, 1);
   memcpy(dest, BUFFER, bytes);
   return dest;
 }
 
 static void read_stringtable_entry(dg_stringtable_entry *entry, dg_bitstream *stream,
                                    stringtable_parse_args args) {
-  entry->name = read_string(stream, args.memory_arena);
+  entry->name = read_string(stream, args.allocator);
   entry->has_data = bitstream_read_bit(stream);
   if (entry->has_data) {
     entry->size = bitstream_read_uint(stream, 16);
@@ -88,16 +88,16 @@ dg_parse_result dg_parse_stringtables(dg_stringtables_parsed *message,
 
   dg_bitstream stream = bitstream_create(args.message->data, args.message->size_bytes * 8);
   message->tables_count = bitstream_read_uint(&stream, 8);
-  message->tables = dg_arena_allocate(
-      args.memory_arena, message->tables_count * sizeof(dg_stringtable), alignof(dg_stringtable));
+  message->tables = dg_alloc_allocate(
+      args.allocator, message->tables_count * sizeof(dg_stringtable), alignof(dg_stringtable));
   memset(message->tables, 0, message->tables_count * sizeof(dg_stringtable));
 
   for (uint8_t i = 0; i < message->tables_count; ++i) {
     dg_stringtable *table = message->tables + i;
-    table->table_name = read_string(&stream, args.memory_arena);
+    table->table_name = read_string(&stream, args.allocator);
     table->entries_count = bitstream_read_uint(&stream, 16);
     table->entries =
-        dg_arena_allocate(args.memory_arena, table->entries_count * sizeof(dg_stringtable_entry),
+        dg_alloc_allocate(args.allocator, table->entries_count * sizeof(dg_stringtable_entry),
                           alignof(dg_stringtable_entry));
     memset(table->entries, 0, table->entries_count * sizeof(dg_stringtable_entry));
     for (uint16_t u = 0; u < table->entries_count; ++u) {
@@ -108,7 +108,7 @@ dg_parse_result dg_parse_stringtables(dg_stringtables_parsed *message,
     if (table->has_classes) {
       table->classes_count = bitstream_read_uint(&stream, 16);
       table->classes =
-          dg_arena_allocate(args.memory_arena, table->classes_count * sizeof(dg_stringtable_entry),
+          dg_alloc_allocate(args.allocator, table->classes_count * sizeof(dg_stringtable_entry),
                             alignof(dg_stringtable_entry));
       for (uint16_t u = 0; u < table->classes_count; ++u) {
         read_stringtable_entry(table->classes + u, &stream, args);
@@ -136,7 +136,7 @@ void dg_parser_parse_stringtables(dg_parser *thisptr, dg_stringtables *input) {
   memset(&out, 0, sizeof(out));
   memset(&args, 0, sizeof(args));
 
-  args.memory_arena = dg_parser_tempa(thisptr);
+  args.allocator = dg_parser_temp_allocator(thisptr);
   args.message = input;
 
   dg_parse_result result = dg_parse_stringtables(&out, args);

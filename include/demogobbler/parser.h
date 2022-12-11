@@ -4,7 +4,7 @@
 extern "C" {
 #endif
 
-#include "demogobbler/arena.h"
+#include "demogobbler/allocator.h"
 #include "demogobbler/datatable_types.h"
 #include "demogobbler/entity_types.h"
 #include "demogobbler/filereader.h"
@@ -57,7 +57,6 @@ typedef void (*func_dg_datatables_parsed)(parser_state *state, dg_datatables_par
 typedef void (*func_dg_packetentities_parsed)(parser_state *state,
                                               dg_svc_packetentities_parsed *message);
 typedef void (*func_dg_estate_init)(parser_state *state);
-
 typedef struct dg_settings dg_settings;
 
 // The settings struct contains all the callbacks for application code
@@ -78,9 +77,10 @@ struct dg_settings {
   func_dg_stringtables_parsed stringtables_parsed_handler;
   func_dg_usercmd usercmd_handler;
   dg_parser_funcs funcs;
+  dg_alloc_state temp_alloc_state;
+  dg_alloc_state permanent_alloc_state;
   bool store_ents;
   bool store_props;
-  dg_arena* user_arena;
   void *client_state;
 };
 
@@ -95,8 +95,8 @@ struct dg_parser {
   dg_settings m_settings;
   dg_parser_funcs _parser_funcs;
   dg_filereader m_reader;
-  dg_arena temp_arena;
-  dg_arena permanent_arena;
+  dg_arena __temp_arena;
+  dg_arena __permanent_arena;
   dg_demver_data demo_version;
   const char *error_message;
   bool error;
@@ -110,8 +110,8 @@ void dg_parser_init(dg_parser *thisptr, dg_settings *settings);
 void dg_parser_arena_check_init(dg_parser *thisptr);
 void dg_parser_parse(dg_parser *thisptr, void *stream, dg_input_interface input);
 void dg_parser_update_l4d2_version(dg_parser *thisptr, int l4d2_version);
-dg_arena* dg_parser_tempa(dg_parser *thisptr);
-dg_arena* dg_parser_perma(dg_parser *thisptr);
+dg_alloc_state* dg_parser_temp_allocator(dg_parser *thisptr);
+dg_alloc_state* dg_parser_perm_allocator(dg_parser *thisptr);
 
 #ifdef __cplusplus
 }

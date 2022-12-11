@@ -4,7 +4,7 @@
 extern "C" {
 #endif
 
-#include "demogobbler/arena.h"
+#include "demogobbler/allocator.h"
 #include "demogobbler/bitwriter.h"
 #include "demogobbler/datatable_types.h"
 #include "demogobbler/entity_types.h"
@@ -64,19 +64,19 @@ void dg_write_usercmd(writer *thisptr, dg_usercmd *message);
 void dg_writer_free(writer *thisptr);
 
 typedef struct {
-  dg_arena *memory_arena;
+  dg_alloc_state *allocator;
   dg_stringtables *message;
 } stringtable_parse_args;
 
 typedef struct {
   dg_demver_data *version_data;
   dg_datatables_parsed *message;
-  dg_arena* arena;
+  dg_alloc_state* allocator;
   bool flatten_datatables;
   bool should_store_props;
 } estate_init_args;
 
-dg_datatables_parsed_rval dg_parse_datatables(dg_demver_data *state, dg_arena *a,
+dg_datatables_parsed_rval dg_parse_datatables(dg_demver_data *state, dg_alloc_state *allocator,
                                               dg_datatables *message);
 dg_parse_result dg_estate_init(estate *thisptr, entity_parse_scrap *scrap, estate_init_args args);
 dg_parse_result dg_parse_stringtables(dg_stringtables_parsed *out, stringtable_parse_args args);

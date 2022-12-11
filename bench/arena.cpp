@@ -1,6 +1,6 @@
 #include "benchmark/benchmark.h"
 extern "C" {
-#include "arena.h"
+#include "demogobbler/allocator.h"
 }
 #include <cstdint>
 #include <cstring>

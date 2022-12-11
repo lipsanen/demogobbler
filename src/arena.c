@@ -1,4 +1,4 @@
-#include "demogobbler/arena.h"
+#include "demogobbler/allocator.h"
 #include "utils.h"
 #include <assert.h>
 #include <stdint.h>

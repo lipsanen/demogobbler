@@ -1,21 +1,79 @@
 #include "demogobbler/freddie.hpp"
 #include "demogobbler/streams.h"
-#include <cstring>
 #include <cstdint>
+#include <cstring>
 #include <iostream>
 
 using namespace freddie;
 
+typedef void *(*func_dg_alloc)(void *allocator, uint32_t size, uint32_t alignment);
+typedef void *(*func_dg_realloc)(void *allocator, void *ptr, uint32_t prev_size, uint32_t size,
+                                 uint32_t alignment);
+typedef void (*func_dg_clear)(void *allocator);
+typedef void (*func_dg_free)(void *allocator);
+typedef void (*func_dg_attach)(void *allocator, void *ptr, uint32_t size);
+
+static void *mallocator_allocate(void *alloc, uint32_t size, uint32_t alignment) {
+  mallocator *arena = (mallocator *)alloc;
+  void *ptr = malloc(size);
+  arena->pointers.push_back(ptr);
+  return ptr;
+}
+
+static void *mallocator_reallocate(void *allocator, void *ptr, uint32_t prev_size, uint32_t size,
+                                   uint32_t alignment) {
+  mallocator *arena = (mallocator *)allocator;
+  for (size_t i = 0; i < arena->pointers.size(); ++i) {
+    if (ptr == arena->pointers[i]) {
+      return arena->pointers[i] = realloc(ptr, size);
+    }
+  }
+
+  void* rval = malloc(size);
+  arena->pointers.push_back(rval);
+  return rval;
+}
+
+static void mallocator_clear(void *allocator) {
+  mallocator *arena = (mallocator *)allocator;
+  for(auto ptr : arena->pointers)
+    ::free(ptr);
+  arena->pointers.clear();
+}
+
+static void mallocator_free(void *allocator) {
+  // Don't free, we control the memory ourselves
+}
+
+static void mallocator_attach(void *allocator, void *ptr, uint32_t size) {
+  mallocator *arena = (mallocator *)allocator;
+  arena->pointers.push_back(ptr);
+}
+
+mallocator::mallocator() { }
+
+mallocator::~mallocator() {
+  for (auto ptr : pointers)
+    ::free(ptr);
+}
+
+void mallocator::release() { pointers.clear(); }
+
+void *mallocator::alloc(uint32_t size) { return malloc(size); }
+
+void mallocator::attach(void *ptr) { pointers.push_back(ptr); }
+
+void mallocator::free(void *ptr) {
+  pointers.erase(std::remove(pointers.begin(), pointers.end(), ptr), pointers.end());
+  ::free(ptr);
+}
+
 demo_t::demo_t() {
   const size_t INITIAL_ARENA_SIZE = 1 << 20;
   arena = dg_arena_create(INITIAL_ARENA_SIZE);
-  dg_bitwriter_init(&bitwriter, 1 << 15);
 }
 
-demo_t::~demo_t() { 
-  dg_arena_free(&arena); 
-  dg_bitwriter_free(&bitwriter);
-}
+demo_t::~demo_t() { dg_arena_free(&arena); }
 
 static void handle_header(parser_state *_state, struct dg_header *header) {
   demo_t *state = (demo_t *)_state->client_state;
@@ -43,13 +101,17 @@ HANDLE_PACKET(dg_synctick);
 HANDLE_PACKET(dg_usercmd);
 HANDLE_PACKET(packet_parsed);
 
-static void noop(void* allocator) {}
+static void noop(void *allocator) {}
 
 dg_parse_result demo_t::parse_demo(demo_t *output, void *stream, dg_input_interface interface) {
   dg_settings settings;
   dg_settings_init(&settings);
-  settings.temp_alloc_state.allocator = &output->arena;
-  settings.temp_alloc_state.clear = noop;
+  settings.temp_alloc_state.allocator = &output->temp_allocator;
+  settings.temp_alloc_state.alloc = mallocator_allocate;
+  settings.temp_alloc_state.attach = mallocator_attach;
+  settings.temp_alloc_state.clear = mallocator_clear;
+  settings.temp_alloc_state.free = mallocator_free;
+  settings.temp_alloc_state.realloc = mallocator_reallocate;
   settings.temp_alloc_state.free = noop;
   settings.permanent_alloc_state.allocator = &output->arena;
   settings.permanent_alloc_state.clear = noop;
@@ -96,30 +158,30 @@ dg_parse_result demo_t::write_demo(void *stream, dg_output_interface interface) 
   dg_write_header(&writer, &header);
 
   for (size_t i = 0; i < packets.size(); ++i) {
-    demo_packet packet = packets[i];
-    if (std::holds_alternative<packet_parsed *>(packet)) {
-      packet_parsed *ptr = std::get<packet_parsed *>(packet);
+    auto packet = packets[i]->packet;
+    if (std::holds_alternative<packet_parsed>(packet)) {
+      packet_parsed* ptr = std::get_if<packet_parsed>(&packet);
       dg_write_packet_parsed(&writer, ptr);
-    } else if (std::holds_alternative<dg_datatables_parsed *>(packet)) {
-      dg_datatables_parsed *ptr = std::get<dg_datatables_parsed *>(packet);
+    } else if (std::holds_alternative<dg_datatables_parsed>(packet)) {
+      dg_datatables_parsed* ptr = std::get_if<dg_datatables_parsed>(&packet);
       dg_write_datatables_parsed(&writer, ptr);
-    } else if (std::holds_alternative<dg_stringtables_parsed *>(packet)) {
-      dg_stringtables_parsed *ptr = std::get<dg_stringtables_parsed *>(packet);
+    } else if (std::holds_alternative<dg_stringtables_parsed>(packet)) {
+      dg_stringtables_parsed* ptr = std::get_if<dg_stringtables_parsed>(&packet);
       dg_write_stringtables_parsed(&writer, ptr);
-    } else if (std::holds_alternative<dg_consolecmd *>(packet)) {
-      dg_consolecmd *ptr = std::get<dg_consolecmd *>(packet);
+    } else if (std::holds_alternative<dg_consolecmd>(packet)) {
+      dg_consolecmd* ptr = std::get_if<dg_consolecmd>(&packet);
       dg_write_consolecmd(&writer, ptr);
-    } else if (std::holds_alternative<dg_usercmd *>(packet)) {
-      dg_usercmd *ptr = std::get<dg_usercmd *>(packet);
+    } else if (std::holds_alternative<dg_usercmd>(packet)) {
+      dg_usercmd* ptr = std::get_if<dg_usercmd>(&packet);
       dg_write_usercmd(&writer, ptr);
-    } else if (std::holds_alternative<dg_stop *>(packet)) {
-      dg_stop *ptr = std::get<dg_stop *>(packet);
+    } else if (std::holds_alternative<dg_stop>(packet)) {
+      dg_stop* ptr = std::get_if<dg_stop>(&packet);
       dg_write_stop(&writer, ptr);
-    } else if (std::holds_alternative<dg_synctick *>(packet)) {
-      dg_synctick *ptr = std::get<dg_synctick *>(packet);
+    } else if (std::holds_alternative<dg_synctick>(packet)) {
+      dg_synctick* ptr = std::get_if<dg_synctick>(&packet);
       dg_write_synctick(&writer, ptr);
-    } else if (std::holds_alternative<dg_customdata *>(packet)) {
-      dg_customdata *ptr = std::get<dg_customdata *>(packet);
+    } else if (std::holds_alternative<dg_customdata>(packet)) {
+      dg_customdata* ptr = std::get_if<dg_customdata>(&packet);
       dg_write_customdata(&writer, ptr);
     } else {
       result.error = true;
@@ -150,9 +212,9 @@ dg_parse_result demo_t::write_demo(const char *filepath) {
 
 static void fix_svc_serverinfo(const char *gamedir, demo_t *demo) {
   for (size_t i = 0; i < demo->packets.size(); ++i) {
-    demo_packet packet = demo->packets[i];
-    if (std::holds_alternative<packet_parsed *>(packet)) {
-      packet_parsed *ptr = std::get<packet_parsed *>(packet);
+    auto packet = demo->packets[i]->packet;
+    if (std::holds_alternative<packet_parsed>(packet)) {
+      packet_parsed* ptr = std::get_if<packet_parsed>(&packet);
       for (size_t msg_index = 0; msg_index < ptr->message_count; ++msg_index) {
         packet_net_message *msg = ptr->messages + msg_index;
         if (msg->mtype == svc_serverinfo) {
@@ -167,8 +229,7 @@ static void fix_svc_serverinfo(const char *gamedir, demo_t *demo) {
   }
 }
 
-static dg_bitstream get_start_state(const dg_bitwriter* writer)
-{
+static dg_bitstream get_start_state(const dg_bitwriter *writer) {
   dg_bitstream stream;
   memset(&stream, 0, sizeof(stream));
   stream.data = writer->ptr;
@@ -176,38 +237,37 @@ static dg_bitstream get_start_state(const dg_bitwriter* writer)
   return stream;
 }
 
-static void finalize_stream(dg_bitstream* stream, const dg_bitwriter* writer)
-{
+static void finalize_stream(dg_bitstream *stream, const dg_bitwriter *writer) {
   stream->bitsize = writer->bitoffset;
 }
 
 static void fix_packets(demo_t *demo) {
-  demo->bitwriter.bitoffset = 0;
   for (size_t i = 0; i < demo->packets.size(); ++i) {
-    demo_packet packet = demo->packets[i];
-    if (std::holds_alternative<packet_parsed *>(packet)) {
-      packet_parsed *ptr = std::get<packet_parsed *>(packet);
+    auto packet = demo->packets[i]->packet;
+    if (std::holds_alternative<packet_parsed>(packet)) {
+      packet_parsed* ptr = std::get_if<packet_parsed>(&packet);
       for (size_t msg_index = 0; msg_index < ptr->message_count; ++msg_index) {
         packet_net_message *msg = ptr->messages + msg_index;
-        
+
         if (msg->mtype == svc_packet_entities) {
           write_packetentities_args args;
           args.is_delta = msg->message_svc_packet_entities.is_delta;
           args.version = &demo->demver_data;
-          args.data = msg->message_svc_packet_entities.parsed->data;
-
-          auto stream = get_start_state(&demo->bitwriter);
+          args.data = &msg->message_svc_packet_entities.parsed->data;
+          dg_bitwriter bitwriter;
+          dg_bitwriter_init(&bitwriter,
+                            dg_bitstream_bits_left(&msg->message_svc_packet_entities.data));
+          auto stream = get_start_state(&bitwriter);
 #ifdef GROUND_TRUTH_CHECK
-          demo->bitwriter.truth_data = msg->message_svc_packet_entities.data.data;
-          demo->bitwriter.truth_data_offset = msg->message_svc_packet_entities.data.bitoffset;
-          demo->bitwriter.truth_size_bits = msg->message_svc_packet_entities.data.bitsize;
+          bitwriter.truth_data = msg->message_svc_packet_entities.data.data;
+          bitwriter.truth_data_offset = msg->message_svc_packet_entities.data.bitoffset;
+          bitwriter.truth_size_bits = msg->message_svc_packet_entities.data.bitsize;
 #endif
-          dg_bitwriter_write_packetentities(&demo->bitwriter, args);
-          finalize_stream(&stream, &demo->bitwriter);
-        
-          if (msg->mtype == svc_packet_entities) {
-            msg->message_svc_packet_entities.data = stream;
-          }
+          dg_bitwriter_write_packetentities(&bitwriter, args);
+          finalize_stream(&stream, &bitwriter);
+          demo->packets[i]->memory.attach(
+              bitwriter.ptr); // transfer the bitwriter memory over to the packet
+          msg->message_svc_packet_entities.data = stream;
         }
       }
     }
@@ -227,7 +287,6 @@ dg_parse_result freddie::convert_demo(const demo_t *example, demo_t *demo) {
 
   return result;
 }
-
 
 void *memory_stream::get_ptr() {
   std::uint8_t *ptr = (std::uint8_t *)this->buffer;
@@ -309,14 +368,14 @@ std::size_t freddie::memory_stream_write(void *s, const void *src, size_t bytes)
   if (stream->ground_truth && stream->agrees) {
     if (stream->offset + bytes > stream->ground_truth->file_size) {
       stream->agrees = false;
-      if(stream->errfunc)
+      if (stream->errfunc)
         stream->errfunc("Write out of bounds for ground truth");
     } else {
       auto comparison_ptr = (uint8_t *)stream->ground_truth->buffer + stream->offset;
       if (memcmp(dest, comparison_ptr, bytes) != 0) {
         stream->agrees = false;
-      if(stream->errfunc)
-        stream->errfunc("Did not match with ground truth");
+        if (stream->errfunc)
+          stream->errfunc("Did not match with ground truth");
       }
     }
   }

@@ -31,7 +31,7 @@ struct dg_bitwriter {
 typedef struct dg_bitwriter bitwriter;
 
 struct write_packetentities_args {
-  dg_packetentities_data data;
+  dg_packetentities_data* data;
   const dg_demver_data *version;
   bool is_delta;
 };
@@ -43,7 +43,7 @@ int64_t dg_bitwriter_get_available_bits(bitwriter *thisptr);
 void dg_bitwriter_write_bit(bitwriter *thisptr, bool value);
 void dg_bitwriter_write_bitcoord(bitwriter *thisptr, dg_bitcoord value);
 void dg_bitwriter_write_bits(bitwriter *thisptr, const void *src, unsigned int bits);
-void dg_bitwriter_write_bitstream(bitwriter *thisptr, dg_bitstream *stream);
+void dg_bitwriter_write_bitstream(bitwriter *thisptr, const dg_bitstream *stream);
 void dg_bitwriter_write_bitvector(bitwriter *thisptr, dg_bitangle_vector value);
 void dg_bitwriter_write_coordvector(bitwriter *thisptr, dg_bitcoord_vector value);
 void dg_bitwriter_write_cstring(bitwriter *thisptr, const char *text);

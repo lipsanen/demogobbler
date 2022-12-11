@@ -151,16 +151,17 @@ void dg_bitwriter_write_bitcoord(bitwriter *thisptr, dg_bitcoord coord) {
   }
 }
 
-void dg_bitwriter_write_bitstream(bitwriter *thisptr, dg_bitstream *stream) {
-  while (dg_bitstream_bits_left(stream) > 32) {
-    uint32_t value = bitstream_read_uint32(stream);
+void dg_bitwriter_write_bitstream(bitwriter *thisptr, const dg_bitstream *_stream) {
+  dg_bitstream copy = *_stream;
+  while (dg_bitstream_bits_left(&copy) > 32) {
+    uint32_t value = bitstream_read_uint32(&copy);
     bitwriter_write_bits(thisptr, &value, 32);
   }
 
-  unsigned int bits = dg_bitstream_bits_left(stream);
+  unsigned int bits = dg_bitstream_bits_left(&copy);
 
   if (bits > 0) {
-    uint32_t remainder = bitstream_read_uint(stream, bits);
+    uint32_t remainder = bitstream_read_uint(&copy, bits);
     bitwriter_write_bits(thisptr, &remainder, bits);
   }
 }

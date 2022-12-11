@@ -423,11 +423,11 @@ static bool game_has_new_deletes(const dg_demver_data *version) {
 }
 
 void dg_bitwriter_write_packetentities(bitwriter *thisptr, struct write_packetentities_args args) {
-  unsigned bits = args.data.serverclass_bits;
+  unsigned bits = args.data->serverclass_bits;
   int index = -1;
   size_t i;
-  for (i = 0; i < args.data.ent_updates_count && !thisptr->error; ++i) {
-    const dg_ent_update *update = args.data.ent_updates + i;
+  for (i = 0; i < args.data->ent_updates_count && !thisptr->error; ++i) {
+    const dg_ent_update *update = args.data->ent_updates + i;
     uint32_t diffy = update->ent_index - (index + 1);
     if (args.version->demo_protocol >= 4) {
       dg_bitwriter_write_ubitint(thisptr, diffy);
@@ -448,17 +448,17 @@ void dg_bitwriter_write_packetentities(bitwriter *thisptr, struct write_packeten
 
   if (args.is_delta && !thisptr->error) {
     if (game_has_new_deletes(args.version)) {
-      dg_bitwriter_write_ubitint(thisptr, args.data.explicit_deletes_count);
+      dg_bitwriter_write_ubitint(thisptr, args.data->explicit_deletes_count);
       int32_t nbase = -1;
-      for (size_t i = 0; i < args.data.explicit_deletes_count; ++i) {
-        int32_t delta = args.data.explicit_deletes[i] - nbase;
+      for (size_t i = 0; i < args.data->explicit_deletes_count; ++i) {
+        int32_t delta = args.data->explicit_deletes[i] - nbase;
         dg_bitwriter_write_ubitint(thisptr, delta);
-        nbase = args.data.explicit_deletes[i];
+        nbase = args.data->explicit_deletes[i];
       }
     } else {
-      for (size_t i = 0; i < args.data.explicit_deletes_count; ++i) {
+      for (size_t i = 0; i < args.data->explicit_deletes_count; ++i) {
         bitwriter_write_bit(thisptr, true);
-        bitwriter_write_uint(thisptr, args.data.explicit_deletes[i], MAX_EDICT_BITS);
+        bitwriter_write_uint(thisptr, args.data->explicit_deletes[i], MAX_EDICT_BITS);
       }
       bitwriter_write_bit(thisptr, false);
     }
@@ -567,9 +567,9 @@ end:;
     dg_svc_packetentities_parsed* parsed_ptr;
     message->parsed = parsed_ptr = dg_alloc_allocate(state.a, sizeof(dg_svc_packetentities_parsed), alignof(dg_svc_packetentities_parsed)); 
     memset(parsed_ptr, 0, sizeof(*parsed_ptr));
+    parsed_ptr->data = state.output;
+    parsed_ptr->orig = message;
     if (thisptr->m_settings.packetentities_parsed_handler) {
-      parsed_ptr->data = state.output;
-      parsed_ptr->orig = message;
       thisptr->m_settings.packetentities_parsed_handler(&thisptr->state, parsed_ptr);
     }
 

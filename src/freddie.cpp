@@ -29,14 +29,14 @@ static void *mallocator_reallocate(void *allocator, void *ptr, uint32_t prev_siz
     }
   }
 
-  void* rval = malloc(size);
+  void *rval = malloc(size);
   arena->pointers.push_back(rval);
   return rval;
 }
 
 static void mallocator_clear(void *allocator) {
   mallocator *arena = (mallocator *)allocator;
-  for(auto ptr : arena->pointers)
+  for (auto ptr : arena->pointers)
     ::free(ptr);
   arena->pointers.clear();
 }
@@ -46,7 +46,7 @@ static void mallocator_attach(void *allocator, void *ptr, uint32_t size) {
   arena->pointers.push_back(ptr);
 }
 
-mallocator::mallocator() { }
+mallocator::mallocator() {}
 
 mallocator::~mallocator() {
   for (auto ptr : pointers)
@@ -151,31 +151,33 @@ dg_parse_result demo_t::write_demo(void *stream, dg_output_interface interface) 
   dg_write_header(&writer, &header);
 
   for (size_t i = 0; i < packets.size(); ++i) {
-    auto packet = packets[i]->packet;
-    if (std::holds_alternative<packet_parsed>(packet)) {
-      packet_parsed* ptr = std::get_if<packet_parsed>(&packet);
-      dg_write_packet_parsed(&writer, ptr);
-    } else if (std::holds_alternative<dg_datatables_parsed>(packet)) {
-      dg_datatables_parsed* ptr = std::get_if<dg_datatables_parsed>(&packet);
-      dg_write_datatables_parsed(&writer, ptr);
-    } else if (std::holds_alternative<dg_stringtables_parsed>(packet)) {
-      dg_stringtables_parsed* ptr = std::get_if<dg_stringtables_parsed>(&packet);
-      dg_write_stringtables_parsed(&writer, ptr);
-    } else if (std::holds_alternative<dg_consolecmd>(packet)) {
-      dg_consolecmd* ptr = std::get_if<dg_consolecmd>(&packet);
-      dg_write_consolecmd(&writer, ptr);
-    } else if (std::holds_alternative<dg_usercmd>(packet)) {
-      dg_usercmd* ptr = std::get_if<dg_usercmd>(&packet);
-      dg_write_usercmd(&writer, ptr);
-    } else if (std::holds_alternative<dg_stop>(packet)) {
-      dg_stop* ptr = std::get_if<dg_stop>(&packet);
-      dg_write_stop(&writer, ptr);
-    } else if (std::holds_alternative<dg_synctick>(packet)) {
-      dg_synctick* ptr = std::get_if<dg_synctick>(&packet);
-      dg_write_synctick(&writer, ptr);
-    } else if (std::holds_alternative<dg_customdata>(packet)) {
-      dg_customdata* ptr = std::get_if<dg_customdata>(&packet);
-      dg_write_customdata(&writer, ptr);
+    auto* packet = &packets[i]->packet;
+    packet_parsed* packet_ptr = std::get_if<packet_parsed>(packet);
+    dg_datatables_parsed *dt_ptr = std::get_if<dg_datatables_parsed>(packet);
+    dg_stringtables_parsed *st_ptr = std::get_if<dg_stringtables_parsed>(packet);
+    dg_consolecmd *cmd_ptr = std::get_if<dg_consolecmd>(packet);
+    dg_usercmd *user_ptr = std::get_if<dg_usercmd>(packet);
+    dg_stop *stop_ptr = std::get_if<dg_stop>(packet);
+    dg_synctick *sync_ptr = std::get_if<dg_synctick>(packet);
+    dg_customdata *custom_ptr = std::get_if<dg_customdata>(packet);
+
+
+    if (packet_ptr) {
+      dg_write_packet_parsed(&writer, packet_ptr);
+    } else if (dt_ptr) {
+      dg_write_datatables_parsed(&writer, dt_ptr);
+    } else if (st_ptr) {
+      dg_write_stringtables_parsed(&writer, st_ptr);
+    } else if (cmd_ptr) {
+      dg_write_consolecmd(&writer, cmd_ptr);
+    } else if (user_ptr) {
+      dg_write_usercmd(&writer, user_ptr);
+    } else if (stop_ptr) {
+      dg_write_stop(&writer, stop_ptr);
+    } else if (sync_ptr) {
+      dg_write_synctick(&writer, sync_ptr);
+    } else if (custom_ptr) {
+      dg_write_customdata(&writer, custom_ptr);
     } else {
       result.error = true;
       result.error_message = "unknown demo packet";
@@ -207,7 +209,7 @@ static void fix_svc_serverinfo(const char *gamedir, demo_t *demo) {
   for (size_t i = 0; i < demo->packets.size(); ++i) {
     auto packet = demo->packets[i]->packet;
     if (std::holds_alternative<packet_parsed>(packet)) {
-      packet_parsed* ptr = std::get_if<packet_parsed>(&packet);
+      packet_parsed *ptr = std::get_if<packet_parsed>(&packet);
       for (size_t msg_index = 0; msg_index < ptr->message_count; ++msg_index) {
         packet_net_message *msg = ptr->messages + msg_index;
         if (msg->mtype == svc_serverinfo) {
@@ -236,9 +238,10 @@ static void finalize_stream(dg_bitstream *stream, const dg_bitwriter *writer) {
 
 static void fix_packets(demo_t *demo) {
   for (size_t i = 0; i < demo->packets.size(); ++i) {
-    auto packet = demo->packets[i]->packet;
-    if (std::holds_alternative<packet_parsed>(packet)) {
-      packet_parsed* ptr = std::get_if<packet_parsed>(&packet);
+    auto* packet = &demo->packets[i]->packet;
+    packet_parsed* ptr = std::get_if<packet_parsed>(packet);
+
+    if (ptr) {
       for (size_t msg_index = 0; msg_index < ptr->message_count; ++msg_index) {
         packet_net_message *msg = ptr->messages + msg_index;
 
@@ -277,6 +280,119 @@ dg_parse_result freddie::convert_demo(const demo_t *example, demo_t *demo) {
   memcpy(demo->header.game_directory, example->header.game_directory, 260);
   fix_svc_serverinfo(example->header.game_directory, demo);
   fix_packets(demo);
+
+  return result;
+}
+
+static dg_datatables_parsed *get_datatables(const demo_t *demo) {
+  for (size_t i = 0; i < demo->packets.size(); ++i) {
+    auto* packet = &demo->packets[i]->packet;
+    dg_datatables_parsed *dt_ptr = std::get_if<dg_datatables_parsed>(packet);
+    if (dt_ptr) {
+      return dt_ptr;
+    }
+  }
+  return nullptr;
+}
+
+static int32_t get_dt(const estate* state, const char* name, int32_t initial_guess) {
+  if((int32_t)state->serverclass_count > initial_guess && strcmp(state->class_datas[initial_guess].dt_name, name) == 0) {
+    return initial_guess;
+  }
+  else {
+    for(int32_t i=0; i < (int32_t)state->serverclass_count; ++i)
+    {
+      if(strcmp(name, state->class_datas[i].dt_name) == 0) {
+        return i;
+      }
+    }
+    return -1;
+  }
+}
+
+#define ARGSPRINT(...) if(args->func) args->func(__VA_ARGS__)
+
+static void compare_sendtables(const compare_props_args* args, const estate* lhs, const estate* rhs) {
+  for(int32_t i=0; i < (int32_t)lhs->serverclass_count; ++i)
+  {
+    const char* name = lhs->class_datas[i].dt_name;
+    auto dt = get_dt(rhs, name, i);
+    if(dt == -1)
+    {
+      ARGSPRINT(true, "[%d] %s only\n", i, name);
+    }
+    else if(dt != i)
+    {
+      ARGSPRINT(true, "[%d] %s index changed -> %d\n", i, name, dt);
+    }
+    else
+    {
+      ARGSPRINT(true, "[%d] %s matches\n", i, name);
+    }
+  }
+
+  for(int32_t i=0; i < (int32_t)rhs->serverclass_count; ++i)
+  {
+    const char* name = rhs->class_datas[i].dt_name;
+    auto dt = get_dt(lhs, name, i);
+    if(dt == -1)
+    {
+      ARGSPRINT(false, "[%d] %s only\n", i, name);
+    }
+  }
+}
+
+dg_parse_result freddie::compare_props(const compare_props_args* args) {
+  dg_parse_result result;
+  memset(&result, 0, sizeof(result));
+  dg_arena arena = dg_arena_create(1 << 10);
+  estate estate1;
+  memset(&estate1, 0, sizeof(estate1));
+  estate estate2;
+  memset(&estate2, 0, sizeof(estate2));
+
+  dg_alloc_state allocator = {&arena, (func_dg_alloc)dg_arena_allocate,
+                              (func_dg_clear)dg_arena_clear, (func_dg_realloc)dg_arena_reallocate,
+                              (func_dg_attach)dg_arena_attach};
+  dg_datatables_parsed* datatable1 = get_datatables(args->first);
+  dg_datatables_parsed* datatable2 = get_datatables(args->second);
+
+  if(datatable1 == nullptr)
+  {
+    result.error = true;
+    result.error_message = "missing datatable";
+    ARGSPRINT(true, "missing datatable");
+    goto end;
+  }
+
+  if(datatable2 == nullptr)
+  {
+    result.error = true;
+    result.error_message = "missing datatable";
+    ARGSPRINT(false, "missing datatable");
+    goto end;
+  }
+
+  estate_init_args args1;
+  estate_init_args args2;
+  args2.allocator = args1.allocator = &allocator;
+  args2.flatten_datatables = args1.flatten_datatables = true;
+  args2.should_store_props = args1.should_store_props = false;
+  args1.message = datatable1;
+  args1.version_data = &args->first->demver_data;
+  args2.message = datatable2;
+  args2.version_data = &args->second->demver_data;
+
+  dg_estate_init(&estate1, args1);
+  dg_estate_init(&estate2, args2);
+
+  compare_sendtables(args, &estate1, &estate2);
+
+end:
+
+  dg_arena_free(&arena);
+  dg_estate_free(&estate1);
+  dg_estate_free(&estate2);
 
   return result;
 }

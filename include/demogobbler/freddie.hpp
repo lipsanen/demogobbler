@@ -39,48 +39,57 @@ namespace freddie {
   dg_parse_result splice_demos(const char *output_path, const char **demo_paths, size_t demo_count);
 
   struct demo_t {
-  demo_t();
-  ~demo_t();
-  mallocator temp_allocator;
-  dg_arena arena;
-  dg_demver_data demver_data;
-  dg_header header;
-  std::vector<std::shared_ptr<demo_packet>> packets;
-  demo_t(const demo_t &rhs) = delete;
-  demo_t &operator=(const demo_t &rhs) = delete;
+    demo_t();
+    ~demo_t();
+    mallocator temp_allocator;
+    dg_arena arena;
+    dg_demver_data demver_data;
+    dg_header header;
+    std::vector<std::shared_ptr<demo_packet>> packets;
+    demo_t(const demo_t &rhs) = delete;
+    demo_t &operator=(const demo_t &rhs) = delete;
 
-  template <typename T> std::shared_ptr<demo_packet> copy_packet(T *orig) {
-      auto packet = std::make_shared<demo_packet>();
-      packet->memory = std::move(temp_allocator);
-      packet->packet = *orig;
-      temp_allocator.release();
+    template <typename T> std::shared_ptr<demo_packet> copy_packet(T *orig) {
+        auto packet = std::make_shared<demo_packet>();
+        packet->memory = std::move(temp_allocator);
+        packet->packet = *orig;
+        temp_allocator.release();
 
-      return packet;
-  }
+        return packet;
+    }
 
-  static dg_parse_result parse_demo(demo_t *output, void *stream, dg_input_interface interface);
-  static dg_parse_result parse_demo(demo_t *output, const char *filepath);
-  dg_parse_result write_demo(void *stream, dg_output_interface interface);
-  dg_parse_result write_demo(const char *filepath);
+    static dg_parse_result parse_demo(demo_t *output, void *stream, dg_input_interface interface);
+    static dg_parse_result parse_demo(demo_t *output, const char *filepath);
+    dg_parse_result write_demo(void *stream, dg_output_interface interface);
+    dg_parse_result write_demo(const char *filepath);
   };
 
   dg_parse_result convert_demo(const demo_t *example, demo_t *demo);
+  typedef void(*printFunc)(bool first, const char* msg, ...);
+
+  struct compare_props_args {
+      const demo_t* first;
+      const demo_t* second;
+      printFunc func = nullptr;
+  };
+
+  dg_parse_result compare_props(const compare_props_args* args);
   typedef std::function<void(const char *error)> error_func;
 
   struct memory_stream {
-  size_t offset = 0;
-  size_t buffer_size = 0;
-  size_t file_size = 0;
-  void *buffer = nullptr;
-  bool agrees = true;
-  memory_stream *ground_truth = nullptr;
-  error_func errfunc = nullptr;
+    size_t offset = 0;
+    size_t buffer_size = 0;
+    size_t file_size = 0;
+    void *buffer = nullptr;
+    bool agrees = true;
+    memory_stream *ground_truth = nullptr;
+    error_func errfunc = nullptr;
 
-  void *get_ptr();
-  size_t get_bytes_left();
-  void allocate_space(size_t bytes);
-  void fill_with_file(const char *filepath);
-  ~memory_stream();
+    void *get_ptr();
+    size_t get_bytes_left();
+    void allocate_space(size_t bytes);
+    void fill_with_file(const char *filepath);
+    ~memory_stream();
   };
 
   // Function for interfacing with C

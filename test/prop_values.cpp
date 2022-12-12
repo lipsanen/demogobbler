@@ -1,8 +1,6 @@
 
 #include "gtest/gtest.h"
-extern "C" {
-#include "parser_entity_state.h"
-}
+#include "demogobbler.h"
 
 TEST(dg_eproparr, works) {
   bool newprop;

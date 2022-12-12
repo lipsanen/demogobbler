@@ -1,8 +1,6 @@
 #include "benchmark/benchmark.h"
 #include <cstdlib>
-extern "C" {
-#include "parser_entity_state.h"
-}
+#include "demogobbler.h"
 
 static void eproplist_insert(benchmark::State &state) {
   bool newprop;

@@ -7,6 +7,7 @@
 #include <functional>
 #include <memory>
 #include <stddef.h>
+#include <unordered_map>
 #include <variant>
 #include <vector>
 
@@ -66,6 +67,27 @@ namespace freddie {
 
   dg_parse_result convert_demo(const demo_t *example, demo_t *demo);
   typedef void(*printFunc)(bool first, const char* msg, ...);
+
+  struct prop_status {
+    uint32_t index = 0;
+    bool exists = true;
+    bool changed = false;
+  };
+
+  struct datatable_status {
+    uint32_t index = 0;
+    bool exists = true;
+  };
+
+  struct datatable_change_info {
+    prop_status get_prop_status(dg_sendprop* prop);
+    datatable_status get_datatable_status(uint32_t index);
+    void add_datatable(uint32_t start_index, uint32_t new_index);
+    void add_prop(dg_sendprop* prop, prop_status status);
+
+    std::unordered_map<dg_sendprop*, prop_status> prop_map;
+    std::unordered_map<uint32_t, uint32_t> datatable_map;
+  };
 
   struct compare_props_args {
       const demo_t* first;

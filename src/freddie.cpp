@@ -151,8 +151,8 @@ dg_parse_result demo_t::write_demo(void *stream, dg_output_interface interface) 
   dg_write_header(&writer, &header);
 
   for (size_t i = 0; i < packets.size(); ++i) {
-    auto* packet = &packets[i]->packet;
-    packet_parsed* packet_ptr = std::get_if<packet_parsed>(packet);
+    auto *packet = &packets[i]->packet;
+    packet_parsed *packet_ptr = std::get_if<packet_parsed>(packet);
     dg_datatables_parsed *dt_ptr = std::get_if<dg_datatables_parsed>(packet);
     dg_stringtables_parsed *st_ptr = std::get_if<dg_stringtables_parsed>(packet);
     dg_consolecmd *cmd_ptr = std::get_if<dg_consolecmd>(packet);
@@ -207,9 +207,8 @@ dg_parse_result demo_t::write_demo(const char *filepath) {
 
 static void fix_svc_serverinfo(const char *gamedir, demo_t *demo) {
   for (size_t i = 0; i < demo->packets.size(); ++i) {
-    auto packet = demo->packets[i]->packet;
-    if (std::holds_alternative<packet_parsed>(packet)) {
-      packet_parsed *ptr = std::get_if<packet_parsed>(&packet);
+    packet_parsed *ptr = std::get_if<packet_parsed>(&demo->packets[i]->packet);
+    if (ptr) {
       for (size_t msg_index = 0; msg_index < ptr->message_count; ++msg_index) {
         packet_net_message *msg = ptr->messages + msg_index;
         if (msg->mtype == svc_serverinfo) {
@@ -238,8 +237,8 @@ static void finalize_stream(dg_bitstream *stream, const dg_bitwriter *writer) {
 
 static void fix_packets(demo_t *demo) {
   for (size_t i = 0; i < demo->packets.size(); ++i) {
-    auto* packet = &demo->packets[i]->packet;
-    packet_parsed* ptr = std::get_if<packet_parsed>(packet);
+    auto *packet = &demo->packets[i]->packet;
+    packet_parsed *ptr = std::get_if<packet_parsed>(packet);
 
     if (ptr) {
       for (size_t msg_index = 0; msg_index < ptr->message_count; ++msg_index) {
@@ -286,7 +285,7 @@ dg_parse_result freddie::convert_demo(const demo_t *example, demo_t *demo) {
 
 static dg_datatables_parsed *get_datatables(const demo_t *demo) {
   for (size_t i = 0; i < demo->packets.size(); ++i) {
-    auto* packet = &demo->packets[i]->packet;
+    auto *packet = &demo->packets[i]->packet;
     dg_datatables_parsed *dt_ptr = std::get_if<dg_datatables_parsed>(packet);
     if (dt_ptr) {
       return dt_ptr;
@@ -295,14 +294,13 @@ static dg_datatables_parsed *get_datatables(const demo_t *demo) {
   return nullptr;
 }
 
-static int32_t get_dt(const estate* state, const char* name, int32_t initial_guess) {
-  if((int32_t)state->serverclass_count > initial_guess && strcmp(state->class_datas[initial_guess].dt_name, name) == 0) {
+static int32_t get_dt(const estate *state, const char *name, int32_t initial_guess) {
+  if ((int32_t)state->serverclass_count > initial_guess &&
+      strcmp(state->class_datas[initial_guess].dt_name, name) == 0) {
     return initial_guess;
-  }
-  else {
-    for(int32_t i=0; i < (int32_t)state->serverclass_count; ++i)
-    {
-      if(strcmp(name, state->class_datas[i].dt_name) == 0) {
+  } else {
+    for (int32_t i = 0; i < (int32_t)state->serverclass_count; ++i) {
+      if (strcmp(name, state->class_datas[i].dt_name) == 0) {
         return i;
       }
     }
@@ -310,39 +308,162 @@ static int32_t get_dt(const estate* state, const char* name, int32_t initial_gue
   }
 }
 
-#define ARGSPRINT(...) if(args->func) args->func(__VA_ARGS__)
+#define ARGSPRINT(...)                                                                             \
+  if (args->func)                                                                                  \
+  args->func(__VA_ARGS__)
 
-static void compare_sendtables(const compare_props_args* args, const estate* lhs, const estate* rhs) {
-  for(int32_t i=0; i < (int32_t)lhs->serverclass_count; ++i)
+static bool prop_equal(const dg_sendprop* prop1, const char* prop_name)
+{
+  char prop1_name[64];
+  dg_get_prop_name(prop1_name, sizeof(prop1_name), prop1);
+
+  return strcmp(prop1_name, prop_name) == 0;
+}
+
+static bool prop_attributes_equal(const compare_props_args *args, const dg_sendprop* prop1, const dg_sendprop* prop2)
+{
+  char prop1_name[64];
+  dg_get_prop_name(prop1_name, sizeof(prop1_name), prop1);
+
+  bool equal = true;
+#define COMPARE_ELEMENT(x) if(prop1->x != prop2->x) { \
+    equal = false; \
+    args->func(true, "\t\tprop attribute " #x " changed %u -> %u\n", prop1->x, prop2->x); \
+  }
+
+  COMPARE_ELEMENT(array_num_elements);
+  COMPARE_ELEMENT(flag_cellcoord);
+  COMPARE_ELEMENT(flag_cellcoordint);
+  COMPARE_ELEMENT(flag_cellcoordlp);
+  COMPARE_ELEMENT(flag_changesoften);
+  COMPARE_ELEMENT(flag_collapsible);
+  COMPARE_ELEMENT(flag_coord);
+  COMPARE_ELEMENT(flag_coordmp);
+  COMPARE_ELEMENT(flag_coordmplp);
+  COMPARE_ELEMENT(flag_coordmpint);
+  COMPARE_ELEMENT(flag_coord);
+  COMPARE_ELEMENT(flag_insidearray);
+  COMPARE_ELEMENT(flag_normal);
+  COMPARE_ELEMENT(flag_noscale);
+  COMPARE_ELEMENT(flag_proxyalwaysyes);
+  COMPARE_ELEMENT(flag_rounddown);
+  COMPARE_ELEMENT(flag_roundup);
+  COMPARE_ELEMENT(flag_unsigned);
+  COMPARE_ELEMENT(flag_xyze);
+
+  return equal;
+}
+
+static dg_sendprop* find_prop(const dg_serverclass_data *data, const char* name, size_t initial_index)
+{
+  if(initial_index < data->prop_count)
   {
-    const char* name = lhs->class_datas[i].dt_name;
-    auto dt = get_dt(rhs, name, i);
-    if(dt == -1)
+    if(prop_equal(data->props + initial_index, name))
     {
-      ARGSPRINT(true, "[%d] %s only\n", i, name);
-    }
-    else if(dt != i)
-    {
-      ARGSPRINT(true, "[%d] %s index changed -> %d\n", i, name, dt);
-    }
-    else
-    {
-      ARGSPRINT(true, "[%d] %s matches\n", i, name);
+      return data->props + initial_index;
     }
   }
 
-  for(int32_t i=0; i < (int32_t)rhs->serverclass_count; ++i)
+  for(size_t i=0; i < data->prop_count; ++i)
   {
-    const char* name = rhs->class_datas[i].dt_name;
-    auto dt = get_dt(lhs, name, i);
-    if(dt == -1)
+    if(prop_equal(data->props + i, name))
+      return data->props + i;
+  }
+
+  return nullptr;
+}
+
+static void compare_sendtable_props(const compare_props_args *args,
+                                    const dg_serverclass_data *data1,
+                                    const dg_serverclass_data *data2) {
+  char buffer[64];
+  for(size_t i=0; i < data1->prop_count; ++i)
+  {
+    dg_sendprop* first_prop = data1->props + i;
+    dg_get_prop_name(buffer, sizeof(buffer), first_prop);
+    dg_sendprop* prop = find_prop(data2, buffer, i);
+    if(!prop)
     {
+      args->func(true, "\tonly has %s at %lu\n", buffer, i);
+      continue;
+    }
+  
+    size_t index = prop - data2->props;
+    if(index != i)
+    {
+      args->func(true, "\tprop %s index changed %lu -> %lu\n", buffer, i, index);
+    }
+
+    prop_attributes_equal(args, first_prop, prop);
+  }
+
+  for(size_t i=0; i < data2->prop_count; ++i)
+  {
+    dg_sendprop* first_prop = data2->props + i;
+    dg_get_prop_name(buffer, sizeof(buffer), first_prop);
+    dg_sendprop* prop = find_prop(data1, buffer, i);
+    if(!prop)
+    {
+      args->func(false, "\tonly has %s at %lu\n", buffer, i);
+      continue;
+    }
+  }
+}
+
+static void compare_sendtables(const compare_props_args *args, const estate *lhs,
+                               const estate *rhs) {
+  for (int32_t i = 0; i < (int32_t)lhs->serverclass_count; ++i) {
+    const char *name = lhs->class_datas[i].dt_name;
+    auto dt = get_dt(rhs, name, i);
+    if (dt == -1) {
+      ARGSPRINT(true, "[%d] %s only\n", i, name);
+    } else if (dt != i) {
+      ARGSPRINT(true, "[%d] %s index changed -> %d\n", i, name, dt);
+      compare_sendtable_props(args, lhs->class_datas + i, rhs->class_datas + dt);
+    } else {
+      ARGSPRINT(true, "[%d] %s matches\n", i, name);
+      compare_sendtable_props(args, lhs->class_datas + i, rhs->class_datas + dt);
+    }
+  }
+
+  for (int32_t i = 0; i < (int32_t)rhs->serverclass_count; ++i) {
+    const char *name = rhs->class_datas[i].dt_name;
+    auto dt = get_dt(lhs, name, i);
+    if (dt == -1) {
       ARGSPRINT(false, "[%d] %s only\n", i, name);
     }
   }
 }
 
-dg_parse_result freddie::compare_props(const compare_props_args* args) {
+static void compare_demo_props(const compare_props_args *args, const demo_t* demo, const estate *lhs,
+                               const estate *rhs) {
+
+  for (size_t i = 0; i < demo->packets.size(); ++i) {
+    auto *packet = &demo->packets[i]->packet;
+    packet_parsed *ptr = std::get_if<packet_parsed>(packet);
+
+    if(!ptr) {
+      continue;
+    }
+
+    for(size_t msg_index=0; msg_index < ptr->message_count; ++msg_index) {
+        packet_net_message *msg = ptr->messages + msg_index;
+        if (msg->mtype != svc_packet_entities) {
+          continue;
+        }
+
+        dg_svc_packet_entities* ptr = &msg->message_svc_packet_entities;
+        dg_ent_update* updates = ptr->parsed->data.ent_updates;
+
+        for(size_t update_index=0; update_index < ptr->parsed->data.ent_updates_count; ++update_index) {
+          dg_ent_update* update = updates + update_index;
+        }
+    }
+  }
+}
+
+
+dg_parse_result freddie::compare_props(const compare_props_args *args) {
   dg_parse_result result;
   memset(&result, 0, sizeof(result));
   dg_arena arena = dg_arena_create(1 << 10);
@@ -354,19 +475,17 @@ dg_parse_result freddie::compare_props(const compare_props_args* args) {
   dg_alloc_state allocator = {&arena, (func_dg_alloc)dg_arena_allocate,
                               (func_dg_clear)dg_arena_clear, (func_dg_realloc)dg_arena_reallocate,
                               (func_dg_attach)dg_arena_attach};
-  dg_datatables_parsed* datatable1 = get_datatables(args->first);
-  dg_datatables_parsed* datatable2 = get_datatables(args->second);
+  dg_datatables_parsed *datatable1 = get_datatables(args->first);
+  dg_datatables_parsed *datatable2 = get_datatables(args->second);
 
-  if(datatable1 == nullptr)
-  {
+  if (datatable1 == nullptr) {
     result.error = true;
     result.error_message = "missing datatable";
     ARGSPRINT(true, "missing datatable");
     goto end;
   }
 
-  if(datatable2 == nullptr)
-  {
+  if (datatable2 == nullptr) {
     result.error = true;
     result.error_message = "missing datatable";
     ARGSPRINT(false, "missing datatable");
@@ -493,4 +612,43 @@ std::size_t freddie::memory_stream_write(void *s, const void *src, size_t bytes)
   stream->file_size += bytes;
 
   return bytes;
+}
+
+prop_status datatable_change_info::get_prop_status(dg_sendprop* prop)
+{
+  auto it = this->prop_map.find(prop);
+  prop_status status;
+  if(it == this->prop_map.end()) {
+    status.exists = false;
+  }
+  else {
+    status = it->second;
+  }
+  
+  return status;
+}
+
+datatable_status datatable_change_info::get_datatable_status(uint32_t index)
+{
+  auto it = this->datatable_map.find(index);
+  datatable_status status;
+  if(it == this->datatable_map.end()) {
+    status.exists = false;
+  }
+  else {
+    status.exists = true;
+    status.index = it->second;
+  }
+
+  return status;
+}
+
+void datatable_change_info::add_datatable(uint32_t start_index, uint32_t new_index)
+{
+  this->datatable_map[start_index] = new_index;
+}
+
+void datatable_change_info::add_prop(dg_sendprop* prop, prop_status status) 
+{
+  this->prop_map[prop] = status;
 }

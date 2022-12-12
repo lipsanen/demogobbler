@@ -1,4 +1,5 @@
 #include "utils.h"
+#include "demogobbler.h"
 #include <string.h>
 
 unsigned int highest_bit_index(unsigned int i) {
@@ -13,4 +14,9 @@ int Q_log2(int val)
 	while (val>>=1)
 		answer++;
 	return answer;
+}
+
+void dg_get_prop_name(char* buffer, size_t size, const dg_sendprop *prop)
+{
+	snprintf(buffer, size, "%s.%s", prop->baseclass->name, prop->name);
 }

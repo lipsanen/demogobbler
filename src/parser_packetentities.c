@@ -14,16 +14,15 @@ int DG_CURRENT_DEBUG_INDEX = 0;
 static int BREAK_INDEX = 20;
 #endif
 
-typedef struct {
+struct prop_parse_state {
   dg_parser *thisptr;
   dg_bitstream *stream;
-  dg_alloc_state *a;
-  dg_alloc_state *permanent_arena;
+  dg_alloc_state *allocator;
   dg_ent_update *update;
   dg_vector_array prop_array;
-  dg_packetentities_data output;
-  bool new_way;
-} prop_parse_state;
+};
+
+typedef struct prop_parse_state prop_parse_state;
 
 static prop_value read_prop(prop_parse_state *state, dg_sendprop *props, dg_sendprop* prop);
 static void write_prop(bitwriter *writer, dg_prop_value_inner value);
@@ -144,7 +143,7 @@ static void write_vector3(bitwriter *thisptr, dg_prop_value_inner value) {
 }
 
 static void read_vector3(prop_parse_state *state, dg_sendprop *prop, dg_prop_value_inner *value) {
-  value->v3_val = dg_alloc_allocate(state->a, sizeof(dg_vector3_value), alignof(dg_vector3_value));
+  value->v3_val = dg_alloc_allocate(state->allocator, sizeof(dg_vector3_value), alignof(dg_vector3_value));
   memset(value->v3_val, 0, sizeof(dg_vector3_value));
 
   read_float(state, prop, &value->v3_val->x);
@@ -164,7 +163,7 @@ static void write_vector2(bitwriter *thisptr, dg_prop_value_inner value) {
 }
 
 static void read_vector2(prop_parse_state *state, dg_sendprop *prop, dg_prop_value_inner *value) {
-  value->v2_val = dg_alloc_allocate(state->a, sizeof(dg_vector2_value), alignof(dg_vector2_value));
+  value->v2_val = dg_alloc_allocate(state->allocator, sizeof(dg_vector2_value), alignof(dg_vector2_value));
   memset(value->v2_val, 0, sizeof(dg_vector2_value));
 
   read_float(state, prop, &value->v2_val->x);
@@ -179,9 +178,9 @@ static void write_string(bitwriter *thisptr, dg_prop_value_inner value) {
 }
 
 static void read_string(prop_parse_state *state, dg_sendprop *prop, dg_prop_value_inner *value) {
-  value->str_val = dg_alloc_allocate(state->a, sizeof(dg_string_value), alignof(dg_string_value));
+  value->str_val = dg_alloc_allocate(state->allocator, sizeof(dg_string_value), alignof(dg_string_value));
   size_t len = value->str_val->len = bitstream_read_uint(state->stream, dt_max_string_bits);
-  value->str_val->str = dg_alloc_allocate(state->a, len + 1, 1);
+  value->str_val->str = dg_alloc_allocate(state->allocator, len + 1, 1);
   bitstream_read_fixed_string(state->stream, value->str_val->str, len);
   value->str_val->str[len] = '\0'; // make sure we have zero terminated string
 }
@@ -199,11 +198,11 @@ static void write_array(bitwriter *thisptr, dg_prop_value_inner value) {
 static void read_array(prop_parse_state *state, dg_sendprop *props, uint32_t prop_index, dg_prop_value_inner *value) {
   dg_sendprop* prop = props + prop_index;
   value->array_num_elements = prop->array_num_elements;
-  value->arr_val = dg_alloc_allocate(state->a, sizeof(dg_array_value), alignof(dg_array_value));
+  value->arr_val = dg_alloc_allocate(state->allocator, sizeof(dg_array_value), alignof(dg_array_value));
   value->arr_val->array_size =
       bitstream_read_uint(state->stream, highest_bit_index(prop->array_num_elements) + 1);
   value->arr_val->values =
-      dg_alloc_allocate(state->a, sizeof(dg_prop_value_inner) * value->arr_val->array_size,
+      dg_alloc_allocate(state->allocator, sizeof(dg_prop_value_inner) * value->arr_val->array_size,
                         alignof(dg_prop_value_inner));
 
   for (size_t i = 0; i < value->arr_val->array_size; ++i) {
@@ -297,11 +296,11 @@ static void parse_props_prot4(prop_parse_state *state) {
   dg_bitstream *stream = state->stream;
   dg_serverclass_data *datas = dg_estate_serverclass_data(thisptr, state->update->datatable_id);
   int i = -1;
-  bool new_way = thisptr->demo_version.game != l4d && bitstream_read_bit(state->stream); // 1560
-  state->new_way = new_way;
+  bool new_way = thisptr->demo_version.game != l4d && bitstream_read_bit(state->stream);
+  state->update->new_way = new_way;
 
   while (true) {
-    i = bitstream_read_field_index(state->stream, i, new_way); // 1576
+    i = bitstream_read_field_index(state->stream, i, new_way);
 
     if (i < -1 || i >= (int)datas->prop_count) {
       thisptr->error = true;
@@ -360,12 +359,10 @@ static void write_props(bitwriter *thisptr, struct write_packetentities_args arg
 }
 
 static void parse_props(prop_parse_state *state, size_t index) {
-  state->update = state->output.ent_updates + index;
   dg_va_clear(&state->prop_array);
   dg_demver_data *demo_version = &state->thisptr->demo_version;
   if (demo_version->demo_protocol == 4) {
     parse_props_prot4(state);
-    state->update->new_way = state->new_way;
   } else {
     parse_props_old(state);
   }
@@ -373,23 +370,23 @@ static void parse_props(prop_parse_state *state, size_t index) {
   if (state->prop_array.count_elements > 0) {
     state->update->prop_value_array_size = state->prop_array.count_elements;
     size_t bytes = sizeof(prop_value) * state->prop_array.count_elements;
-    state->update->prop_value_array = dg_alloc_allocate(state->a, bytes, alignof(prop_value));
+    state->update->prop_value_array = dg_alloc_allocate(state->allocator, bytes, alignof(prop_value));
     memcpy(state->update->prop_value_array, state->prop_array.ptr, bytes);
   }
 }
 
-static void read_explicit_deletes(prop_parse_state *state, bool new_logic) {
+static void read_explicit_deletes(prop_parse_state *state, dg_packetentities_data* output, bool new_logic) {
   if (new_logic) {
     int32_t nbase = -1;
     uint32_t ncount = bitstream_read_ubitint(state->stream);
     uint32_t bytes = sizeof(int32_t) * ncount;
-    state->output.explicit_deletes = dg_alloc_allocate(state->a, bytes, alignof(int));
-    state->output.explicit_deletes_count = ncount;
+    output->explicit_deletes = dg_alloc_allocate(state->allocator, bytes, alignof(int));
+    output->explicit_deletes_count = ncount;
 
     for (uint32_t i = 0; i < ncount; ++i) {
       int32_t ndelta = bitstream_read_ubitint(state->stream);
       int32_t nslot = nbase + ndelta;
-      state->output.explicit_deletes[i] = nslot;
+      output->explicit_deletes[i] = nslot;
       nbase = nslot;
     }
   } else {
@@ -398,8 +395,8 @@ static void read_explicit_deletes(prop_parse_state *state, bool new_logic) {
 
     if (max_updates >= 0) {
       size_t bytes = sizeof(int) * max_updates;
-      state->output.explicit_deletes = dg_alloc_allocate(state->a, bytes, alignof(int));
-      memset(state->output.explicit_deletes, 0, bytes);
+      output->explicit_deletes = dg_alloc_allocate(state->allocator, bytes, alignof(int));
+      memset(output->explicit_deletes, 0, bytes);
     }
 
     while (bitstream_read_bit(state->stream)) {
@@ -411,8 +408,8 @@ static void read_explicit_deletes(prop_parse_state *state, bool new_logic) {
         break;
       }
 
-      state->output.explicit_deletes[index] = delete_index;
-      ++state->output.explicit_deletes_count;
+      output->explicit_deletes[index] = delete_index;
+      ++output->explicit_deletes_count;
       ++index;
     }
   }
@@ -472,23 +469,24 @@ void dg_parse_packetentities(dg_parser *thisptr, struct dg_svc_packet_entities *
     return;
   }
 
+  dg_packetentities_data output;
+  memset(&output, 0, sizeof(output));
   dg_bitstream stream = message->data;
   prop_parse_state state;
   memset(&state, 0, sizeof(state));
   state.thisptr = thisptr;
-  state.a = dg_parser_temp_allocator(thisptr);
-  state.permanent_arena = dg_parser_perm_allocator(thisptr);
+  state.allocator = dg_parser_temp_allocator(thisptr);
   state.stream = &stream;
 
-  state.output.ent_updates_count = message->updated_entries;
-  size_t ent_update_bytes = sizeof(dg_ent_update) * state.output.ent_updates_count;
-  state.output.ent_updates = dg_alloc_allocate(state.a, ent_update_bytes, alignof(dg_ent_update));
-  memset(state.output.ent_updates, 0, ent_update_bytes);
+  output.ent_updates_count = message->updated_entries;
+  size_t ent_update_bytes = sizeof(dg_ent_update) * output.ent_updates_count;
+  output.ent_updates = dg_alloc_allocate(state.allocator, ent_update_bytes, alignof(dg_ent_update));
+  memset(output.ent_updates, 0, ent_update_bytes);
 
   prop_value props_array[64];
   state.prop_array = dg_va_create(props_array, prop_value);
 
-  state.output.serverclass_bits = Q_log2(thisptr->state.entity_state.serverclass_count) + 1;
+  output.serverclass_bits = Q_log2(thisptr->state.entity_state.serverclass_count) + 1;
 
   if (!thisptr->state.entity_state.class_datas) {
     thisptr->error = true;
@@ -499,7 +497,7 @@ void dg_parse_packetentities(dg_parser *thisptr, struct dg_svc_packet_entities *
   size_t i;
 
   for (i = 0; i < message->updated_entries && !thisptr->error && !stream.overflow; ++i) {
-    dg_ent_update *update = state.output.ent_updates + i;
+    state.update = output.ent_updates + i;
     newI += 1;
     if (thisptr->demo_version.demo_protocol >= 4) {
       newI += bitstream_read_ubitint(&stream);
@@ -509,8 +507,8 @@ void dg_parse_packetentities(dg_parser *thisptr, struct dg_svc_packet_entities *
 
     unsigned update_type = bitstream_read_uint(&stream, 2);
 
-    update->update_type = update_type;
-    update->ent_index = newI;
+    state.update->update_type = update_type;
+    state.update->ent_index = newI;
     const dg_edict *ent = thisptr->state.entity_state.edicts + newI;
 
     if (newI >= MAX_EDICTS || newI < 0) {
@@ -520,14 +518,14 @@ void dg_parse_packetentities(dg_parser *thisptr, struct dg_svc_packet_entities *
     }
     if (update_type == 0) {
       // delta
-      update->datatable_id = ent->datatable_id;
+      state.update->datatable_id = ent->datatable_id;
       parse_props(&state, i);
     } else if (update_type == 2) {
       // enter pvs
-      update->datatable_id = bitstream_read_uint(&stream, state.output.serverclass_bits);
-      update->handle = bitstream_read_uint(&stream, HANDLE_BITS);
+      state.update->datatable_id = bitstream_read_uint(&stream, output.serverclass_bits);
+      state.update->handle = bitstream_read_uint(&stream, HANDLE_BITS);
 
-      if (update->datatable_id >= thisptr->state.entity_state.serverclass_count) {
+      if (state.update->datatable_id >= thisptr->state.entity_state.serverclass_count) {
         thisptr->error = true;
         thisptr->error_message = "Invalid class ID in svc_packetentities";
         goto end;
@@ -540,7 +538,7 @@ void dg_parse_packetentities(dg_parser *thisptr, struct dg_svc_packet_entities *
   if (message->is_delta && !thisptr->error && !stream.overflow) {
     bool new_deletes =
         thisptr->demo_version.game == l4d2 && thisptr->demo_version.l4d2_version >= 2091;
-    read_explicit_deletes(&state, new_deletes);
+    read_explicit_deletes(&state, &output, new_deletes);
   }
 
   if (stream.overflow && !thisptr->error) {
@@ -565,15 +563,15 @@ end:;
   if (!thisptr->error) {
 #endif
     dg_svc_packetentities_parsed* parsed_ptr;
-    message->parsed = parsed_ptr = dg_alloc_allocate(state.a, sizeof(dg_svc_packetentities_parsed), alignof(dg_svc_packetentities_parsed)); 
+    message->parsed = parsed_ptr = dg_alloc_allocate(state.allocator, sizeof(dg_svc_packetentities_parsed), alignof(dg_svc_packetentities_parsed)); 
     memset(parsed_ptr, 0, sizeof(*parsed_ptr));
-    parsed_ptr->data = state.output;
+    parsed_ptr->data = output;
     parsed_ptr->orig = message;
     if (thisptr->m_settings.packetentities_parsed_handler) {
       thisptr->m_settings.packetentities_parsed_handler(&thisptr->state, parsed_ptr);
     }
 
-    dg_estate_update(&thisptr->state.entity_state, &state.output);
+    dg_estate_update(&thisptr->state.entity_state, &output);
   }
 
   dg_va_free(&state.prop_array);
@@ -585,4 +583,14 @@ end:;
            thisptr->error_message);
 #endif
   }
+}
+
+dg_parse_result dg_parse_instancebaseline(dg_bitstream* stream, dg_alloc_state* allocator, dg_ent_update* output) {
+  dg_parse_result result;
+  memset(&result, 0, sizeof(result));
+  prop_parse_state state;
+  memset(&state, 0, sizeof(state));
+  state.allocator = allocator;
+  
+  return result;
 }

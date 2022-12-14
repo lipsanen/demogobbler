@@ -42,6 +42,7 @@ namespace freddie {
   struct demo_t {
     demo_t();
     ~demo_t();
+
     mallocator temp_allocator;
     dg_arena arena;
     dg_demver_data demver_data;
@@ -49,6 +50,7 @@ namespace freddie {
     std::vector<std::shared_ptr<demo_packet>> packets;
     demo_t(const demo_t &rhs) = delete;
     demo_t &operator=(const demo_t &rhs) = delete;
+  
 
     template <typename T> std::shared_ptr<demo_packet> copy_packet(T *orig) {
         auto packet = std::make_shared<demo_packet>();
@@ -63,39 +65,49 @@ namespace freddie {
     static dg_parse_result parse_demo(demo_t *output, const char *filepath);
     dg_parse_result write_demo(void *stream, dg_output_interface interface);
     dg_parse_result write_demo(const char *filepath);
+    dg_datatables_parsed *get_datatables() const;
   };
 
   dg_parse_result convert_demo(const demo_t *example, demo_t *demo);
-  typedef void(*printFunc)(bool first, const char* msg, ...);
 
   struct prop_status {
+    dg_sendprop* target = nullptr;
     uint32_t index = 0;
     bool exists = true;
-    bool changed = false;
+    bool flags_changed = false;
   };
 
   struct datatable_status {
     uint32_t index = 0;
     bool exists = true;
+    bool props_changed = false;
   };
 
   struct datatable_change_info {
-    prop_status get_prop_status(dg_sendprop* prop);
-    datatable_status get_datatable_status(uint32_t index);
-    void add_datatable(uint32_t start_index, uint32_t new_index);
+    datatable_change_info();
+    ~datatable_change_info();
+    datatable_change_info(const datatable_change_info& lhs) = delete;
+    datatable_change_info& operator=(const datatable_change_info& lhs) = delete;
+
+    dg_parse_result init(const freddie::demo_t *input, const freddie::demo_t *target);
+    void add_datatable(uint32_t new_index, bool changed, bool exists);
     void add_prop(dg_sendprop* prop, prop_status status);
+    void print(bool print_props);
+    void print_props(uint32_t datatable_id);
+  
+    prop_status get_prop_status(dg_sendprop* prop) const;
+    datatable_status get_datatable_status(uint32_t index) const;
+    dg_parse_result convert_updates(dg_packetentities_data* data) const;
+    dg_parse_result convert_props(dg_ent_update* update) const;
+    dg_parse_result convert_demo(freddie::demo_t* input) const;
 
+    dg_arena arena;
+    estate input_estate;
+    estate target_estate;
     std::unordered_map<dg_sendprop*, prop_status> prop_map;
-    std::unordered_map<uint32_t, uint32_t> datatable_map;
+    std::vector<datatable_status> datatables;
   };
 
-  struct compare_props_args {
-      const demo_t* first;
-      const demo_t* second;
-      printFunc func = nullptr;
-  };
-
-  dg_parse_result compare_props(const compare_props_args* args);
   typedef std::function<void(const char *error)> error_func;
 
   struct memory_stream {

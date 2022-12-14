@@ -99,7 +99,7 @@ dg_epropnode *dg_eproplist_get(dg_eproplist *thisptr, dg_epropnode *initial_gues
                                bool *new_prop);
 dg_epropnode *dg_eproplist_next(const dg_eproplist *thisptr, dg_epropnode *current);
 void dg_eproplist_free(dg_eproplist *thisptr);
-void dg_get_prop_name(char* buffer, size_t size, const dg_sendprop *prop);
+void dg_sendprop_name(char* buffer, size_t size, const dg_sendprop *prop);
 
 #ifdef __cplusplus
 }

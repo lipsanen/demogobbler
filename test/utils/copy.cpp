@@ -41,10 +41,14 @@ void copy_demo_freddie(const char *filepath) {
   freddie::demo_t testdemo;
 
   auto result = freddie::demo_t::parse_demo(&testdemo, filepath);
-  freddie::compare_props_args args;
-  args.first = args.second = &testdemo;
-  freddie::compare_props(&args);
   EXPECT_EQ(result.error, false) << result.error_message;
+
+  freddie::datatable_change_info info;
+  result = info.init(&testdemo, &testdemo);
+  info.print(true);
+  info.convert_demo(&testdemo);
+  EXPECT_EQ(result.error, false) << result.error_message;
+
   // Steampipe demos have some garbage in the last tick, causes this test to fail
   if(!result.error && testdemo.demver_data.game != steampipe)
   {

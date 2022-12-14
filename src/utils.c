@@ -16,7 +16,7 @@ int Q_log2(int val)
 	return answer;
 }
 
-void dg_get_prop_name(char* buffer, size_t size, const dg_sendprop *prop)
+void dg_sendprop_name(char* buffer, size_t size, const dg_sendprop *prop)
 {
 	snprintf(buffer, size, "%s.%s", prop->baseclass->name, prop->name);
 }

@@ -76,6 +76,7 @@ typedef struct {
   bool should_store_props;
 } estate_init_args;
 
+dg_parse_result dg_parse_instancebaseline(const dg_instancebaseline_args* args);
 dg_datatables_parsed_rval dg_parse_datatables(dg_demver_data *state, dg_alloc_state *allocator,
                                               dg_datatables *message);
 dg_parse_result dg_estate_init(estate *thisptr, estate_init_args args);
@@ -85,7 +86,7 @@ void dg_estate_free(estate *thisptr);
 
 void dg_estate_init_table(dg_parser *thisptr, size_t index);
 void dg_parser_init_estate(dg_parser *thisptr, dg_datatables_parsed *message);
-dg_serverclass_data *dg_estate_serverclass_data(dg_parser *thisptr, size_t index);
+dg_serverclass_data *dg_estate_serverclass_data(estate *thisptr, const dg_demver_data* demver_data, dg_alloc_state* allocator, size_t index);
 dg_eproparr dg_eproparr_init(uint16_t prop_count);
 // Get a dg_prop_value_inner for this index, also creates it if doesnt exist
 dg_prop_value_inner *dg_eproparr_get(dg_eproparr *thisptr, uint16_t index, bool *new_prop);

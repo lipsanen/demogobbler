@@ -37,6 +37,24 @@ struct dg_stringtables_parsed {
 
 typedef struct dg_stringtables_parsed dg_stringtables_parsed;
 
+struct dg_bitstream;
+struct estate;
+struct dg_demver_data;
+struct dg_alloc_state;
+struct dg_ent_update;
+
+struct dg_instancebaseline_args {
+  const struct dg_bitstream* stream;
+  struct estate* estate_ptr;
+  struct dg_demver_data* demver_data;
+  struct dg_alloc_state* permanent_allocator;
+  struct dg_alloc_state* allocator;
+  struct dg_ent_update* output;
+  uint32_t datatable_id;
+};
+
+typedef struct dg_instancebaseline_args dg_instancebaseline_args;
+
 #ifdef __cplusplus
 }
 #endif

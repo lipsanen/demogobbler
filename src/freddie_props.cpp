@@ -155,10 +155,8 @@ dg_parse_result datatable_change_info::convert_demo(freddie::demo_t* input) cons
 
 dg_parse_result datatable_change_info::convert_updates(dg_packetentities_data *data) const {
   dg_parse_result result;
-  bool deletes = false;
   memset(&result, 0, sizeof(result));
   for (size_t i = 0; i < data->ent_updates_count && !result.error; ++i) {
-    bool should_delete = false;
     dg_ent_update *update = data->ent_updates + i;
     // We keep track of entity state here in case some entities get deleted
     if (update->update_type == 2) {

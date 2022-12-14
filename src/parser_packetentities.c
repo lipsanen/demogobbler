@@ -15,11 +15,15 @@ static int BREAK_INDEX = 20;
 #endif
 
 struct prop_parse_state {
-  dg_parser *thisptr;
   dg_bitstream *stream;
   dg_alloc_state *allocator;
+  dg_alloc_state* permanent_allocator;
+  const dg_demver_data* demver_data;
+  estate* entity_state;
   dg_ent_update *update;
   dg_vector_array prop_array;
+  const char* error_message;
+  bool error;
 };
 
 typedef struct prop_parse_state prop_parse_state;
@@ -267,8 +271,8 @@ static prop_value read_prop(prop_parse_state *state, dg_sendprop *props, dg_send
   } else if (prop->proptype == sendproptype_int) {
     read_int(state, prop, &value.value);
   } else {
-    state->thisptr->error = true;
-    state->thisptr->error_message = "Got an unknown prop type in read_prop";
+    state->error = true;
+    state->error_message = "Got an unknown prop type in read_prop";
   }
 
   return value;
@@ -292,22 +296,21 @@ static void write_props_prot4(bitwriter *thisptr, struct write_packetentities_ar
 }
 
 static void parse_props_prot4(prop_parse_state *state) {
-  dg_parser *thisptr = state->thisptr;
   dg_bitstream *stream = state->stream;
-  dg_serverclass_data *datas = dg_estate_serverclass_data(thisptr, state->update->datatable_id);
+  dg_serverclass_data *datas = dg_estate_serverclass_data(state->entity_state, state->demver_data, state->permanent_allocator, state->update->datatable_id);
   int i = -1;
-  bool new_way = thisptr->demo_version.game != l4d && bitstream_read_bit(state->stream);
+  bool new_way = state->demver_data->game != l4d && bitstream_read_bit(state->stream);
   state->update->new_way = new_way;
 
   while (true) {
     i = bitstream_read_field_index(state->stream, i, new_way);
 
     if (i < -1 || i >= (int)datas->prop_count) {
-      thisptr->error = true;
-      thisptr->error_message = "Invalid prop index encountered";
+      state->error = true;
+      state->error_message = "Invalid prop index encountered";
     }
 
-    if (i == -1 || thisptr->error || stream->overflow)
+    if (i == -1 || state->error || stream->overflow)
       break;
 
     prop_value value = read_prop(state, datas->props, datas->props + i);
@@ -330,18 +333,17 @@ static void write_props_old(bitwriter *thisptr, struct write_packetentities_args
 }
 
 static void parse_props_old(prop_parse_state *state) {
-  dg_parser *thisptr = state->thisptr;
-  dg_serverclass_data *data = dg_estate_serverclass_data(thisptr, state->update->datatable_id);
+  dg_serverclass_data *data = dg_estate_serverclass_data(state->entity_state, state->demver_data, state->permanent_allocator, state->update->datatable_id);
   int i = -1;
 
   while (bitstream_read_bit(state->stream)) {
     i += bitstream_read_ubitvar(state->stream) + 1;
     if (i < -1 || i >= data->prop_count) {
-      state->thisptr->error = true;
-      state->thisptr->error_message = "Invalid prop index encountered";
+      state->error = true;
+      state->error_message = "Invalid prop index encountered";
     }
 
-    if (i == -1 || state->thisptr->error || state->stream->overflow)
+    if (i == -1 || state->error || state->stream->overflow)
       break;
 
     prop_value value = read_prop(state, data->props, data->props + i);
@@ -360,8 +362,7 @@ static void write_props(bitwriter *thisptr, struct write_packetentities_args arg
 
 static void parse_props(prop_parse_state *state, size_t index) {
   dg_va_clear(&state->prop_array);
-  dg_demver_data *demo_version = &state->thisptr->demo_version;
-  if (demo_version->demo_protocol == 4) {
+  if (state->demver_data->demo_protocol == 4) {
     parse_props_prot4(state);
   } else {
     parse_props_old(state);
@@ -403,8 +404,8 @@ static void read_explicit_deletes(prop_parse_state *state, dg_packetentities_dat
       unsigned delete_index = bitstream_read_uint(state->stream, MAX_EDICT_BITS);
 
       if (index >= max_updates) {
-        state->thisptr->error = true;
-        state->thisptr->error_message = "Had more explicit deletes than expected";
+        state->error = true;
+        state->error_message = "Had more explicit deletes than expected";
         break;
       }
 
@@ -474,9 +475,11 @@ void dg_parse_packetentities(dg_parser *thisptr, struct dg_svc_packet_entities *
   dg_bitstream stream = message->data;
   prop_parse_state state;
   memset(&state, 0, sizeof(state));
-  state.thisptr = thisptr;
   state.allocator = dg_parser_temp_allocator(thisptr);
   state.stream = &stream;
+  state.permanent_allocator = dg_parser_perm_allocator(thisptr);
+  state.entity_state = &thisptr->state.entity_state;
+  state.demver_data = &thisptr->demo_version;
 
   output.ent_updates_count = message->updated_entries;
   size_t ent_update_bytes = sizeof(dg_ent_update) * output.ent_updates_count;
@@ -489,14 +492,14 @@ void dg_parse_packetentities(dg_parser *thisptr, struct dg_svc_packet_entities *
   output.serverclass_bits = Q_log2(thisptr->state.entity_state.serverclass_count) + 1;
 
   if (!thisptr->state.entity_state.class_datas) {
-    thisptr->error = true;
-    thisptr->error_message = "Tried to parse packet entities with no flattened props";
+    state.error = true;
+    state.error_message = "Tried to parse packet entities with no flattened props";
   }
 
   int newI = -1;
   size_t i;
 
-  for (i = 0; i < message->updated_entries && !thisptr->error && !stream.overflow; ++i) {
+  for (i = 0; i < message->updated_entries && !state.error && !stream.overflow; ++i) {
     state.update = output.ent_updates + i;
     newI += 1;
     if (thisptr->demo_version.demo_protocol >= 4) {
@@ -512,8 +515,8 @@ void dg_parse_packetentities(dg_parser *thisptr, struct dg_svc_packet_entities *
     const dg_edict *ent = thisptr->state.entity_state.edicts + newI;
 
     if (newI >= MAX_EDICTS || newI < 0) {
-      thisptr->error = true;
-      thisptr->error_message = "Illegal entity index";
+      state.error = true;
+      state.error_message = "Illegal entity index";
       goto end;
     }
     if (update_type == 0) {
@@ -534,6 +537,9 @@ void dg_parse_packetentities(dg_parser *thisptr, struct dg_svc_packet_entities *
       parse_props(&state, i);
     }
   }
+
+  thisptr->error = state.error;
+  thisptr->error_message = state.error_message;
 
   if (message->is_delta && !thisptr->error && !stream.overflow) {
     bool new_deletes =
@@ -585,12 +591,25 @@ end:;
   }
 }
 
-dg_parse_result dg_parse_instancebaseline(dg_bitstream* stream, dg_alloc_state* allocator, dg_ent_update* output) {
+dg_parse_result dg_parse_instancebaseline(const dg_instancebaseline_args* args) {
+  dg_bitstream stream = *args->stream;
   dg_parse_result result;
   memset(&result, 0, sizeof(result));
   prop_parse_state state;
   memset(&state, 0, sizeof(state));
-  state.allocator = allocator;
+
+  prop_value props_array[512];
+  state.prop_array = dg_va_create(props_array, prop_value);
+  state.allocator = args->allocator;
+  state.stream = &stream;
+  state.entity_state = args->estate_ptr;
+  state.allocator = args->allocator;
+  state.permanent_allocator = args->permanent_allocator;
+  state.update = args->output;
+
+  parse_props(&state, args->datatable_id);
+
+  dg_va_free(&state.prop_array);
   
   return result;
 }

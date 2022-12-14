@@ -95,7 +95,7 @@ struct dg_array_value {
   size_t array_size;
 };
 
-typedef struct {
+struct dg_ent_update {
   int ent_index;
   int datatable_id;
   int handle;
@@ -103,7 +103,9 @@ typedef struct {
   prop_value *prop_value_array;
   size_t prop_value_array_size;
   bool new_way;
-} dg_ent_update;
+};
+
+typedef struct dg_ent_update dg_ent_update;
 
 typedef struct {
   dg_ent_update *ent_updates;
@@ -156,13 +158,15 @@ typedef struct {
   const char *dt_name;
 } dg_serverclass_data;
 
-typedef struct {
+struct entity_parse_scrap {
   dg_pes excluded_props;
   dg_hashtable dts_with_excludes;
   dg_hashtable dt_hashtable;
-} entity_parse_scrap;
+};
 
-typedef struct {
+typedef struct entity_parse_scrap entity_parse_scrap;
+
+struct estate {
   dg_serverclass_data *class_datas;
   struct dg_sendtable *sendtables;
   struct dg_serverclass *serverclasses;
@@ -171,7 +175,9 @@ typedef struct {
   uint32_t serverclass_count;
   entity_parse_scrap scrap;
   bool should_store_props;
-} estate;
+};
+
+typedef struct estate estate;
 
 struct dg_parser_state {
   void *client_state;

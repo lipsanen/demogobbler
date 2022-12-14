@@ -88,12 +88,14 @@ void print_packet_orig(parser_state *a, dg_packet *message) {
 
 void print_packet(parser_state *a, packet_parsed *message) {
   print_packet_orig(a, &message->orig);
+  int create_stringtable_index = 0;
 
   for (size_t i = 0; i < message->message_count; ++i) {
     packet_net_message *netmsg = message->messages + i;
     if (netmsg->mtype == svc_create_stringtable) {
       struct dg_svc_create_stringtable msg = netmsg->message_svc_create_stringtable;
-      printf("\tsvc_create_stringtable %s, %u entries\n", msg.name, msg.num_entries);
+      printf("\tsvc_create_stringtable %d = %s, %u entries, bits %u\n", create_stringtable_index, msg.name, msg.num_entries, msg.data_length);
+      ++create_stringtable_index;
     } else if (netmsg->mtype == svc_serverinfo) {
       struct dg_svc_serverinfo *msg = netmsg->message_svc_serverinfo;
       printf("\tsvc_serverinfo\n");
@@ -105,7 +107,8 @@ void print_packet(parser_state *a, packet_parsed *message) {
     } else if (netmsg->mtype == svc_sounds) {
       printf("\tsvc_sounds\n");
     } else if (netmsg->mtype == svc_update_stringtable) {
-      printf("\tsvc_update_stringtable\n");
+      struct dg_svc_update_stringtable *msg = &netmsg->message_svc_update_stringtable;
+      printf("\tsvc_update_stringtable %u, changed entries %u, bits %u\n", msg->table_id, msg->changed_entries, msg->data_length);
     } else if (netmsg->mtype == svc_bsp_decal) {
       printf("\tsvc_bsp_decal\n");
     } else if (netmsg->mtype == svc_classinfo) {

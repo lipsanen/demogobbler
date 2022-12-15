@@ -185,6 +185,25 @@ void dg_parser_update_l4d2_version(dg_parser *thisptr, int l4d2_version) {
   }
 }
 
+dg_parse_result dg_parser_add_stringtable(dg_parser *thisptr, dg_sentry* table) {
+  dg_parse_result result;
+  memset(&result, 0, sizeof(result));
+
+  if(thisptr->state.stringtables_count >= MAX_STRINGTABLES) {
+    result.error = true;
+    result.error_message = "demo had too many stringtables";
+  }
+
+  dg_stringtable_data* data = thisptr->state.stringtables + thisptr->state.stringtables_count;
+  data->flags = table->flags;
+  data->max_entries = table->max_entries;
+  data->user_data_fixed_size = table->user_data_fixed_size;
+  data->user_data_size_bits = table->user_data_size_bits;
+  ++thisptr->state.stringtables_count;
+
+  return result;
+}
+
 size_t _parser_read_length(dg_parser *thisptr) {
   int32_t result = dg_filereader_readint32(thisreader);
   int32_t max_len = 1 << 25; // more than 32 megabytes is probably an error

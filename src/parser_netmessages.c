@@ -395,6 +395,27 @@ static void handle_svc_create_stringtable(dg_parser *thisptr, dg_bitstream *stre
 
   ptr->data = bitstream_fork_and_advance(stream, ptr->data_length);
 
+  if((ptr->flags & 1) == 0 && thisptr->demo_version.demo_protocol <= 3) {
+    dg_sentry_parse_args args;
+    args.allocator = dg_parser_temp_allocator(thisptr);
+    args.flags = ptr->flags;
+    args.demver_data = &thisptr->demo_version;
+    args.max_entries = ptr->max_entries;
+    args.num_updated_entries = ptr->num_entries;
+    args.stream = ptr->data;
+    args.user_data_fixed_size = ptr->user_data_size;
+    args.user_data_size_bits = ptr->user_data_size_bits;
+    dg_parse_result result = dg_parse_stringtable_entry(&args, &ptr->stringtable);
+
+    if(!result.error) {
+      result = dg_parser_add_stringtable(thisptr, &ptr->stringtable);
+    }
+
+    thisptr->error = result.error;
+    thisptr->error_message = result.error_message;
+  }
+
+
   SEND_MESSAGE();
 }
 
@@ -423,7 +444,16 @@ static void write_svc_create_stringtable(bitwriter *writer, dg_demver_data *vers
     bitwriter_write_uint(writer, ptr->flags, version->stringtable_flags_bits);
   }
 
-  bitwriter_write_bitstream(writer, &ptr->data);
+  if(ptr->stringtable.values) {
+    // fancy writing 
+    dg_sentry_write_args args;
+    args.input = &ptr->stringtable;
+    args.writer = writer;
+    dg_write_stringtable_entry(&args);
+  } else {
+
+    bitwriter_write_bitstream(writer, &ptr->data);
+  }
 }
 
 static void handle_svc_update_stringtable(dg_parser *thisptr, dg_bitstream *stream,
@@ -444,6 +474,26 @@ static void handle_svc_update_stringtable(dg_parser *thisptr, dg_bitstream *stre
     ptr->data_length = bitstream_read_uint(stream, 20);
   }
   ptr->data = bitstream_fork_and_advance(stream, ptr->data_length);
+
+#if 0
+  if(ptr->table_id < thisptr->state.stringtables_count) {
+    dg_stringtable_data *data = thisptr->state.stringtables + ptr->table_id;
+    dg_sentry_parse_args args;
+    args.allocator = dg_parser_temp_allocator(thisptr);
+    args.demver_data = &thisptr->demo_version;
+    args.num_updated_entries = ptr->changed_entries;
+    args.stream = ptr->data;
+    args.flags = data->flags;
+    args.max_entries = data->max_entries;
+    args.user_data_fixed_size = data->user_data_fixed_size;
+    args.user_data_size_bits = data->user_data_size_bits;
+    
+    dg_parse_result result = dg_parse_stringtable_entry(&args, &ptr->parsed_sentry);
+    thisptr->error = result.error;
+    thisptr->error_message = result.error_message;
+  }
+#endif
+
   SEND_MESSAGE();
 }
 

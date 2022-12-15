@@ -1,9 +1,10 @@
 #include "parser_stringtables.h"
 #include "alignof_wrapper.h"
-#include "demogobbler/allocator.h"
 #include "demogobbler.h"
+#include "demogobbler/allocator.h"
 #include "demogobbler/bitstream.h"
 #include "demogobbler/streams.h"
+#include "utils.h"
 #include "writer.h"
 #include <string.h>
 
@@ -147,4 +148,134 @@ void dg_parser_parse_stringtables(dg_parser *thisptr, dg_stringtables *input) {
     thisptr->error = true;
     thisptr->error_message = result.error_message;
   }
+}
+
+
+static void parse_sentry(dg_sentry_parse_args *args, uint32_t entry_bits, int32_t* entry_index, dg_sentry_value* value) {
+  char entry_string[1024];
+  value->entry_bit = bitstream_read_bit(&args->stream);
+  if (!value->entry_bit) {
+    value->entry_index = bitstream_read_uint(&args->stream, entry_bits);
+    *entry_index = value->entry_index;
+  }
+
+  value->has_name = bitstream_read_bit(&args->stream);
+  if(value->has_name) {
+    value->reuse_previous_value = bitstream_read_bit(&args->stream);
+    if(value->reuse_previous_value) {
+      value->reuse_str_index = bitstream_read_uint(&args->stream, 5);
+      value->reuse_length = bitstream_read_uint(&args->stream, 5);
+    }
+    size_t size = dg_bitstream_read_cstring(&args->stream, entry_string, sizeof(entry_string));
+    value->stored_string = dg_alloc_allocate(args->allocator, size, 1);
+    memcpy(value->stored_string, entry_string, size);
+  }
+
+  value->has_user_data = bitstream_read_bit(&args->stream);
+
+  if(value->has_user_data) {
+    uint32_t bits;
+    if(args->user_data_fixed_size) {
+      bits = args->user_data_size_bits;
+    } else {
+      value->userdata_length = bitstream_read_uint(&args->stream, 14);
+      bits = value->userdata_length * 8;
+    }
+    value->userdata = bitstream_fork_and_advance(&args->stream, bits);
+  }
+}
+
+void dg_write_sentry_value(dg_sentry_write_args *args, dg_sentry_value *_value, uint32_t entry_bits, bool fixed_size, uint32_t user_data_bits) {
+  dg_sentry_value value = *_value;
+  bitwriter_write_bit(args->writer, value.entry_bit);
+  if (!value.entry_bit) {
+     bitwriter_write_uint(args->writer, value.entry_index, entry_bits);
+  }
+
+  bitwriter_write_bit(args->writer, value.has_name);
+  if(value.has_name) {
+    bitwriter_write_bit(args->writer, value.reuse_previous_value);
+    if(value.reuse_previous_value) {
+      bitwriter_write_uint(args->writer, value.reuse_str_index, 5);
+      bitwriter_write_uint(args->writer, value.reuse_length, 5);
+    }
+    bitwriter_write_cstring(args->writer, value.stored_string);
+  }
+
+  bitwriter_write_bit(args->writer, value.has_user_data);
+
+  if(value.has_user_data) {
+    if(!fixed_size) {
+      bitwriter_write_uint(args->writer, value.userdata_length, 14);
+    }
+    bitwriter_write_bitstream(args->writer, &value.userdata);
+  }
+}
+
+dg_parse_result dg_write_stringtable_entry(dg_sentry_write_args *args) {
+  dg_parse_result result;
+  dg_sentry* input = args->input;
+  memset(&result, 0, sizeof(result));
+  uint32_t entry_bits = Q_log2(input->max_entries);
+
+  for (size_t i = 0; i < input->values_length; ++i) {
+    dg_write_sentry_value(args, input->values + i, entry_bits, input->user_data_fixed_size, input->user_data_size_bits);
+  }
+
+  return result;
+}
+
+
+dg_parse_result dg_parse_stringtable_entry(dg_sentry_parse_args *args, dg_sentry *out) {
+  dg_parse_result result;
+  memset(&result, 0, sizeof(result));
+  memset(out, 0, sizeof(dg_stringtable));
+
+  if (args->flags & 1) {
+    //int32_t uncompressed_size = bitstream_read_sint32(&args->stream);
+    //int32_t compressed_size = bitstream_read_sint32(&args->stream);
+
+    // TODO: implement compression
+
+    result.error = true;
+    result.error_message = "compressed stringtable parsing not implemented";
+    goto end;
+  }
+
+  if (args->demver_data->demo_protocol == 4) {
+    out->dictionary_enabled = bitstream_read_bit(&args->stream);
+
+    // TODO: implement dictionary
+
+    result.error = true;
+    result.error_message = "dictionary decoding not implemented";
+    goto end;
+  }
+
+  int32_t entry_index = -1;
+  const uint32_t array_bytes = args->num_updated_entries * sizeof(dg_sentry_value);
+  out->values = dg_alloc_allocate(args->allocator, array_bytes, alignof(dg_sentry_value));
+  out->values_length = args->num_updated_entries;
+  out->flags = args->flags;
+  out->max_entries = args->max_entries;
+  out->user_data_fixed_size = args->user_data_fixed_size;
+  out->user_data_size_bits = args->user_data_size_bits;
+
+  memset(out->values, 0, array_bytes);
+  uint32_t entry_bits = Q_log2(args->max_entries);
+
+  for (size_t i = 0; i < args->num_updated_entries && !args->stream.overflow; ++i) {
+    ++entry_index;
+    dg_sentry_value *value = out->values + i;
+    parse_sentry(args, entry_bits, &entry_index, value);
+  }
+
+
+  if(args->stream.overflow || dg_bitstream_bits_left(&args->stream) > 0) {
+    result.error = true;
+    result.error_message = "stringtable parsing had bits left";
+  }
+
+end:
+  return result;
 }

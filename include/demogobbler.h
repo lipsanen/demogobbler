@@ -101,6 +101,16 @@ dg_epropnode *dg_eproplist_get(dg_eproplist *thisptr, dg_epropnode *initial_gues
 dg_epropnode *dg_eproplist_next(const dg_eproplist *thisptr, dg_epropnode *current);
 void dg_eproplist_free(dg_eproplist *thisptr);
 void dg_sendprop_name(char* buffer, size_t size, const dg_sendprop *prop);
+dg_parse_result dg_parse_stringtable_entry(dg_sentry_parse_args *args, dg_sentry *out);
+dg_parse_result dg_write_stringtable_entry(dg_sentry_write_args *args);
+
+void dg_parser_init(dg_parser *thisptr, dg_settings *settings);
+void dg_parser_arena_check_init(dg_parser *thisptr);
+void dg_parser_parse(dg_parser *thisptr, void *stream, dg_input_interface input);
+void dg_parser_update_l4d2_version(dg_parser *thisptr, int l4d2_version);
+dg_parse_result dg_parser_add_stringtable(dg_parser *thisptr, dg_sentry* table);
+dg_alloc_state* dg_parser_temp_allocator(dg_parser *thisptr);
+dg_alloc_state* dg_parser_perm_allocator(dg_parser *thisptr);
 
 #ifdef __cplusplus
 }

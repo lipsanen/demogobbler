@@ -96,13 +96,6 @@ struct dg_parser {
 
 typedef struct dg_parser dg_parser;
 
-void dg_parser_init(dg_parser *thisptr, dg_settings *settings);
-void dg_parser_arena_check_init(dg_parser *thisptr);
-void dg_parser_parse(dg_parser *thisptr, void *stream, dg_input_interface input);
-void dg_parser_update_l4d2_version(dg_parser *thisptr, int l4d2_version);
-dg_alloc_state* dg_parser_temp_allocator(dg_parser *thisptr);
-dg_alloc_state* dg_parser_perm_allocator(dg_parser *thisptr);
-
 #ifdef __cplusplus
 }
 #endif

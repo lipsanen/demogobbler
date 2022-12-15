@@ -6,6 +6,7 @@ extern "C" {
 
 #include "demogobbler/bitstream.h"
 #include "demogobbler/floats.h"
+#include "stringtable_types.h"
 
 // clang-format off
 #define DEMOGOBBLER_MACRO_ALL_MESSAGES(macro) \
@@ -159,6 +160,7 @@ struct dg_svc_create_stringtable {
   uint16_t num_entries;
   bool user_data_fixed_size;
   dg_bitstream data;
+  dg_sentry stringtable;
 };
 
 struct dg_svc_update_stringtable {
@@ -167,6 +169,7 @@ struct dg_svc_update_stringtable {
   uint32_t data_length; // Length of the data
   bool exists;
   dg_bitstream data;
+  dg_sentry parsed_sentry;
 };
 
 struct dg_svc_voice_init {

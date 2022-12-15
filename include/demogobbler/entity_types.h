@@ -179,9 +179,22 @@ struct estate {
 
 typedef struct estate estate;
 
+struct dg_stringtable_data {
+  uint32_t max_entries;
+  uint32_t user_data_size_bits;
+  uint32_t flags;
+  bool user_data_fixed_size;
+};
+
+typedef struct dg_stringtable_data dg_stringtable_data;
+
+enum { MAX_STRINGTABLES = 18 };
+
 struct dg_parser_state {
   void *client_state;
   estate entity_state;
+  dg_stringtable_data stringtables[MAX_STRINGTABLES];
+  uint32_t stringtables_count;
   const char *error_message;
   bool error;
 };

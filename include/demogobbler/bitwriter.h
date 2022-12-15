@@ -62,6 +62,7 @@ void dg_bitwriter_write_field_index(bitwriter *thisptr, int32_t new_index, int32
 void dg_bitwriter_write_ubitint(bitwriter *thisptr, uint32_t value);
 void dg_bitwriter_write_ubitvar(bitwriter *thisptr, uint32_t value);
 void dg_bitwriter_write_packetentities(bitwriter *thisptr, struct write_packetentities_args args);
+void dg_bitwriter_write_props(bitwriter *thisptr, const dg_demver_data* demver_data, const dg_ent_update *update);
 void dg_bitwriter_free(bitwriter *thisptr);
 
 #define bitwriter_init dg_bitwriter_init

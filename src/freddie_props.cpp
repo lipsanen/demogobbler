@@ -1,6 +1,7 @@
 #include "demogobbler/freddie.hpp"
 #include <cstdio>
 #include <string.h>
+#include <set>
 
 using namespace freddie;
 
@@ -296,6 +297,89 @@ static void compare_sendtables(freddie::datatable_change_info *info, const estat
   }
 }
 
+static void get_datatable_indices_from_packetentities(const dg_packetentities_data* data, std::set<int>* datatable_indices) {
+  for(size_t i=0; i < data->ent_updates_count; ++i) {
+    datatable_indices->insert(data->ent_updates[i].datatable_id);
+  }
+}
+
+static void get_datatable_indices_from_packet(const packet_parsed* packet, std::set<int>* datatable_indices) {
+  for(size_t i=0; i < packet->message_count; ++i) {
+    auto msg = packet->messages + i;
+    if(msg->mtype == svc_packet_entities) {
+      get_datatable_indices_from_packetentities(&msg->message_svc_packet_entities.parsed->data, datatable_indices);
+    }
+  }
+}
+
+static void init_value(const dg_sendprop* prop, dg_prop_value_inner* value) {
+  memset(value, 0, sizeof(dg_prop_value_inner));
+  value->prop_numbits = prop->prop_numbits;
+  value->type = dg_sendprop_type(prop);
+}
+
+static void init_baseline(dg_ent_update* baseline, const dg_serverclass_data* target_datatable, dg_arena* arena) {
+  size_t props_size = sizeof(prop_value) * target_datatable->prop_count;
+  baseline->prop_value_array = (prop_value*)dg_arena_allocate(arena, props_size, alignof(prop_value));
+  baseline->prop_value_array_size = target_datatable->prop_count;
+
+  baseline->new_way = false;
+  for(size_t i=0; i < target_datatable->prop_count; ++i) {
+    dg_sendprop* prop = target_datatable->props + i;
+    prop_value* value = baseline->prop_value_array + i;
+    value->prop_index = i;
+    value->value.arr_val = (dg_array_value*)dg_arena_allocate(arena, sizeof(dg_array_value), alignof(dg_array_value));
+    value->value.arr_val->array_size = prop->array_num_elements;
+    value->value.arr_val->values = (dg_prop_value_inner*)
+        dg_arena_allocate(arena, sizeof(dg_prop_value_inner) * prop->array_num_elements,
+                          alignof(dg_prop_value_inner));
+
+    if(prop->proptype == sendproptype_array) {
+      for(size_t array_index=0; array_index < prop->array_num_elements; ++array_index) {
+        init_value(prop, value->value.arr_val->values + array_index);
+      }
+    }
+    else {
+      init_value(prop, &value->value);
+    }
+  }
+
+  
+}
+
+static void init_converted_baselines(const freddie::demo_t* demo, freddie::datatable_change_info *info) {
+  std::set<int> datatable_indices;
+  for (size_t i = 0; i < demo->packets.size(); ++i) {
+    packet_parsed *packet_ptr = std::get_if<packet_parsed>(&demo->packets[i]->packet);
+    if(packet_ptr) {
+      get_datatable_indices_from_packet(packet_ptr, &datatable_indices);
+    }
+  }
+  
+  std::vector<int> converted_indices;
+  for(auto datatable_id: datatable_indices) {
+    auto status = info->get_datatable_status(datatable_id);
+    if(status.exists) {
+      converted_indices.push_back(status.index);
+    } else {
+      std::fprintf(stderr, "Datatable %d was deleted!\n", status.index);
+    }
+  }
+
+  size_t bytes = sizeof(dg_ent_update) * converted_indices.size();
+  info->baselines = (dg_ent_update*)dg_arena_allocate(&info->arena, bytes, alignof(dg_ent_update));
+  memset(info->baselines, 0, bytes);
+  std::size_t index = 0;
+
+  for(auto converted_id: datatable_indices) {
+    dg_ent_update* baseline = info->baselines + index;
+    const dg_serverclass_data* target_datatable = info->target_estate.class_datas + converted_id;
+    baseline->datatable_id = converted_id;
+    ++index;
+    init_baseline(baseline, target_datatable, &info->arena);
+  }
+}
+
 datatable_change_info::datatable_change_info() {
   arena = dg_arena_create(1 << 10);
   memset(&input_estate, 0, sizeof(input_estate));
@@ -347,6 +431,7 @@ dg_parse_result datatable_change_info::init(const freddie::demo_t *input,
   dg_estate_init(&target_estate, args2);
 
   compare_sendtables(this, &input_estate, &target_estate);
+  init_converted_baselines(input, this);
 
 end:
   return result;

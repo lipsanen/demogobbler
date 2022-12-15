@@ -278,9 +278,9 @@ static prop_value read_prop(prop_parse_state *state, dg_sendprop *props, dg_send
   return value;
 }
 
-static void write_props_prot4(bitwriter *thisptr, struct write_packetentities_args args,
+static void write_props_prot4(bitwriter *thisptr, const dg_demver_data* demver_data,
                               const dg_ent_update *update) {
-  if (args.version->game != l4d) {
+  if (demver_data->game != l4d) {
     bitwriter_write_bit(thisptr, update->new_way);
   }
 
@@ -318,8 +318,7 @@ static void parse_props_prot4(prop_parse_state *state) {
   }
 }
 
-static void write_props_old(bitwriter *thisptr, struct write_packetentities_args args,
-                            const dg_ent_update *update) {
+static void write_props_old(bitwriter *thisptr, const dg_ent_update *update) {
   int old_prop_index = -1;
   for (size_t i = 0; i < update->prop_value_array_size; ++i) {
     bitwriter_write_bit(thisptr, true);
@@ -351,12 +350,11 @@ static void parse_props_old(prop_parse_state *state) {
   }
 }
 
-static void write_props(bitwriter *thisptr, struct write_packetentities_args args,
-                        const dg_ent_update *update) {
-  if (args.version->demo_protocol == 4) {
-    write_props_prot4(thisptr, args, update);
+void dg_bitwriter_write_props(bitwriter *thisptr, const dg_demver_data* demver_data, const dg_ent_update *update) {
+  if (demver_data->demo_protocol == 4) {
+    write_props_prot4(thisptr, demver_data, update);
   } else {
-    write_props_old(thisptr, args, update);
+    write_props_old(thisptr, update);
   }
 }
 
@@ -436,11 +434,11 @@ void dg_bitwriter_write_packetentities(bitwriter *thisptr, struct write_packeten
     bitwriter_write_uint(thisptr, update->update_type, 2);
 
     if (update->update_type == 0) {
-      write_props(thisptr, args, update);
+      dg_bitwriter_write_props(thisptr, args.version, update);
     } else if (update->update_type == 2) {
       bitwriter_write_uint(thisptr, update->datatable_id, bits);
       bitwriter_write_uint(thisptr, update->handle, HANDLE_BITS);
-      write_props(thisptr, args, update);
+      dg_bitwriter_write_props(thisptr, args.version, update);
     }
   }
 

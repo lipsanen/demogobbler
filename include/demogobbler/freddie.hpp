@@ -106,6 +106,7 @@ namespace freddie {
     estate target_estate;
     std::unordered_map<dg_sendprop*, prop_status> prop_map;
     std::vector<datatable_status> datatables;
+    dg_ent_update* baselines;
   };
 
   typedef std::function<void(const char *error)> error_func;

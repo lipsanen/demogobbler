@@ -41,6 +41,7 @@ struct dg_alloc_state
 
 typedef struct dg_alloc_state dg_alloc_state;
 
+dg_alloc_state dg_arena_create_allocator(dg_arena* arena);
 dg_arena dg_arena_create(uint32_t first_block_size);
 void dg_arena_clear(dg_arena *a);
 void *dg_arena_allocate(dg_arena *a, uint32_t size, uint32_t alignment);

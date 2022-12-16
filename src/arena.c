@@ -16,6 +16,16 @@ dg_arena FUN_ATTRIBUTE dg_arena_create(uint32_t first_block_size) {
   return out;
 }
 
+dg_alloc_state dg_arena_create_allocator(dg_arena* arena) {
+  dg_alloc_state state;
+  state.alloc = (func_dg_alloc)dg_arena_allocate;
+  state.allocator = arena;
+  state.attach = (func_dg_attach)dg_arena_attach;
+  state.clear = (func_dg_clear)dg_arena_clear;
+  state.realloc = (func_dg_realloc)dg_arena_reallocate;
+  return state;
+}
+
 void FUN_ATTRIBUTE dg_arena_clear(dg_arena *a) {
   for (size_t i = 0; i < a->block_count; ++i) {
     a->blocks[i].bytes_used = 0;

@@ -358,7 +358,7 @@ void dg_bitwriter_write_props(bitwriter *thisptr, const dg_demver_data* demver_d
   }
 }
 
-static void parse_props(prop_parse_state *state, size_t index) {
+static void parse_props(prop_parse_state *state) {
   dg_va_clear(&state->prop_array);
   if (state->demver_data->demo_protocol == 4) {
     parse_props_prot4(state);
@@ -520,7 +520,7 @@ void dg_parse_packetentities(dg_parser *thisptr, struct dg_svc_packet_entities *
     if (update_type == 0) {
       // delta
       state.update->datatable_id = ent->datatable_id;
-      parse_props(&state, i);
+      parse_props(&state);
     } else if (update_type == 2) {
       // enter pvs
       state.update->datatable_id = bitstream_read_uint(&stream, output.serverclass_bits);
@@ -532,7 +532,7 @@ void dg_parse_packetentities(dg_parser *thisptr, struct dg_svc_packet_entities *
         goto end;
       }
 
-      parse_props(&state, i);
+      parse_props(&state);
     }
   }
 
@@ -604,8 +604,10 @@ dg_parse_result dg_parse_instancebaseline(const dg_instancebaseline_args* args) 
   state.allocator = args->allocator;
   state.permanent_allocator = args->permanent_allocator;
   state.update = args->output;
+  state.update->datatable_id = args->datatable_id;
+  state.demver_data = args->demver_data;
 
-  parse_props(&state, args->datatable_id);
+  parse_props(&state);
 
   dg_va_free(&state.prop_array);
   

@@ -248,7 +248,10 @@ void _parse_header(dg_parser *thisptr) {
 
 bool _parse_anymessage(dg_parser *thisptr) {
   uint8_t type = dg_filereader_readbyte(thisreader);
-  dg_alloc_clear(dg_parser_temp_allocator(thisptr));
+
+  // Don't clear if temp allocator is the same as permanent allocator
+  if(thisptr->m_settings.temp_alloc_state.allocator != thisptr->m_settings.permanent_alloc_state.allocator)
+    dg_alloc_clear(dg_parser_temp_allocator(thisptr));
 
   switch (type) {
   case dg_type_consolecmd:

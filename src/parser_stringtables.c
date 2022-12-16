@@ -157,6 +157,8 @@ static void parse_sentry(dg_sentry_parse_args *args, uint32_t entry_bits, int32_
   if (!value->entry_bit) {
     value->entry_index = bitstream_read_uint(&args->stream, entry_bits);
     *entry_index = value->entry_index;
+  } else {
+    value->entry_index = *entry_index;
   }
 
   value->has_name = bitstream_read_bit(&args->stream);

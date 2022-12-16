@@ -444,16 +444,7 @@ static void write_svc_create_stringtable(bitwriter *writer, dg_demver_data *vers
     bitwriter_write_uint(writer, ptr->flags, version->stringtable_flags_bits);
   }
 
-  if(ptr->stringtable.values) {
-    // fancy writing 
-    dg_sentry_write_args args;
-    args.input = &ptr->stringtable;
-    args.writer = writer;
-    dg_write_stringtable_entry(&args);
-  } else {
-
-    bitwriter_write_bitstream(writer, &ptr->data);
-  }
+  bitwriter_write_bitstream(writer, &ptr->data);
 }
 
 static void handle_svc_update_stringtable(dg_parser *thisptr, dg_bitstream *stream,

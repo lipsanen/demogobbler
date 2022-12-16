@@ -89,7 +89,7 @@ namespace freddie {
     datatable_change_info(const datatable_change_info& lhs) = delete;
     datatable_change_info& operator=(const datatable_change_info& lhs) = delete;
 
-    dg_parse_result init(const freddie::demo_t *input, const freddie::demo_t *target);
+    dg_parse_result init(freddie::demo_t *input, const freddie::demo_t *target);
     void add_datatable(uint32_t new_index, bool changed, bool exists);
     void add_prop(dg_sendprop* prop, prop_status status);
     void print(bool print_props);
@@ -107,6 +107,8 @@ namespace freddie {
     std::unordered_map<dg_sendprop*, prop_status> prop_map;
     std::vector<datatable_status> datatables;
     dg_ent_update* baselines;
+    uint32_t baselines_count;
+    dg_datatables_parsed target_datatable;
   };
 
   typedef std::function<void(const char *error)> error_func;
@@ -126,6 +128,9 @@ namespace freddie {
     void fill_with_file(const char *filepath);
     ~memory_stream();
   };
+
+  dg_bitstream get_start_state(const dg_bitwriter *writer);
+  void finalize_stream(dg_bitstream *stream, const dg_bitwriter *writer);
 
   // Function for interfacing with C
   std::size_t memory_stream_read(void *stream, void *dest, size_t bytes);

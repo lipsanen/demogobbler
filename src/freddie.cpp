@@ -233,7 +233,7 @@ static void fix_svc_serverinfo(const char *gamedir, demo_t *demo) {
   }
 }
 
-static dg_bitstream get_start_state(const dg_bitwriter *writer) {
+dg_bitstream freddie::get_start_state(const dg_bitwriter *writer) {
   dg_bitstream stream;
   memset(&stream, 0, sizeof(stream));
   stream.data = writer->ptr;
@@ -241,7 +241,7 @@ static dg_bitstream get_start_state(const dg_bitwriter *writer) {
   return stream;
 }
 
-static void finalize_stream(dg_bitstream *stream, const dg_bitwriter *writer) {
+void freddie::finalize_stream(dg_bitstream *stream, const dg_bitwriter *writer) {
   stream->bitsize = writer->bitoffset;
 }
 
@@ -262,14 +262,14 @@ static void fix_packets(demo_t *demo) {
           dg_bitwriter bitwriter;
           dg_bitwriter_init(&bitwriter,
                             dg_bitstream_bits_left(&msg->message_svc_packet_entities.data));
-          auto stream = get_start_state(&bitwriter);
+          auto stream = freddie::get_start_state(&bitwriter);
 #ifdef GROUND_TRUTH_CHECK
           bitwriter.truth_data = msg->message_svc_packet_entities.data.data;
           bitwriter.truth_data_offset = msg->message_svc_packet_entities.data.bitoffset;
           bitwriter.truth_size_bits = msg->message_svc_packet_entities.data.bitsize;
 #endif
           dg_bitwriter_write_packetentities(&bitwriter, args);
-          finalize_stream(&stream, &bitwriter);
+          freddie::finalize_stream(&stream, &bitwriter);
           demo->packets[i]->memory.attach(
               bitwriter.ptr); // transfer the bitwriter memory over to the packet
           msg->message_svc_packet_entities.data = stream;

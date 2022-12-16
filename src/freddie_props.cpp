@@ -133,27 +133,6 @@ dg_parse_result datatable_change_info::convert_props(dg_ent_update* update) cons
   return result;
 }
 
-
-dg_parse_result datatable_change_info::convert_demo(freddie::demo_t* input) const {
-  dg_parse_result result;
-  memset(&result, 0, sizeof(result));
-
-  for (size_t i = 0; i < input->packets.size(); ++i) {
-    packet_parsed *packet_ptr = std::get_if<packet_parsed>(&input->packets[i]->packet);
-    if(packet_ptr) {
-      for(size_t i=0; i < packet_ptr->message_count; ++i) {
-        auto* netmsg = packet_ptr->messages + i;
-        if(netmsg->mtype == svc_packet_entities) {
-          convert_updates(&netmsg->message_svc_packet_entities.parsed->data);
-          break;
-        }
-      }
-    }
-  }
-  
-  return result;
-}
-
 dg_parse_result datatable_change_info::convert_updates(dg_packetentities_data *data) const {
   dg_parse_result result;
   memset(&result, 0, sizeof(result));
@@ -367,6 +346,7 @@ static void init_converted_baselines(const freddie::demo_t* demo, freddie::datat
   }
 
   size_t bytes = sizeof(dg_ent_update) * converted_indices.size();
+  info->baselines_count = converted_indices.size();
   info->baselines = (dg_ent_update*)dg_arena_allocate(&info->arena, bytes, alignof(dg_ent_update));
   memset(info->baselines, 0, bytes);
   std::size_t index = 0;
@@ -378,6 +358,112 @@ static void init_converted_baselines(const freddie::demo_t* demo, freddie::datat
     ++index;
     init_baseline(baseline, target_datatable, &info->arena);
   }
+}
+
+static void convert_create_stringtable(freddie::mallocator* mallocator, const dg_demver_data* demver_data, dg_svc_create_stringtable* table, const freddie::datatable_change_info *info) {
+  size_t memory_size = sizeof(dg_sentry_value) * info->baselines_count;
+  char BUFFER[4];
+
+  dg_sentry sentry;
+  sentry.values = (dg_sentry_value*)mallocator->alloc(memory_size);
+  sentry.values_length = table->num_entries = info->baselines_count;
+
+  for(size_t i=0; i < info->baselines_count; ++i) {
+    dg_ent_update* update = info->baselines + i;
+    dg_sentry_value* value = sentry.values + i;
+    snprintf(BUFFER, sizeof(BUFFER), "%d", update->datatable_id);
+    size_t len = strlen(BUFFER);
+
+    value->has_name = true;
+    value->has_user_data = true;
+    value->entry_bit = true;
+    value->stored_string = (char*)mallocator->alloc(len + 1);
+    memcpy(value->stored_string, BUFFER, len + 1);
+
+    dg_bitwriter bitwriter;
+    bitwriter_init(&bitwriter, 1024);
+
+    value->userdata = get_start_state(&bitwriter);
+    dg_bitwriter_write_props(&bitwriter, demver_data, update);
+    unsigned bits = bitwriter.bitoffset;
+
+    while(bits % 8 != 0) {
+      bitwriter_write_bit(&bitwriter, 1);
+      bits += 1;
+    }
+    value->userdata_length = bits / 8;
+
+    finalize_stream(&value->userdata, &bitwriter);
+    mallocator->attach(bitwriter.ptr);
+  }
+
+  std::printf("wrote entries\n");
+
+  dg_bitwriter final_writer;
+  bitwriter_init(&final_writer, 1024);
+
+  dg_sentry_write_args args;
+  args.input = &sentry;
+  args.writer = &final_writer;
+
+  table->data = get_start_state(&final_writer);
+  dg_write_stringtable_entry(&args);
+  finalize_stream(&table->data, &final_writer);
+  table->flags = 0;
+  mallocator->attach(final_writer.ptr);
+}
+
+static void convert_baselines(freddie::demo_t* demo, const freddie::datatable_change_info *info) {
+  for (size_t i = 0; i < demo->packets.size(); ++i) {
+    packet_parsed *packet_ptr = std::get_if<packet_parsed>(&demo->packets[i]->packet);
+    if(packet_ptr) {
+      for(size_t msg_index=0; msg_index < packet_ptr->message_count; ++msg_index) {
+        packet_net_message* msg = packet_ptr->messages + msg_index;
+        if(msg->mtype == svc_create_stringtable) {
+          dg_svc_create_stringtable* table = &msg->message_svc_create_stringtable;
+          if(strcmp(table->name, "instancebaseline") == 0) {
+            convert_create_stringtable(&demo->packets[i]->memory, &demo->demver_data, table, info);
+            std::printf("Converted instancebaseline\n");
+          }
+        }
+        else if(msg->mtype == svc_update_stringtable) {
+          if(msg->message_svc_update_stringtable.table_id == 5) {
+            size_t memory_size = (packet_ptr->message_count - msg_index - 1) * sizeof(packet_net_message);
+            memmove(packet_ptr->messages + msg_index, packet_ptr->messages + msg_index + 1, memory_size);
+            --msg_index;
+            std::printf("Deleted update stringtable message\n");
+          }
+        }
+      }
+    }
+  }
+}
+
+dg_parse_result datatable_change_info::convert_demo(freddie::demo_t* input) const {
+  dg_parse_result result;
+  memset(&result, 0, sizeof(result));
+
+  for (size_t i = 0; i < input->packets.size(); ++i) {
+    packet_parsed *packet_ptr = std::get_if<packet_parsed>(&input->packets[i]->packet);
+    dg_datatables_parsed *dt_ptr = std::get_if<dg_datatables_parsed>(&input->packets[i]->packet);
+    if(packet_ptr) {
+      for(size_t i=0; i < packet_ptr->message_count; ++i) {
+        auto* netmsg = packet_ptr->messages + i;
+        if(netmsg->mtype == svc_packet_entities) {
+          convert_updates(&netmsg->message_svc_packet_entities.parsed->data);
+          break;
+        }
+      }
+    }
+    else if(dt_ptr) {
+      input->packets[i]->packet = this->target_datatable;
+      std::printf("changed datatable\n");
+    }
+  }
+
+  convert_baselines(input, this);
+  
+  return result;
 }
 
 datatable_change_info::datatable_change_info() {
@@ -392,7 +478,7 @@ datatable_change_info::~datatable_change_info() {
   dg_estate_free(&target_estate);
 }
 
-dg_parse_result datatable_change_info::init(const freddie::demo_t *input,
+dg_parse_result datatable_change_info::init(freddie::demo_t *input,
                                             const freddie::demo_t *target) {
   if (arena.block_count > 0)
     abort(); // trying to init state again leaks memory
@@ -417,6 +503,7 @@ dg_parse_result datatable_change_info::init(const freddie::demo_t *input,
     goto end;
   }
 
+  this->target_datatable = *datatable2; // TODO: memory management outta wazoo
   estate_init_args args1;
   estate_init_args args2;
   args2.allocator = args1.allocator = &allocator;

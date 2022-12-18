@@ -88,6 +88,11 @@ static void handle_dt(parser_state *_state, dg_datatables_parsed *value) {
   state->datatables = *value;
 }
 
+static void handle_version(parser_state *_state, dg_demver_data demver_data) {
+  baseline_state *state = (baseline_state *)_state->client_state;
+  state->demver_data = demver_data;
+}
+
 static void handle_st(parser_state *_state, dg_stringtables_parsed *value) {
   baseline_state *state = (baseline_state *)_state->client_state;
   state->stringtables = *value;
@@ -104,10 +109,6 @@ static void handle_packet(parser_state *_state, packet_parsed *value) {
   }
 }
 
-static void handle_version(parser_state *_state, dg_demver_data demver_data) {
-  baseline_state *state = (baseline_state *)_state->client_state;
-  state->demver_data = demver_data;
-}
 
 static dg_parse_result get_baseline_state(const char *filepath, baseline_state *state) {
   dg_settings settings;
@@ -146,6 +147,106 @@ TEST(baselines, parse_and_write) {
     baseline_state base;
     std::cout << "[----------] " << demo << std::endl;
     auto result = get_baseline_state(demo.c_str(), &base);
+    EXPECT_EQ(result.error, false) << result.error_message;
+  }
+}
+
+struct baselinegen_state {
+  dg_arena memory;
+  dg_datatables_parsed datatables;
+  dg_demver_data demver_data;
+  estate entity_state;
+
+  baselinegen_state() {
+    memory = dg_arena_create(1 << 15);
+    memset(&datatables, 0, sizeof(datatables));
+    memset(&entity_state, 0, sizeof(entity_state));
+  }
+
+  ~baselinegen_state() { 
+    dg_arena_free(&memory);
+    dg_estate_free(&entity_state);
+  }
+};
+
+
+static void handle_dt_gen(parser_state *_state, dg_datatables_parsed *value) {
+  baselinegen_state *state = (baselinegen_state *)_state->client_state;
+  state->datatables = *value;
+}
+
+static void handle_version_gen(parser_state *_state, dg_demver_data demver_data) {
+  baselinegen_state *state = (baselinegen_state *)_state->client_state;
+  state->demver_data = demver_data;
+}
+
+void test_baseline(uint32_t datatable_id, const dg_serverclass_data *data, estate* estate, const dg_demver_data* demver_data, dg_arena* arena) {
+  dg_ent_update update;
+  update.datatable_id = datatable_id;
+  dg_init_baseline(&update, data, arena);
+
+  bitwriter writer;
+  bitwriter_init(&writer, 1024);
+  dg_bitwriter_write_props(&writer, demver_data, &update);
+
+  dg_instancebaseline_args args;
+  dg_ent_update output;
+
+  auto alligator = dg_arena_create_allocator(arena);
+  auto stream = bitstream_create(writer.ptr, writer.bitoffset);
+  args.permanent_allocator = args.allocator = &alligator;
+  args.datatable_id = datatable_id;
+  args.demver_data = demver_data;
+  args.estate_ptr = estate;
+  args.output = &output;
+  args.stream = &stream;
+
+  auto result = dg_parse_instancebaseline(&args);
+  EXPECT_EQ(result.error, false);
+  EXPECT_EQ(output.prop_value_array_size, update.prop_value_array_size);
+
+  bitwriter_free(&writer);
+}
+
+static dg_parse_result get_baselinegen_state(const char *filepath, baselinegen_state *state) {
+  dg_settings settings;
+  dg_settings_init(&settings);
+  settings.client_state = state;
+  settings.datatables_parsed_handler = handle_dt_gen;
+  settings.demo_version_handler = handle_version_gen;
+  settings.temp_alloc_state.allocator = &state->memory;
+  settings.permanent_alloc_state.allocator = &state->memory;
+
+  auto result = dg_parse_file(&settings, filepath);
+
+  if (result.error)
+    return result;
+
+  estate_init_args args;
+  dg_alloc_state allocator = dg_arena_create_allocator(&state->memory);
+  args.allocator = &allocator;
+  args.flatten_datatables = true;
+  args.message = &state->datatables;
+  args.should_store_props = false;
+  args.version_data = &state->demver_data;
+  result = dg_estate_init(&state->entity_state, args);
+
+  if (result.error)
+    return result;
+
+  for(size_t i=0; i < state->entity_state.serverclass_count; ++i) {
+    test_baseline(i, state->entity_state.class_datas + i, &state->entity_state, &state->demver_data, &state->memory);
+  }
+
+  return result;
+}
+
+
+TEST(baselines, generate_and_verify) {
+  for (auto &demo : get_test_demos()) {
+    baselinegen_state base;
+    std::cout << "[----------] " << demo << std::endl;
+    auto result = get_baselinegen_state(demo.c_str(), &base);
     EXPECT_EQ(result.error, false) << result.error_message;
   }
 }

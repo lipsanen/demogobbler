@@ -48,7 +48,7 @@ struct dg_ent_update;
 struct dg_instancebaseline_args {
   const struct dg_bitstream* stream;
   struct estate* estate_ptr;
-  struct dg_demver_data* demver_data;
+  const struct dg_demver_data* demver_data;
   struct dg_alloc_state* permanent_allocator;
   struct dg_alloc_state* allocator;
   struct dg_ent_update* output;

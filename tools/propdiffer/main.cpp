@@ -164,59 +164,6 @@ static void compare_sendtables(const compare_props_args *args, const estate *lhs
   }
 }
 
-static dg_parse_result compare_props(const compare_props_args *args) {
-  dg_parse_result result;
-  memset(&result, 0, sizeof(result));
-  dg_arena arena = dg_arena_create(1 << 10);
-  estate estate1;
-  memset(&estate1, 0, sizeof(estate1));
-  estate estate2;
-  memset(&estate2, 0, sizeof(estate2));
-
-  dg_alloc_state allocator = {&arena, (func_dg_alloc)dg_arena_allocate,
-                              (func_dg_clear)dg_arena_clear, (func_dg_realloc)dg_arena_reallocate,
-                              (func_dg_attach)dg_arena_attach};
-  dg_datatables_parsed *datatable1 = args->first->get_datatables();
-  dg_datatables_parsed *datatable2 = args->second->get_datatables();
-
-  if (datatable1 == nullptr) {
-    result.error = true;
-    result.error_message = "missing datatable";
-    ARGSPRINT(true, "missing datatable");
-    goto end;
-  }
-
-  if (datatable2 == nullptr) {
-    result.error = true;
-    result.error_message = "missing datatable";
-    ARGSPRINT(false, "missing datatable");
-    goto end;
-  }
-
-  estate_init_args args1;
-  estate_init_args args2;
-  args2.allocator = args1.allocator = &allocator;
-  args2.flatten_datatables = args1.flatten_datatables = true;
-  args2.should_store_props = args1.should_store_props = false;
-  args1.message = datatable1;
-  args1.version_data = &args->first->demver_data;
-  args2.message = datatable2;
-  args2.version_data = &args->second->demver_data;
-
-  dg_estate_init(&estate1, args1);
-  dg_estate_init(&estate2, args2);
-
-  compare_sendtables(args, &estate1, &estate2);
-
-end:
-
-  dg_arena_free(&arena);
-  dg_estate_free(&estate1);
-  dg_estate_free(&estate2);
-
-  return result;
-}
-
 int main(int argc, char **argv) {
   if (argc <= 2) {
     printf("Usage: ddiff <example file> <input file>\n");

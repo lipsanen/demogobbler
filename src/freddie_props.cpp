@@ -353,7 +353,7 @@ static void get_datatable_indices_from_packet(const packet_parsed *packet,
   }
 }
 
-static void init_baseline(dg_ent_update *baseline, const dg_serverclass_data *target_datatable,
+void dg_init_baseline(dg_ent_update *baseline, const dg_serverclass_data *target_datatable,
                           dg_arena *arena) {
   size_t props_size = sizeof(prop_value) * target_datatable->prop_count;
   baseline->prop_value_array =
@@ -384,8 +384,6 @@ static void init_converted_baselines(const freddie::demo_t *demo,
   for (auto datatable_id : datatable_indices) {
     auto status = info->get_datatable_status(datatable_id);
     if (status.exists) {
-      dg_serverclass_data *data_orig = info->input_estate.class_datas + datatable_id;
-      dg_serverclass_data *data_conv = info->target_estate.class_datas + status.index;
       converted_indices.push_back(status.index);
     }
   }
@@ -401,7 +399,7 @@ static void init_converted_baselines(const freddie::demo_t *demo,
     const dg_serverclass_data *target_datatable = info->target_estate.class_datas + converted_id;
     baseline->datatable_id = converted_id;
     ++index;
-    init_baseline(baseline, target_datatable, &info->arena);
+    dg_init_baseline(baseline, target_datatable, &info->arena);
   }
 }
 
@@ -422,7 +420,6 @@ static void convert_create_stringtable(freddie::mallocator *mallocator,
   for (size_t i = 0; i < info->baselines_count; ++i) {
     dg_ent_update *update = info->baselines + i;
     dg_sentry_value *value = sentry.values + i;
-    dg_serverclass_data *data = info->target_estate.class_datas + update->datatable_id;
     snprintf(BUFFER, sizeof(BUFFER), "%d", update->datatable_id);
     size_t len = strlen(BUFFER);
 

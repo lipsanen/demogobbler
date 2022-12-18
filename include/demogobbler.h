@@ -112,6 +112,8 @@ void dg_parser_update_l4d2_version(dg_parser *thisptr, int l4d2_version);
 dg_parse_result dg_parser_add_stringtable(dg_parser *thisptr, dg_sentry* table);
 dg_alloc_state* dg_parser_temp_allocator(dg_parser *thisptr);
 dg_alloc_state* dg_parser_perm_allocator(dg_parser *thisptr);
+void dg_init_baseline(dg_ent_update *baseline, const dg_serverclass_data *target_datatable,
+                          dg_arena *arena);
 
 #ifdef __cplusplus
 }

@@ -95,11 +95,11 @@ namespace freddie {
     void print(bool print_props);
     void print_props(uint32_t datatable_id);
   
-    prop_status get_prop_status(dg_sendprop* prop) const;
-    datatable_status get_datatable_status(uint32_t index) const;
-    dg_parse_result convert_updates(dg_packetentities_data* data) const;
-    dg_parse_result convert_props(dg_ent_update* update) const;
-    dg_parse_result convert_demo(freddie::demo_t* input) const;
+    prop_status get_prop_status(dg_sendprop* prop);
+    datatable_status get_datatable_status(uint32_t index);
+    dg_parse_result convert_updates(dg_packetentities_data* data);
+    dg_parse_result convert_props(dg_ent_update* update, uint32_t new_datatable_id);
+    dg_parse_result convert_demo(freddie::demo_t* input);
 
     dg_arena arena;
     estate input_estate;

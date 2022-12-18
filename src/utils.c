@@ -21,6 +21,12 @@ void dg_sendprop_name(char* buffer, size_t size, const dg_sendprop *prop)
 	snprintf(buffer, size, "%s.%s", prop->baseclass->name, prop->name);
 }
 
+enum dg_proptype dg_sendprop_vector_type(const dg_sendprop* _prop) {
+  dg_sendprop prop = *_prop;
+  prop.proptype = sendproptype_float;
+  return dg_sendprop_type(&prop);
+}
+
 enum dg_proptype dg_sendprop_type(const dg_sendprop* prop) {
   if(prop->proptype == sendproptype_float) {
     if (prop->flag_coord) {

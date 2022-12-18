@@ -144,7 +144,7 @@ void dg_write_packet_parsed(writer *thisptr, packet_parsed *message_parsed) {
   if (thisptr->bitwriter.bitoffset % 8 != 0) {
     uint32_t expected_bits =
         thisptr->bitwriter.bitoffset + dg_bitstream_bits_left(&message_parsed->leftover_bits);
-    if (expected_bits / 8 == message->size_bytes) {
+    if (expected_bits == message->size_bytes * 8) {
       // grab leftover bits from original stream if number of bytes matches
       dg_bitwriter_write_bitstream(&thisptr->bitwriter, &message_parsed->leftover_bits);
     } else {

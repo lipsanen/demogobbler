@@ -226,6 +226,7 @@ static void fix_svc_serverinfo(const char *gamedir, demo_t *demo) {
           char *dest = (char *)dg_arena_allocate(&demo->arena, len + 1, 1);
           memcpy(dest, gamedir, len + 1);
           msg->message_svc_serverinfo->game_dir = dest;
+          msg->message_svc_serverinfo->network_protocol = demo->header.net_protocol;
           return;
         }
       }
@@ -259,15 +260,10 @@ static void fix_packets(demo_t *demo) {
           args.is_delta = msg->message_svc_packet_entities.is_delta;
           args.version = &demo->demver_data;
           args.data = &msg->message_svc_packet_entities.parsed->data;
+          uint32_t bits = dg_bitstream_bits_left(&msg->message_svc_packet_entities.data);
           dg_bitwriter bitwriter;
-          dg_bitwriter_init(&bitwriter,
-                            dg_bitstream_bits_left(&msg->message_svc_packet_entities.data));
+          dg_bitwriter_init(&bitwriter, bits);
           auto stream = freddie::get_start_state(&bitwriter);
-#ifdef GROUND_TRUTH_CHECK
-          bitwriter.truth_data = msg->message_svc_packet_entities.data.data;
-          bitwriter.truth_data_offset = msg->message_svc_packet_entities.data.bitoffset;
-          bitwriter.truth_size_bits = msg->message_svc_packet_entities.data.bitsize;
-#endif
           dg_bitwriter_write_packetentities(&bitwriter, args);
           freddie::finalize_stream(&stream, &bitwriter);
           demo->packets[i]->memory.attach(
@@ -288,6 +284,14 @@ dg_parse_result freddie::convert_demo(const demo_t *example, demo_t *demo) {
   demo->header.demo_protocol = example->header.demo_protocol;
   memcpy(demo->header.game_directory, example->header.game_directory, 260);
   fix_svc_serverinfo(example->header.game_directory, demo);
+
+  freddie::datatable_change_info info;
+  info.init(demo, example);
+  result = info.convert_demo(demo);
+
+  if(result.error)
+    return result;
+
   fix_packets(demo);
 
   return result;

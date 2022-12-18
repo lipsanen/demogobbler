@@ -25,12 +25,6 @@ void dg_write_stringtables_parsed(writer *thisptr, dg_stringtables_parsed *messa
   }
 
   thisptr->bitwriter.bitoffset = 0;
-#ifdef GROUND_TRUTH_CHECK
-  thisptr->bitwriter.truth_data = message->orig.data;
-  thisptr->bitwriter.truth_data_offset = 0;
-  thisptr->bitwriter.truth_size_bits = message->orig.size_bytes * 8;
-#endif
-
   bitwriter_write_uint(&thisptr->bitwriter, message->tables_count, 8);
   for (uint8_t i = 0; i < message->tables_count; ++i) {
     dg_stringtable *table = message->tables + i;
@@ -187,7 +181,7 @@ static void parse_sentry(dg_sentry_parse_args *args, uint32_t entry_bits, int32_
   }
 }
 
-void dg_write_sentry_value(dg_sentry_write_args *args, dg_sentry_value *_value, uint32_t entry_bits, bool fixed_size, uint32_t user_data_bits) {
+void dg_write_sentry_value(dg_sentry_write_args *args, const dg_sentry_value *_value, uint32_t entry_bits, bool fixed_size, uint32_t user_data_bits) {
   dg_sentry_value value = *_value;
   bitwriter_write_bit(args->writer, value.entry_bit);
   if (!value.entry_bit) {
@@ -216,7 +210,7 @@ void dg_write_sentry_value(dg_sentry_write_args *args, dg_sentry_value *_value, 
 
 dg_parse_result dg_write_stringtable_entry(dg_sentry_write_args *args) {
   dg_parse_result result;
-  dg_sentry* input = args->input;
+  const dg_sentry* input = args->input;
   memset(&result, 0, sizeof(result));
   uint32_t entry_bits = Q_log2(input->max_entries);
 

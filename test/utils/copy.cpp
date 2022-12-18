@@ -52,15 +52,6 @@ void copy_demo_freddie(const char *filepath) {
     input.underlying.fill_with_file(filepath);
     auto writeresult1 = testdemo.write_demo(&output.underlying, {freddie::memory_stream_write});
     EXPECT_EQ(writeresult1.error, false) << writeresult1.error_message;
-
-    // Try conversion: should result in nothing being changed
-    wrapped_memory_stream output2;
-    wrapped_memory_stream input2;
-    input2.underlying.fill_with_file(filepath);
-    output2.underlying.ground_truth = &input2.underlying;
-    freddie::convert_demo(&testdemo, &testdemo);
-    auto writeresult2 = testdemo.write_demo(&output2.underlying, {freddie::memory_stream_write});
-    EXPECT_EQ(writeresult2.error, false) << writeresult2.error_message;
   }
 }
 

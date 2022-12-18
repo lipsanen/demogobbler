@@ -288,11 +288,6 @@ void dg_write_datatables_parsed(writer *thisptr, dg_datatables_parsed *datatable
   bitwriter writer;
   bitwriter_init(&writer, datatables->_raw_buffer_bytes * 8);
 
-#ifdef GROUND_TRUTH_CHECK
-  writer.truth_data = datatables->_raw_buffer;
-  writer.truth_size_bits = datatables->_raw_buffer_bytes * 8;
-#endif
-
   for (size_t i = 0; i < datatables->sendtable_count; ++i) {
     bitwriter_write_bit(&writer, true);
     write_sendtable(thisptr, &writer, datatables->sendtables + i);

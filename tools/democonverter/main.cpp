@@ -34,10 +34,6 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  freddie::datatable_change_info info;
-  info.init(&input, &example);
-  info.convert_demo(&input);
-
   result = input.write_demo(argv[3]);
 
   if(result.error)

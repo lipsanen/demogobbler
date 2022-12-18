@@ -241,7 +241,6 @@ struct dg_svc_packet_entities {
   uint32_t max_entries;
   int32_t delta_from;
   uint32_t updated_entries;
-  uint32_t data_length;
   bool update_baseline;
   bool base_line;
   bool is_delta;

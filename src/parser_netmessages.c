@@ -724,9 +724,9 @@ static void handle_svc_packet_entities(dg_parser *thisptr, dg_bitstream *stream,
 
   ptr->base_line = bitstream_read_bit(stream);
   ptr->updated_entries = bitstream_read_uint(stream, 11);
-  ptr->data_length = bitstream_read_uint(stream, 20);
+  uint32_t data_length = bitstream_read_uint(stream, 20);
   ptr->update_baseline = bitstream_read_bit(stream);
-  ptr->data = bitstream_fork_and_advance(stream, ptr->data_length);
+  ptr->data = bitstream_fork_and_advance(stream, data_length);
 
   if (thisptr->m_settings.parse_packetentities) {
     dg_parse_packetentities(thisptr, ptr);
@@ -745,7 +745,8 @@ static void write_svc_packet_entities(bitwriter *writer, dg_demver_data *version
 
   bitwriter_write_bit(writer, ptr->base_line);
   bitwriter_write_uint(writer, ptr->updated_entries, 11);
-  bitwriter_write_uint(writer, ptr->data_length, 20);
+  uint32_t bits = dg_bitstream_bits_left(&ptr->data);
+  bitwriter_write_uint(writer, bits, 20);
   bitwriter_write_bit(writer, ptr->update_baseline);
   bitwriter_write_bitstream(writer, &ptr->data);
 }

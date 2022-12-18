@@ -582,8 +582,8 @@ end:;
 
   if (thisptr->error) {
 #ifdef DEBUG_BREAK_PROP
-    printf("Failed at %d, %u / %u bits parsed, error %s\n", DG_CURRENT_DEBUG_INDEX,
-           stream.bitoffset - message->data.bitoffset, message->data_length,
+    printf("Failed at %d, %u bits parsed, error %s\n", DG_CURRENT_DEBUG_INDEX,
+           stream.bitoffset - message->data.bitoffset,
            thisptr->error_message);
 #endif
   }

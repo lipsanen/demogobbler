@@ -31,6 +31,13 @@ static void parse_baselines(baseline_state* state) {
   args.demver_data = &state->demver_data;
   args.estate_ptr = &state->entity_state;
   dg_sentry* sentry = &state->instancebaselines.stringtable;
+
+  if(sentry->values == NULL)
+  {
+    std::printf("skipping write test, no baselines parsed for demo\n");
+    return;
+  }
+
   for(size_t i=0; i < sentry->values_length; ++i) {
     dg_sentry_value* value = sentry->values + i;
     dg_ent_update update;
@@ -53,6 +60,27 @@ static void parse_baselines(baseline_state* state) {
     EXPECT_LE(bits - writer.bitoffset, 7);
     bitwriter_free(&writer);
   }
+
+  bitwriter writer;
+
+  bitwriter_init(&writer, state->instancebaselines.data_length);
+#ifdef GROUND_TRUTH_CHECK
+  writer.truth_data = state->instancebaselines.data.data;
+  writer.truth_data_offset = state->instancebaselines.data.bitoffset;
+  writer.truth_size_bits = state->instancebaselines.data.bitsize;
+#endif
+  dg_sentry_write_args write_args;
+  write_args.input = sentry;
+  write_args.writer = &writer;
+
+  auto result = dg_write_stringtable_entry(&write_args);
+  EXPECT_EQ(result.error, false);
+  EXPECT_EQ(dg_bitstream_bits_left(&state->instancebaselines.data), writer.bitoffset);
+  bitwriter_free(&writer);
+}
+
+static void write_baselines(baseline_state* state) {
+
 }
 
 static void handle_dt(parser_state *_state, dg_datatables_parsed *value) {

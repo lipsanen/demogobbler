@@ -461,15 +461,15 @@ static void print_inner_prop_value(dg_sendprop *prop, dg_prop_value_inner value)
 static void print_prop_value(prop_value *value, dg_serverclass_data* data) {
   dg_sendprop *prop = data->props + value->prop_index;
   const char *prop_name = get_prop_name(prop);
-  printf("\t%s = ", prop_name);
+  printf("\t[%u] %s = ", value->prop_index, prop_name);
   print_inner_prop_value(prop, value->value);
   printf("\n");
 }
 
 static void print_packetentities_parsed(parser_state *state,
                                         dg_svc_packetentities_parsed *message) {
-  printf("SVC_PacketEntities: %d delta, %lu updates, %lu deletes\n", message->orig->is_delta,
-         message->data.ent_updates_count, message->data.explicit_deletes_count);
+  printf("SVC_PacketEntities: %d delta, %lu updates, %lu deletes, %u bits\n", message->orig->is_delta,
+         message->data.ent_updates_count, message->data.explicit_deletes_count, message->data.serverclass_bits);
 
   for (size_t i = 0; i < message->data.ent_updates_count; ++i) {
     dg_ent_update *update = message->data.ent_updates + i;
@@ -479,7 +479,7 @@ static void print_packetentities_parsed(parser_state *state,
            update_name(update->update_type), update->prop_value_array_size);
     if (update->update_type == 2) {
       dg_serverclass_data *data = state->entity_state.class_datas + update->datatable_id;
-      printf("Handle %d, datatable %s\n", update->handle, data->dt_name);
+      printf("Handle %d, datatable %d: %s\n", update->handle, update->datatable_id, data->dt_name);
     }
 
     if (update->prop_value_array_size > 0) {

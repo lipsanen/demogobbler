@@ -191,7 +191,7 @@ static void read_string(prop_parse_state *state, dg_sendprop *prop, dg_prop_valu
 
 static void write_array(bitwriter *thisptr, dg_prop_value_inner value) {
   struct dg_array_value *arr = value.arr_val;
-  unsigned int bits = highest_bit_index(value.array_num_elements ) + 1;
+  unsigned int bits = highest_bit_index(value.array_num_elements) + 1;
   bitwriter_write_uint(thisptr, arr->array_size, bits);
 
   for (size_t i = 0; i < arr->array_size; ++i) {

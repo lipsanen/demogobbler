@@ -180,10 +180,45 @@ static void handle_version_gen(parser_state *_state, dg_demver_data demver_data)
   state->demver_data = demver_data;
 }
 
-void test_baseline(uint32_t datatable_id, const dg_serverclass_data *data, estate* estate, const dg_demver_data* demver_data, dg_arena* arena) {
+static bool test_baseline(const char* type, dg_ent_update* update, dg_ent_update* orig, const dg_serverclass_data* data) {
+  if(update->prop_value_array_size == data->prop_count) {
+    return true;
+  } else {
+    for(size_t i=0; i < update->prop_value_array_size; ++i) {
+      prop_value* prev_value = update->prop_value_array + i - 1;
+      prop_value* prev_value_orig = NULL;
+      dg_sendprop* prev_prop = data->props + i - 1;
+      if(orig)
+        prev_value_orig = orig->prop_value_array + i - 1;
+      prop_value* value = update->prop_value_array + i;
+      prop_value* value_orig = NULL;
+      dg_sendprop* prop = data->props + i;
+      if(orig)
+        value_orig = orig->prop_value_array + i;
+      if(i != value->prop_index) {
+        std::printf("%s : %u index on datatable [%lu] diverges\n", type, i, update->datatable_id);
+        return false;
+      }
+    }
+
+    std::printf("%s : %u  props missing with [%lu] / [%lu]\n", type, update->datatable_id, update->prop_value_array_size, data->prop_count);
+
+    return false;
+  }
+}
+
+bool test_baseline(uint32_t datatable_id, const dg_serverclass_data *data, estate* estate, const dg_demver_data* demver_data, dg_arena* arena) {
+  if(data->props == NULL)
+    return true;
+  
   dg_ent_update update;
   update.datatable_id = datatable_id;
   dg_init_baseline(&update, data, arena);
+
+  bool baseline_is_good = test_baseline("baseline", &update, NULL, data);
+  EXPECT_EQ(baseline_is_good, true);
+  if(!baseline_is_good)
+    return baseline_is_good;
 
   bitwriter writer;
   bitwriter_init(&writer, 1024);
@@ -191,6 +226,7 @@ void test_baseline(uint32_t datatable_id, const dg_serverclass_data *data, estat
 
   dg_instancebaseline_args args;
   dg_ent_update output;
+  output.datatable_id = datatable_id;
 
   auto alligator = dg_arena_create_allocator(arena);
   auto stream = bitstream_create(writer.ptr, writer.bitoffset);
@@ -203,9 +239,15 @@ void test_baseline(uint32_t datatable_id, const dg_serverclass_data *data, estat
 
   auto result = dg_parse_instancebaseline(&args);
   EXPECT_EQ(result.error, false);
-  EXPECT_EQ(output.prop_value_array_size, update.prop_value_array_size);
-
+  bool output_is_good = test_baseline("output", &output, &update, data);
+  EXPECT_EQ(output_is_good, true);
   bitwriter_free(&writer);
+
+  dg_init_baseline(&update, data, arena);
+  bitwriter_init(&writer, 1024);
+  dg_bitwriter_write_props(&writer, demver_data, &update);
+  
+  return output_is_good;
 }
 
 static dg_parse_result get_baselinegen_state(const char *filepath, baselinegen_state *state) {
@@ -235,7 +277,12 @@ static dg_parse_result get_baselinegen_state(const char *filepath, baselinegen_s
     return result;
 
   for(size_t i=0; i < state->entity_state.serverclass_count; ++i) {
-    test_baseline(i, state->entity_state.class_datas + i, &state->entity_state, &state->demver_data, &state->memory);
+    bool value = test_baseline(i, state->entity_state.class_datas + i, &state->entity_state, &state->demver_data, &state->memory);
+    if(!value) {
+      result.error = true;
+      result.error_message = "baseline wrong";
+      break;
+    }
   }
 
   return result;
@@ -246,7 +293,10 @@ TEST(baselines, generate_and_verify) {
   for (auto &demo : get_test_demos()) {
     baselinegen_state base;
     std::cout << "[----------] " << demo << std::endl;
+    if(strcmp(demo.c_str(), "./test_demos/l4d1 37 v1005.dem") == 0) {
+      int i = 0;
+    }
     auto result = get_baselinegen_state(demo.c_str(), &base);
-    EXPECT_EQ(result.error, false) << result.error_message;
+    EXPECT_EQ(result.error, false);
   }
 }

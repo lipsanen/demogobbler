@@ -106,6 +106,7 @@ static void init_value(const dg_sendprop *prop, dg_prop_value_inner *value, dg_a
     memset(value->arr_val, 0, sizeof(dg_array_value));
     size_t memory_size = prop->array_num_elements * sizeof(dg_prop_value_inner);
     value->arr_val->array_size = prop->array_num_elements;
+    value->array_num_elements = prop->array_num_elements;
     value->arr_val->values =
         (dg_prop_value_inner *)dg_arena_allocate(arena, memory_size, alignof(dg_prop_value_inner));
     memset(value->arr_val->values, 0, memory_size);
@@ -118,6 +119,10 @@ static void init_value(const dg_sendprop *prop, dg_prop_value_inner *value, dg_a
     value->v2_val = (dg_vector2_value *)dg_arena_allocate(arena, sizeof(dg_vector2_value),
                                                           alignof(dg_vector2_value));
     memset(value->v2_val, 0, sizeof(dg_vector2_value));
+    dg_sendprop innerprop = *prop;
+    innerprop.proptype = sendproptype_float;
+    init_value(&innerprop, &value->v3_val->x, arena);
+    init_value(&innerprop, &value->v3_val->y, arena);
   } else if (value->proptype == sendproptype_vector3) {
     value->v3_val = (dg_vector3_value *)dg_arena_allocate(arena, sizeof(dg_vector3_value),
                                                           alignof(dg_vector3_value));
@@ -359,7 +364,6 @@ void dg_init_baseline(dg_ent_update *baseline, const dg_serverclass_data *target
   baseline->prop_value_array =
       (prop_value *)dg_arena_allocate(arena, props_size, alignof(prop_value));
   baseline->prop_value_array_size = target_datatable->prop_count;
-
   baseline->new_way = false;
   for (size_t i = 0; i < target_datatable->prop_count; ++i) {
     dg_sendprop *prop = target_datatable->props + i;

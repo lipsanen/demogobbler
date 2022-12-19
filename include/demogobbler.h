@@ -114,6 +114,7 @@ dg_alloc_state* dg_parser_temp_allocator(dg_parser *thisptr);
 dg_alloc_state* dg_parser_perm_allocator(dg_parser *thisptr);
 void dg_init_baseline(dg_ent_update *baseline, const dg_serverclass_data *target_datatable,
                           dg_arena *arena);
+dg_parse_result dg_parse_packetentities(dg_packetentities_parse_args* args);
 
 #ifdef __cplusplus
 }

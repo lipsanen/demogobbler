@@ -461,35 +461,37 @@ void dg_bitwriter_write_packetentities(bitwriter *thisptr, struct write_packeten
   }
 }
 
-void dg_parse_packetentities(dg_parser *thisptr, struct dg_svc_packet_entities *message) {
-  if (!thisptr->state.entity_state.edicts) {
-    thisptr->error = true;
-    thisptr->error_message = "Tried to parse packetentities without datatables";
-    return;
+dg_parse_result dg_parse_packetentities(dg_packetentities_parse_args* args) {
+  dg_parse_result result;
+  memset(&result, 0, sizeof(result));
+
+  if (!args->entity_state->edicts) {
+    result.error = true;
+    result.error_message = "Tried to parse packetentities without edicts";
+    goto end;
   }
 
-  dg_packetentities_data output;
-  memset(&output, 0, sizeof(output));
-  dg_bitstream stream = message->data;
+  memset(args->output, 0, sizeof(*args->output));
+  dg_bitstream stream = args->message->data;
   prop_parse_state state;
   memset(&state, 0, sizeof(state));
-  state.allocator = dg_parser_temp_allocator(thisptr);
+  state.allocator = args->allocator;
   state.stream = &stream;
-  state.permanent_allocator = dg_parser_perm_allocator(thisptr);
-  state.entity_state = &thisptr->state.entity_state;
-  state.demver_data = &thisptr->demo_version;
+  state.permanent_allocator = args->permanent_allocator;
+  state.entity_state = args->entity_state;
+  state.demver_data = args->demver_data;
 
-  output.ent_updates_count = message->updated_entries;
-  size_t ent_update_bytes = sizeof(dg_ent_update) * output.ent_updates_count;
-  output.ent_updates = dg_alloc_allocate(state.allocator, ent_update_bytes, alignof(dg_ent_update));
-  memset(output.ent_updates, 0, ent_update_bytes);
+  args->output->ent_updates_count = args->message->updated_entries;
+  size_t ent_update_bytes = sizeof(dg_ent_update) * args->output->ent_updates_count;
+  args->output->ent_updates = dg_alloc_allocate(state.allocator, ent_update_bytes, alignof(dg_ent_update));
+  memset(args->output->ent_updates, 0, ent_update_bytes);
 
   prop_value props_array[64];
   state.prop_array = dg_va_create(props_array, prop_value);
 
-  output.serverclass_bits = Q_log2(thisptr->state.entity_state.serverclass_count) + 1;
+  args->output->serverclass_bits = Q_log2(args->entity_state->serverclass_count) + 1;
 
-  if (!thisptr->state.entity_state.class_datas) {
+  if (!args->entity_state->class_datas) {
     state.error = true;
     state.error_message = "Tried to parse packet entities with no flattened props";
   }
@@ -497,10 +499,10 @@ void dg_parse_packetentities(dg_parser *thisptr, struct dg_svc_packet_entities *
   int newI = -1;
   size_t i;
 
-  for (i = 0; i < message->updated_entries && !state.error && !stream.overflow; ++i) {
-    state.update = output.ent_updates + i;
+  for (i = 0; i < args->message->updated_entries && !state.error && !stream.overflow; ++i) {
+    state.update = args->output->ent_updates + i;
     newI += 1;
-    if (thisptr->demo_version.demo_protocol >= 4) {
+    if (args->demver_data->demo_protocol >= 4) {
       newI += bitstream_read_ubitint(&stream);
     } else {
       newI += bitstream_read_ubitvar(&stream);
@@ -510,7 +512,7 @@ void dg_parse_packetentities(dg_parser *thisptr, struct dg_svc_packet_entities *
 
     state.update->update_type = update_type;
     state.update->ent_index = newI;
-    const dg_edict *ent = thisptr->state.entity_state.edicts + newI;
+    const dg_edict *ent = args->entity_state->edicts + newI;
 
     if (newI >= MAX_EDICTS || newI < 0) {
       state.error = true;
@@ -523,12 +525,12 @@ void dg_parse_packetentities(dg_parser *thisptr, struct dg_svc_packet_entities *
       parse_props(&state);
     } else if (update_type == 2) {
       // enter pvs
-      state.update->datatable_id = bitstream_read_uint(&stream, output.serverclass_bits);
+      state.update->datatable_id = bitstream_read_uint(&stream, args->output->serverclass_bits);
       state.update->handle = bitstream_read_uint(&stream, HANDLE_BITS);
 
-      if (state.update->datatable_id >= thisptr->state.entity_state.serverclass_count) {
-        thisptr->error = true;
-        thisptr->error_message = "Invalid class ID in svc_packetentities";
+      if (state.update->datatable_id >= args->entity_state->serverclass_count) {
+        result.error = true;
+        result.error_message = "Invalid class ID in svc_packetentities";
         goto end;
       }
 
@@ -536,38 +538,63 @@ void dg_parse_packetentities(dg_parser *thisptr, struct dg_svc_packet_entities *
     }
   }
 
-  thisptr->error = state.error;
-  thisptr->error_message = state.error_message;
+  dg_va_free(&state.prop_array);
 
-  if (message->is_delta && !thisptr->error && !stream.overflow) {
+  result.error = state.error;
+  result.error_message = state.error_message;
+
+  if (args->message->is_delta && !result.error && !stream.overflow) {
     bool new_deletes =
-        thisptr->demo_version.game == l4d2 && thisptr->demo_version.l4d2_version >= 2091;
-    read_explicit_deletes(&state, &output, new_deletes);
+        args->demver_data->game == l4d2 && args->demver_data->l4d2_version >= 2091;
+    read_explicit_deletes(&state, args->output, new_deletes);
   }
 
-  if (stream.overflow && !thisptr->error) {
-    thisptr->error = true;
-    thisptr->error_message = "Stream overflowed in svc_packetentities\n";
+  if (stream.overflow && !result.error) {
+    result.error = true;
+    result.error_message = "Stream overflowed in svc_packetentities\n";
   }
 
   if (stream.bitsize > stream.bitoffset) {
-    thisptr->error = true;
-    thisptr->error_message = "Did not read all bits from svc_packetentities\n";
+    result.error = true;
+    result.error_message = "Did not read all bits from svc_packetentities\n";
   }
 
-  if (!thisptr->error && i != message->updated_entries) {
-    thisptr->error = true;
-    thisptr->error_message = "Read the wrong number of entries in svc_packetentities\n";
+  if (!result.error && i != args->message->updated_entries) {
+    result.error = true;
+    result.error_message = "Read the wrong number of entries in svc_packetentities\n";
   }
 
 end:;
+  if (result.error) {
+#ifdef DEBUG_BREAK_PROP
+    printf("Failed at %d, %u bits parsed, error %s\n", DG_CURRENT_DEBUG_INDEX,
+           stream.bitoffset - args->message->data.bitoffset,
+           result.error_message);
+#endif
+  }
+
+  return result;
+}
+
+void dg_parser_handle_packetentities(dg_parser *thisptr, struct dg_svc_packet_entities *message) {
+  dg_packetentities_data output;
+  dg_packetentities_parse_args args;
+  args.allocator = dg_parser_temp_allocator(thisptr);
+  args.demver_data = &thisptr->demo_version;
+  args.entity_state = &thisptr->state.entity_state;
+  args.message = message;
+  args.output = &output;
+  args.permanent_allocator = dg_parser_perm_allocator(thisptr);
+
+  dg_parse_result result = dg_parse_packetentities(&args);
+
 #ifdef DEMOGOBBLER_UNSAFE
   if (true) {
 #else
-  if (!thisptr->error) {
+  if (!result.error) {
 #endif
     dg_svc_packetentities_parsed* parsed_ptr;
-    message->parsed = parsed_ptr = dg_alloc_allocate(state.allocator, sizeof(dg_svc_packetentities_parsed), alignof(dg_svc_packetentities_parsed)); 
+    message->parsed = parsed_ptr = dg_alloc_allocate(args.allocator, sizeof(dg_svc_packetentities_parsed), alignof(dg_svc_packetentities_parsed)); 
     memset(parsed_ptr, 0, sizeof(*parsed_ptr));
     parsed_ptr->data = output;
     parsed_ptr->orig = message;
@@ -576,16 +603,9 @@ end:;
     }
 
     dg_estate_update(&thisptr->state.entity_state, &output);
-  }
-
-  dg_va_free(&state.prop_array);
-
-  if (thisptr->error) {
-#ifdef DEBUG_BREAK_PROP
-    printf("Failed at %d, %u bits parsed, error %s\n", DG_CURRENT_DEBUG_INDEX,
-           stream.bitoffset - message->data.bitoffset,
-           thisptr->error_message);
-#endif
+  } else {
+    thisptr->error = result.error;
+    thisptr->error_message = result.error_message;
   }
 }
 

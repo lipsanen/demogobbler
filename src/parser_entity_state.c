@@ -685,6 +685,13 @@ dg_parse_result dg_estate_update(estate *entity_state, const dg_packetentities_d
 
   for (size_t i = 0; i < data->ent_updates_count; ++i) {
     const dg_ent_update *update = data->ent_updates + i;
+
+    if(update->ent_index < 0 || update->ent_index >= MAX_EDICTS) {
+      result.error = true;
+      result.error_message = "update index was out of bounds";
+      goto end;
+    }
+
     dg_edict *ent = entity_state->edicts + update->ent_index;
     if (update->update_type == 2) {
       dg_serverclass_data *data = entity_state->class_datas + update->datatable_id;
@@ -744,5 +751,6 @@ dg_parse_result dg_estate_update(estate *entity_state, const dg_packetentities_d
     ent->explicitly_deleted = true;
   }
 
+end:
   return result;
 }

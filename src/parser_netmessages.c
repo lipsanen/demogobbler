@@ -729,7 +729,7 @@ static void handle_svc_packet_entities(dg_parser *thisptr, dg_bitstream *stream,
   ptr->data = bitstream_fork_and_advance(stream, data_length);
 
   if (thisptr->m_settings.parse_packetentities) {
-    dg_parse_packetentities(thisptr, ptr);
+    dg_parser_handle_packetentities(thisptr, ptr);
   }
   SEND_MESSAGE();
 }

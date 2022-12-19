@@ -106,6 +106,19 @@ struct dg_sentry_write_args {
 
 typedef struct dg_sentry_write_args dg_sentry_write_args;
 
+struct dg_alloc_state;
+struct dg_demver_data;
+
+struct dg_packetentities_parse_args {
+  struct dg_svc_packet_entities *message;
+  struct dg_alloc_state *allocator;
+  const struct dg_demver_data* demver_data;
+  struct estate* entity_state;
+  struct dg_packetentities_data* output;
+  struct dg_alloc_state* permanent_allocator;
+};
+
+typedef struct dg_packetentities_parse_args dg_packetentities_parse_args;
 
 #ifdef __cplusplus
 }

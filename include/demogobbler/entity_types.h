@@ -107,13 +107,15 @@ struct dg_ent_update {
 
 typedef struct dg_ent_update dg_ent_update;
 
-typedef struct {
+struct dg_packetentities_data {
   dg_ent_update *ent_updates;
   size_t ent_updates_count;
   int *explicit_deletes;
   size_t explicit_deletes_count;
   uint32_t serverclass_bits;
-} dg_packetentities_data;
+};
+
+typedef struct dg_packetentities_data dg_packetentities_data;
 
 typedef struct {
   dg_packetentities_data data;

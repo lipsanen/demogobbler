@@ -79,10 +79,6 @@ static void parse_baselines(baseline_state* state) {
   bitwriter_free(&writer);
 }
 
-static void write_baselines(baseline_state* state) {
-
-}
-
 static void handle_dt(parser_state *_state, dg_datatables_parsed *value) {
   baseline_state *state = (baseline_state *)_state->client_state;
   state->datatables = *value;
@@ -196,7 +192,7 @@ static bool test_baseline(const char* type, dg_ent_update* update, dg_ent_update
       if(orig)
         value_orig = orig->prop_value_array + i;
       if(i != value->prop_index) {
-        std::printf("%s : %u index on datatable [%lu] diverges\n", type, i, update->datatable_id);
+        std::printf("%s : %lu index on datatable [%d] diverges\n", type, i, update->datatable_id);
         return false;
       }
     }
@@ -243,10 +239,6 @@ bool test_baseline(uint32_t datatable_id, const dg_serverclass_data *data, estat
   EXPECT_EQ(output_is_good, true);
   bitwriter_free(&writer);
 
-  dg_init_baseline(&update, data, arena);
-  bitwriter_init(&writer, 1024);
-  dg_bitwriter_write_props(&writer, demver_data, &update);
-  
   return output_is_good;
 }
 
@@ -285,6 +277,8 @@ static dg_parse_result get_baselinegen_state(const char *filepath, baselinegen_s
     }
   }
 
+  dg_estate_free(&state->entity_state);
+
   return result;
 }
 
@@ -293,9 +287,6 @@ TEST(baselines, generate_and_verify) {
   for (auto &demo : get_test_demos()) {
     baselinegen_state base;
     std::cout << "[----------] " << demo << std::endl;
-    if(strcmp(demo.c_str(), "./test_demos/l4d1 37 v1005.dem") == 0) {
-      int i = 0;
-    }
     auto result = get_baselinegen_state(demo.c_str(), &base);
     EXPECT_EQ(result.error, false);
   }

@@ -55,7 +55,11 @@ mallocator::~mallocator() {
 
 void mallocator::release() { pointers.clear(); }
 
-void *mallocator::alloc(uint32_t size) { return malloc(size); }
+void *mallocator::alloc(uint32_t size) { 
+  void* ptr = malloc(size); 
+  pointers.push_back(ptr); 
+  return ptr;
+}
 
 void mallocator::attach(void *ptr) { pointers.push_back(ptr); }
 

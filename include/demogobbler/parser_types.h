@@ -152,7 +152,6 @@ struct dg_svc_setpause {
 
 struct dg_svc_create_stringtable {
   const char *name;
-  uint32_t data_length;
   uint32_t user_data_size;
   uint32_t user_data_size_bits;
   uint32_t flags;
@@ -166,7 +165,6 @@ struct dg_svc_create_stringtable {
 struct dg_svc_update_stringtable {
   uint32_t table_id; // ID of the table
   uint32_t changed_entries;
-  uint32_t data_length; // Length of the data
   bool exists;
   dg_bitstream data;
   dg_sentry parsed_sentry;
@@ -249,14 +247,12 @@ struct dg_svc_packet_entities {
 };
 
 struct dg_svc_splitscreen {
-  uint32_t data_length;
   bool remove_user;
   dg_bitstream data;
 };
 
 struct dg_svc_temp_entities {
   uint8_t num_entries;
-  uint32_t data_length;
   dg_bitstream data;
 };
 
@@ -266,7 +262,6 @@ struct dg_svc_prefetch {
 
 struct dg_svc_menu {
   uint32_t menu_type;
-  uint32_t data_length;
   dg_bitstream data;
 };
 
@@ -294,12 +289,10 @@ struct dg_svc_get_cvar_value {
 };
 
 struct dg_svc_cmd_key_values {
-  uint32_t data_length;
   dg_bitstream data;
 };
 
 struct dg_svc_paintmap_data {
-  uint32_t data_length;
   dg_bitstream data;
 };
 

@@ -65,7 +65,7 @@ static void parse_baselines(baseline_state* state) {
 
   bitwriter writer;
 
-  bitwriter_init(&writer, state->instancebaselines.data_length);
+  bitwriter_init(&writer, 1024);
 #ifdef GROUND_TRUTH_CHECK
   writer.truth_data = state->instancebaselines.data.data;
   writer.truth_data_offset = state->instancebaselines.data.bitoffset;

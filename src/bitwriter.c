@@ -85,12 +85,11 @@ void NO_ASAN dg_bitwriter_write_bit(bitwriter *thisptr, bool value) {
   uint8_t MASKS[] = {0x1, 0x2, 0x4, 0x8, 0x10, 0x20, 0x40, 0x80};
   int index = thisptr->bitoffset & 0x7;
   uint8_t *dest = thisptr->ptr + thisptr->bitoffset / 8;
-  bool bit_value = (*dest & MASKS[index]);
 
   // If value does not match then flip the bit
-  if (bit_value != value) {
-    *dest ^= MASKS[index];
-  }
+  *dest &= ~(MASKS[index]);
+  if(value)
+    *dest |= MASKS[index];
 
   thisptr->bitoffset += 1;
 #ifdef GROUND_TRUTH_CHECK

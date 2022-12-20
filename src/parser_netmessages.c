@@ -369,11 +369,12 @@ static void handle_svc_create_stringtable(dg_parser *thisptr, dg_bitstream *stre
   ptr->max_entries = bitstream_read_uint(stream, 16);
   unsigned int num_entries_bits = highest_bit_index(ptr->max_entries) + 1;
   ptr->num_entries = bitstream_read_uint(stream, num_entries_bits);
+  uint32_t data_length;
 
   if (thisptr->demo_version.game == steampipe) {
-    ptr->data_length = bitstream_read_varuint32(stream);
+    data_length = bitstream_read_varuint32(stream);
   } else {
-    ptr->data_length =
+    data_length =
         bitstream_read_uint(stream, thisptr->demo_version.stringtable_userdata_size_bits);
   }
 
@@ -393,10 +394,7 @@ static void handle_svc_create_stringtable(dg_parser *thisptr, dg_bitstream *stre
     ptr->flags = 0;
   }
 
-  ptr->data = bitstream_fork_and_advance(stream, ptr->data_length);
-
-  static int number = 0;
-  ++number;
+  ptr->data = bitstream_fork_and_advance(stream, data_length);
 
   if((ptr->flags & 1) == 0 && thisptr->demo_version.demo_protocol <= 3) {
     dg_sentry_parse_args args;
@@ -418,7 +416,6 @@ static void handle_svc_create_stringtable(dg_parser *thisptr, dg_bitstream *stre
     thisptr->error_message = result.error_message;
   }
 
-
   SEND_MESSAGE();
 }
 
@@ -429,11 +426,12 @@ static void write_svc_create_stringtable(bitwriter *writer, dg_demver_data *vers
   bitwriter_write_uint(writer, ptr->max_entries, 16);
   unsigned int num_entries_bits = highest_bit_index(ptr->max_entries) + 1;
   bitwriter_write_uint(writer, ptr->num_entries, num_entries_bits);
+  uint32_t bits_left = dg_bitstream_bits_left(&ptr->data);
 
   if (version->game == steampipe) {
-    bitwriter_write_varuint32(writer, ptr->data_length);
+    bitwriter_write_varuint32(writer, bits_left);
   } else {
-    bitwriter_write_uint(writer, ptr->data_length, version->stringtable_userdata_size_bits);
+    bitwriter_write_uint(writer, bits_left, version->stringtable_userdata_size_bits);
   }
 
   bitwriter_write_bit(writer, ptr->user_data_fixed_size);
@@ -462,12 +460,14 @@ static void handle_svc_update_stringtable(dg_parser *thisptr, dg_bitstream *stre
     ptr->changed_entries = 1;
   }
 
+  uint32_t data_length;
+
   if (thisptr->demo_version.network_protocol <= 7) {
-    ptr->data_length = bitstream_read_uint(stream, 16);
+    data_length = bitstream_read_uint(stream, 16);
   } else {
-    ptr->data_length = bitstream_read_uint(stream, 20);
+    data_length = bitstream_read_uint(stream, 20);
   }
-  ptr->data = bitstream_fork_and_advance(stream, ptr->data_length);
+  ptr->data = bitstream_fork_and_advance(stream, data_length);
 
 #if 0
   if(ptr->table_id < thisptr->state.stringtables_count) {
@@ -501,10 +501,12 @@ static void write_svc_update_stringtable(bitwriter *writer, dg_demver_data *vers
     bitwriter_write_uint(writer, ptr->changed_entries, 16);
   }
 
+  uint32_t data_length = dg_bitstream_bits_left(&ptr->data);
+
   if (version->network_protocol <= 7) {
-    bitwriter_write_uint(writer, ptr->data_length, 16);
+    bitwriter_write_uint(writer, data_length, 16);
   } else {
-    bitwriter_write_uint(writer, ptr->data_length, 20);
+    bitwriter_write_uint(writer, data_length, 20);
   }
 
   bitwriter_write_bitstream(writer, &ptr->data);
@@ -758,15 +760,16 @@ static void handle_svc_temp_entities(dg_parser *thisptr, dg_bitstream *stream,
                                      packet_net_message *message, blk *scrap) {
   struct dg_svc_temp_entities *ptr = &message->message_svc_temp_entities;
   ptr->num_entries = bitstream_read_uint(stream, 8);
+  uint32_t data_length;
 
   if (thisptr->demo_version.game == steampipe) {
-    ptr->data_length = bitstream_read_varuint32(stream);
+    data_length = bitstream_read_varuint32(stream);
   } else if (thisptr->demo_version.game == l4d2) {
-    ptr->data_length = bitstream_read_uint(stream, 18);
+    data_length = bitstream_read_uint(stream, 18);
   } else {
-    ptr->data_length = bitstream_read_uint(stream, 17);
+    data_length = bitstream_read_uint(stream, 17);
   }
-  ptr->data = bitstream_fork_and_advance(stream, ptr->data_length);
+  ptr->data = bitstream_fork_and_advance(stream, data_length);
 
   SEND_MESSAGE();
 }
@@ -775,13 +778,14 @@ static void write_svc_temp_entities(bitwriter *writer, dg_demver_data *version,
                                     packet_net_message *message) {
   struct dg_svc_temp_entities *ptr = &message->message_svc_temp_entities;
   bitwriter_write_uint(writer, ptr->num_entries, 8);
+  uint32_t data_length = dg_bitstream_bits_left(&ptr->data);
 
   if (version->game == steampipe) {
-    bitwriter_write_varuint32(writer, ptr->data_length);
+    bitwriter_write_varuint32(writer, data_length);
   } else if (version->game == l4d2) {
-    bitwriter_write_uint(writer, ptr->data_length, 18);
+    bitwriter_write_uint(writer, data_length, 18);
   } else {
-    bitwriter_write_uint(writer, ptr->data_length, 17);
+    bitwriter_write_uint(writer, data_length, 17);
   }
   bitwriter_write_bitstream(writer, &ptr->data);
 }
@@ -803,8 +807,8 @@ static void handle_svc_menu(dg_parser *thisptr, dg_bitstream *stream, packet_net
                             blk *scrap) {
   struct dg_svc_menu *ptr = &message->message_svc_menu;
   ptr->menu_type = bitstream_read_uint(stream, 16);
-  ptr->data_length = bitstream_read_uint32(stream);
-  ptr->data = bitstream_fork_and_advance(stream, ptr->data_length);
+  uint32_t data_length = bitstream_read_uint32(stream);
+  ptr->data = bitstream_fork_and_advance(stream, data_length);
   SEND_MESSAGE();
 }
 
@@ -862,8 +866,8 @@ static void handle_svc_splitscreen(dg_parser *thisptr, dg_bitstream *stream,
                                    packet_net_message *message, blk *scrap) {
   struct dg_svc_splitscreen *ptr = &message->message_svc_splitscreen;
   ptr->remove_user = bitstream_read_bit(stream);
-  ptr->data_length = bitstream_read_uint(stream, 11);
-  ptr->data = bitstream_fork_and_advance(stream, ptr->data_length);
+  uint32_t data_length = bitstream_read_uint(stream, 11);
+  ptr->data = bitstream_fork_and_advance(stream, data_length);
   SEND_MESSAGE();
 }
 
@@ -876,30 +880,32 @@ static void write_svc_splitscreen(bitwriter *writer, dg_demver_data *version,
 static void handle_svc_paintmap_data(dg_parser *thisptr, dg_bitstream *stream,
                                      packet_net_message *message, blk *scrap) {
   struct dg_svc_paintmap_data *ptr = &message->message_svc_paintmap_data;
-  ptr->data_length = bitstream_read_uint32(stream);
-  ptr->data = bitstream_fork_and_advance(stream, ptr->data_length);
+  uint32_t data_length = bitstream_read_uint32(stream);
+  ptr->data = bitstream_fork_and_advance(stream, data_length);
   SEND_MESSAGE();
 }
 
 static void write_svc_paintmap_data(bitwriter *writer, dg_demver_data *version,
                                     packet_net_message *message) {
   struct dg_svc_paintmap_data *ptr = &message->message_svc_paintmap_data;
-  bitwriter_write_uint32(writer, ptr->data_length);
+  uint32_t data_length = dg_bitstream_bits_left(&ptr->data);
+  bitwriter_write_uint32(writer, data_length);
   bitwriter_write_bitstream(writer, &ptr->data);
 }
 
 static void handle_svc_cmd_key_values(dg_parser *thisptr, dg_bitstream *stream,
                                       packet_net_message *message, blk *scrap) {
   struct dg_svc_cmd_key_values *ptr = &message->message_svc_cmd_key_values;
-  ptr->data_length = bitstream_read_uint32(stream);
-  ptr->data = bitstream_fork_and_advance(stream, ptr->data_length * 8);
+  uint32_t data_length = bitstream_read_uint32(stream);
+  ptr->data = bitstream_fork_and_advance(stream, data_length * 8);
   SEND_MESSAGE();
 }
 
 static void write_svc_cmd_key_values(bitwriter *writer, dg_demver_data *version,
                                      packet_net_message *message) {
   struct dg_svc_cmd_key_values *ptr = &message->message_svc_cmd_key_values;
-  bitwriter_write_uint32(writer, ptr->data_length);
+  uint32_t data_length = dg_bitstream_bits_left(&ptr->data) / 8;
+  bitwriter_write_uint32(writer, data_length);
   bitwriter_write_bitstream(writer, &ptr->data);
 }
 

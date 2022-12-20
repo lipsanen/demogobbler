@@ -339,14 +339,14 @@ static void compare_sendtables(freddie::datatable_change_info *info, const estat
 }
 
 static void get_datatable_indices_from_packetentities(const dg_packetentities_data *data,
-                                                      std::set<int> *datatable_indices) {
+                                                      int *datatable_indices) {
   for (size_t i = 0; i < data->ent_updates_count; ++i) {
-    datatable_indices->insert(data->ent_updates[i].datatable_id);
+    datatable_indices[data->ent_updates[i].datatable_id] = 1;
   }
 }
 
 static void get_datatable_indices_from_packet(const packet_parsed *packet,
-                                              std::set<int> *datatable_indices) {
+                                              int *datatable_indices) {
   for (size_t i = 0; i < packet->message_count; ++i) {
     auto msg = packet->messages + i;
     if (msg->mtype == svc_packet_entities) {
@@ -372,31 +372,50 @@ void dg_init_baseline(dg_ent_update *baseline, const dg_serverclass_data *target
   }
 }
 
+static constexpr size_t MAX_INDICES = 512;
+
+static size_t count_datatable_indices(int* datatable_indices) {
+  size_t count = 0;
+  for(size_t i=0; i < MAX_INDICES; ++i) {
+    if(datatable_indices[i] == 1)
+      ++count;
+  }
+
+  return count;
+}
+
 static void init_converted_baselines(const freddie::demo_t *demo,
                                      freddie::datatable_change_info *info) {
-  std::set<int> datatable_indices;
+  int datatable_indices[MAX_INDICES];
+  int converted_indices[MAX_INDICES];
+  memset(datatable_indices, 0, sizeof(datatable_indices));
+  memset(converted_indices, 0, sizeof(converted_indices));
   for (size_t i = 0; i < demo->packets.size(); ++i) {
     packet_parsed *packet_ptr = std::get_if<packet_parsed>(&demo->packets[i]->packet);
     if (packet_ptr) {
-      get_datatable_indices_from_packet(packet_ptr, &datatable_indices);
+      get_datatable_indices_from_packet(packet_ptr, datatable_indices);
     }
   }
 
-  std::vector<int> converted_indices;
-  for (auto datatable_id : datatable_indices) {
+  for(size_t datatable_id=0; datatable_id < MAX_INDICES; ++datatable_id) {
+    if(datatable_indices[datatable_id] == 0)
+      continue;
     auto status = info->get_datatable_status(datatable_id);
     if (status.exists) {
-      converted_indices.push_back(status.index);
+      datatable_indices[status.index] = 1;
     }
   }
 
-  size_t bytes = sizeof(dg_ent_update) * converted_indices.size();
-  info->baselines_count = converted_indices.size();
+  size_t index_count = count_datatable_indices(converted_indices);
+  size_t bytes = sizeof(dg_ent_update) * index_count;
+  info->baselines_count = index_count;
   info->baselines = (dg_ent_update *)dg_arena_allocate(&info->arena, bytes, alignof(dg_ent_update));
   memset(info->baselines, 0, bytes);
   std::size_t index = 0;
 
-  for (auto converted_id : converted_indices) {
+  for(size_t converted_id=0; converted_id < MAX_INDICES; ++converted_id) {
+    if(converted_indices[converted_id] == 0)
+      continue;
     dg_ent_update *baseline = info->baselines + index;
     const dg_serverclass_data *target_datatable = info->target_estate.class_datas + converted_id;
     baseline->datatable_id = converted_id;
@@ -461,7 +480,6 @@ static void convert_create_stringtable(freddie::mallocator *mallocator,
   finalize_stream(&table->data, &final_writer);
   table->flags = 0;
   mallocator->attach(final_writer.ptr);
-  table->data_length = dg_bitstream_bits_left(&table->data);
 }
 
 static void convert_baselines(freddie::demo_t *demo, const freddie::datatable_change_info *info) {

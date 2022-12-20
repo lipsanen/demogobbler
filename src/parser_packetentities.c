@@ -327,6 +327,7 @@ static void write_props_old(bitwriter *thisptr, const dg_ent_update *update) {
     old_prop_index = prop_index;
     dg_bitwriter_write_ubitvar(thisptr, diffy);
     write_prop(thisptr, update->prop_value_array[i].value);
+    //printf("write prop %d.%d (datatable_id %u) : %u offset\n", update->ent_index, prop_index, update->datatable_id, thisptr->bitoffset);
   }
   bitwriter_write_bit(thisptr, false);
 }
@@ -347,6 +348,7 @@ static void parse_props_old(prop_parse_state *state) {
 
     prop_value value = read_prop(state, data->props, data->props + i);
     dg_va_push_back(&state->prop_array, &value);
+    //printf("parse prop %d.%d (datatable_id %u) : %u offset\n", state->update->ent_index, i, state->update->datatable_id, state->stream->bitoffset);
   }
 }
 
@@ -392,7 +394,7 @@ static void read_explicit_deletes(prop_parse_state *state, dg_packetentities_dat
     int index = 0;
     int max_updates = (state->stream->bitsize - state->stream->bitoffset) / (1 + MAX_EDICT_BITS);
 
-    if (max_updates >= 0) {
+    if (max_updates >= 1) {
       size_t bytes = sizeof(int) * max_updates;
       output->explicit_deletes = dg_alloc_allocate(state->allocator, bytes, alignof(int));
       memset(output->explicit_deletes, 0, bytes);
@@ -481,10 +483,14 @@ dg_parse_result dg_parse_packetentities(dg_packetentities_parse_args* args) {
   state.entity_state = args->entity_state;
   state.demver_data = args->demver_data;
 
-  args->output->ent_updates_count = args->message->updated_entries;
-  size_t ent_update_bytes = sizeof(dg_ent_update) * args->output->ent_updates_count;
-  args->output->ent_updates = dg_alloc_allocate(state.allocator, ent_update_bytes, alignof(dg_ent_update));
-  memset(args->output->ent_updates, 0, ent_update_bytes);
+  args->output->ent_updates_count = 0;
+  size_t ent_update_bytes = sizeof(dg_ent_update) * args->message->updated_entries;
+  if(ent_update_bytes > 0) {
+    args->output->ent_updates = dg_alloc_allocate(state.allocator, ent_update_bytes, alignof(dg_ent_update));
+    memset(args->output->ent_updates, 0, ent_update_bytes);
+  } else {
+    args->output->ent_updates = NULL;
+  }
 
   prop_value props_array[64];
   state.prop_array = dg_va_create(props_array, prop_value);
@@ -536,6 +542,13 @@ dg_parse_result dg_parse_packetentities(dg_packetentities_parse_args* args) {
 
       parse_props(&state);
     }
+
+    ++args->output->ent_updates_count;
+  }
+
+  if(args->output->ent_updates_count != args->message->updated_entries) {
+    result.error = true;
+    result.error_message = "Ent update count did not match";
   }
 
   dg_va_free(&state.prop_array);

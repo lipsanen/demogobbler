@@ -142,7 +142,7 @@ static void init_value(const dg_sendprop *prop, dg_prop_value_inner *value, dg_a
     value->str_val = (dg_string_value *)dg_arena_allocate(arena, sizeof(dg_string_value),
                                                           alignof(dg_string_value));
     value->str_val->str = (char *)dg_arena_allocate(arena, 1, 1);
-    value->str_val->len = 0;
+    value->str_val->len = 1;
     value->str_val->str[0] = '\0';
   }
 }
@@ -165,10 +165,7 @@ dg_parse_result datatable_change_info::convert_props(dg_ent_update *update,
     }
 
     auto newprop = target_data->props + status.index;
-
-    if (status.index != prop_ptr->prop_index) {
-      prop_ptr->prop_index = status.index; // remap the index
-    }
+    prop_ptr->prop_index = status.index; // remap the index
     // TODO: add conversion logic for props
     if (status.flags_changed) {
       init_value(newprop, &prop_ptr->value, &this->arena);
@@ -307,7 +304,7 @@ static bool compare_sendtable_props(freddie::datatable_change_info *info,
     size_t index = prop ? prop - data2->props : 0;
 
     if (!prop) {
-      status.flags_changed = false;
+      status.flags_changed = true;
       status.exists = false;
       status.index = 0;
       status.target = nullptr;
@@ -318,7 +315,7 @@ static bool compare_sendtable_props(freddie::datatable_change_info *info,
       status.target = prop;
     }
 
-    changes = status.flags_changed || changes;
+    changes = status.flags_changed || status.index != i || changes;
     info->add_prop(first_prop, status);
   }
 
@@ -553,7 +550,6 @@ dg_parse_result datatable_change_info::init(freddie::demo_t *input, const freddi
     goto end;
   }
 
-  this->target_datatable = *datatable2; // TODO: memory management outta wazoo
   estate_init_args args1;
   estate_init_args args2;
   args2.allocator = args1.allocator = &allocator;
@@ -568,6 +564,7 @@ dg_parse_result datatable_change_info::init(freddie::demo_t *input, const freddi
   dg_estate_init(&target_estate, args2);
 
   compare_sendtables(this, &input_estate, &target_estate);
+  this->target_datatable = *datatable2; // TODO: memory management outta wazoo
   init_converted_baselines(input, this);
 
 end:

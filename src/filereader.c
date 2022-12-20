@@ -100,8 +100,7 @@ int32_t dg_filereader_readint32(dg_filereader *thisptr)
   // If enough bytes in buffer, take fast track
   if(bytesLeftInBuffer >= 4)
   {
-    int32_t *src = (int32_t*)((uint8_t *)thisptr->buffer + thisptr->ibuffer_offset);
-    val = *src;
+    memcpy(&val, (uint8_t *)thisptr->buffer + thisptr->ibuffer_offset, 4);
     thisptr->ibuffer_offset += 4;
   }
   else

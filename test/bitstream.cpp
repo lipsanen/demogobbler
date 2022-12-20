@@ -496,7 +496,7 @@ rng_bitcellcoord get_random_bitcellcoord() {
   memset(&output, 0, sizeof(output));
   output.is_int = rand() % 2;
   output.lp = rand() % 2;
-  output.bits = rand() % 32 + 1;
+  output.bits = rand() % 31 + 1;
   output.value.int_val = rand() % (1 << output.bits);
 
   if (!output.is_int) {

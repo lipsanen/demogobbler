@@ -157,6 +157,7 @@ struct baselinegen_state {
     memory = dg_arena_create(1 << 15);
     memset(&datatables, 0, sizeof(datatables));
     memset(&entity_state, 0, sizeof(entity_state));
+    memset(&demver_data, 0, sizeof(demver_data));
   }
 
   ~baselinegen_state() { 

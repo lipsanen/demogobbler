@@ -94,9 +94,11 @@ dg_parse_result dg_parse_stringtables(dg_stringtables_parsed *message,
     table->entries =
         dg_alloc_allocate(args.allocator, table->entries_count * sizeof(dg_stringtable_entry),
                           alignof(dg_stringtable_entry));
-    memset(table->entries, 0, table->entries_count * sizeof(dg_stringtable_entry));
-    for (uint16_t u = 0; u < table->entries_count; ++u) {
-      read_stringtable_entry(table->entries + u, &stream, args);
+    if(table->entries_count > 0) {
+      memset(table->entries, 0, table->entries_count * sizeof(dg_stringtable_entry));
+      for (uint16_t u = 0; u < table->entries_count; ++u) {
+        read_stringtable_entry(table->entries + u, &stream, args);
+      }
     }
 
     table->has_classes = bitstream_read_bit(&stream);
@@ -257,7 +259,8 @@ dg_parse_result dg_parse_stringtable_entry(dg_sentry_parse_args *args, dg_sentry
   out->user_data_fixed_size = args->user_data_fixed_size;
   out->user_data_size_bits = args->user_data_size_bits;
 
-  memset(out->values, 0, array_bytes);
+  if(out->values)
+    memset(out->values, 0, array_bytes);
   uint32_t entry_bits = Q_log2(args->max_entries);
 
   for (size_t i = 0; i < args->num_updated_entries && !args->stream.overflow; ++i) {

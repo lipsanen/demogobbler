@@ -26,10 +26,6 @@ enum { HANDLE_BITS = 10 };
 #define ARRAYSIZE(a) ((sizeof(a) / sizeof(*(a))) / (size_t)(!(sizeof(a) % sizeof(*(a)))))
 
 static inline size_t alignment_loss(size_t bytes_allocated, size_t alignment) {
-  if (alignment > bytes_allocated) {
-    return bytes_allocated;
-  }
-
   size_t offset = bytes_allocated & (alignment - 1);
 
   if (offset == 0) {

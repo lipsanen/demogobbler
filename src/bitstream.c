@@ -71,8 +71,13 @@ dg_bitstream FUN_ATTRIBUTE dg_bitstream_create(void *data, size_t size) {
 }
 
 void FUN_ATTRIBUTE dg_bitstream_advance(dg_bitstream *thisptr, unsigned int bits) {
+  if(bits < 64) {
+    thisptr->buffered >>= bits;
+  } else {
+    thisptr->buffered = 0;
+  }
+
   thisptr->bitoffset += bits;
-  thisptr->buffered >>= bits;
 
   if (thisptr->bitoffset > thisptr->bitsize) {
     thisptr->bitoffset = thisptr->bitsize;
@@ -109,7 +114,11 @@ static inline uint64_t FUN_ATTRIBUTE read_ubit_slow(dg_bitstream *thisptr,
   if (buffered_bits(thisptr) >= bits_left) {
     rval = thisptr->buffered << (64 - bits_left);
     rval >>= (64 - bits_left);
-    thisptr->buffered >>= bits_left;
+    if(bits_left == 64) {
+      thisptr->buffered = 0;
+    } else {
+      thisptr->buffered >>= bits_left;
+    }
     thisptr->bitoffset += bits_left;
   } else {
     unsigned int first_read = buffered_bits(thisptr);

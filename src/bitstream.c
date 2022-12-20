@@ -25,7 +25,7 @@ static inline uint32_t FUN_ATTRIBUTE get_size_in_bytes(uint32_t bits) {
 
 static inline unsigned int FUN_ATTRIBUTE buffered_bits(dg_bitstream *thisptr) {
   uint8_t *cur_address = (uint8_t *)thisptr->data + thisptr->bitoffset / 8;
-  uint32_t difference = (cur_address - thisptr->buffered_address);
+  uint64_t difference = (cur_address - thisptr->buffered_address);
 
   if (cur_address < thisptr->buffered_address || difference >= 8) {
     return 0;

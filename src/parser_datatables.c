@@ -355,7 +355,7 @@ dg_datatables_parsed_rval dg_parse_datatables(dg_demver_data *version_data,
     parse_sendtable(&dparser, allocator, &stream, output.sendtables + output.sendtable_count);
     ++output.sendtable_count;
   }
-
+  //printf("sendtable count %lu\n", output.sendtable_count);
   dg_alloc_attach(allocator, output.sendtables, array_size * sizeof(dg_sendtable));
 
   output.serverclass_count = bitstream_read_uint(&stream, 16);
@@ -366,9 +366,14 @@ dg_datatables_parsed_rval dg_parse_datatables(dg_demver_data *version_data,
     parse_serverclass(&dparser, allocator, &stream, output.serverclasses + i);
   }
 
+  unsigned bits_left = dg_bitstream_bits_left(&stream);
+
   if (stream.overflow && !dparser.error) {
     dparser.error = true;
     dparser.error_message = "Bitstream overflowed while parsing datatables";
+  } else if(bits_left >= 8) {
+    dparser.error = true;
+    dparser.error_message = "Did not read all bits out of datatables";
   }
 
   dg_datatables_parsed_rval rval;
@@ -399,5 +404,8 @@ void parse_datatables(dg_parser *thisptr, dg_datatables *input) {
     if (!init_entity_state) {
       dg_parser_init_estate(thisptr, &value.output);
     }
+  } else {
+    thisptr->error = value.error;
+    thisptr->error_message = value.error_message;
   }
 }

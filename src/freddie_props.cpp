@@ -121,8 +121,8 @@ static void init_value(const dg_sendprop *prop, dg_prop_value_inner *value, dg_a
     memset(value->v2_val, 0, sizeof(dg_vector2_value));
     dg_sendprop innerprop = *prop;
     innerprop.proptype = sendproptype_float;
-    init_value(&innerprop, &value->v3_val->x, arena);
-    init_value(&innerprop, &value->v3_val->y, arena);
+    init_value(&innerprop, &value->v2_val->x, arena);
+    init_value(&innerprop, &value->v2_val->y, arena);
   } else if (value->proptype == sendproptype_vector3) {
     value->v3_val = (dg_vector3_value *)dg_arena_allocate(arena, sizeof(dg_vector3_value),
                                                           alignof(dg_vector3_value));
@@ -131,16 +131,17 @@ static void init_value(const dg_sendprop *prop, dg_prop_value_inner *value, dg_a
     innerprop.proptype = sendproptype_float;
     init_value(&innerprop, &value->v3_val->x, arena);
     init_value(&innerprop, &value->v3_val->y, arena);
+    init_value(&innerprop, &value->v3_val->z, arena);
   
     if(prop->flag_normal) {
       value->v3_val->_sign = dg_vector3_sign_pos;
     } else {
       value->v3_val->_sign = dg_vector3_sign_no;
-      init_value(&innerprop, &value->v3_val->z, arena);
     }
   } else if (value->proptype == sendproptype_string) {
     value->str_val = (dg_string_value *)dg_arena_allocate(arena, sizeof(dg_string_value),
                                                           alignof(dg_string_value));
+    memset(value->str_val, 0, sizeof(dg_string_value));
     value->str_val->str = (char *)dg_arena_allocate(arena, 1, 1);
     value->str_val->len = 1;
     value->str_val->str[0] = '\0';
@@ -420,6 +421,7 @@ static void convert_create_stringtable(freddie::mallocator *mallocator,
 
   for (size_t i = 0; i < info->baselines_count; ++i) {
     dg_ent_update *update = info->baselines + i;
+    //printf("update %d\n", update->ent_index);
     dg_sentry_value *value = sentry.values + i;
     snprintf(BUFFER, sizeof(BUFFER), "%d", update->datatable_id);
     size_t len = strlen(BUFFER);
@@ -518,6 +520,9 @@ datatable_change_info::datatable_change_info() {
   arena = dg_arena_create(1 << 10);
   memset(&input_estate, 0, sizeof(input_estate));
   memset(&target_estate, 0, sizeof(target_estate));
+  baselines = NULL;
+  baselines_count = 0;
+  memset(&target_datatable, 0, sizeof(target_datatable));
 }
 
 datatable_change_info::~datatable_change_info() {

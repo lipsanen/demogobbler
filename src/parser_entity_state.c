@@ -437,6 +437,7 @@ dg_parse_result dg_estate_init(estate *thisptr, estate_init_args args) {
     return result;
   }
 
+  memset(thisptr, 0, sizeof(*thisptr));
   thisptr->should_store_props = args.should_store_props;
   thisptr->sendtables = args.message->sendtables;
   thisptr->serverclasses = args.message->serverclasses;

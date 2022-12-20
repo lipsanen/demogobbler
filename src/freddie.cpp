@@ -261,6 +261,7 @@ static void fix_packets(demo_t *demo) {
 
         if (msg->mtype == svc_packet_entities) {
           write_packetentities_args args;
+          memset(&args, 0, sizeof(args));
           args.is_delta = msg->message_svc_packet_entities.is_delta;
           args.version = &demo->demver_data;
           args.data = &msg->message_svc_packet_entities.parsed->data;

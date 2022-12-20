@@ -26,6 +26,7 @@ struct baseline_state {
 
 static void parse_baselines(baseline_state* state) {
   dg_instancebaseline_args args;
+  memset(&args, 0, sizeof(args));
   dg_alloc_state allocator = dg_arena_create_allocator(&state->memory);
   args.permanent_allocator = args.allocator = &allocator;
   args.demver_data = &state->demver_data;
@@ -41,6 +42,7 @@ static void parse_baselines(baseline_state* state) {
   for(size_t i=0; i < sentry->values_length; ++i) {
     dg_sentry_value* value = sentry->values + i;
     dg_ent_update update;
+    memset(&update, 0, sizeof(update));
     args.datatable_id = atoi(value->stored_string);
     args.output = &update;
     args.stream = &value->userdata;
@@ -209,6 +211,7 @@ bool test_baseline(uint32_t datatable_id, const dg_serverclass_data *data, estat
     return true;
   
   dg_ent_update update;
+  memset(&update, 0, sizeof(update));
   update.datatable_id = datatable_id;
   dg_init_baseline(&update, data, arena);
 
@@ -223,6 +226,7 @@ bool test_baseline(uint32_t datatable_id, const dg_serverclass_data *data, estat
 
   dg_instancebaseline_args args;
   dg_ent_update output;
+  memset(&output, 0, sizeof(output));
   output.datatable_id = datatable_id;
 
   auto alligator = dg_arena_create_allocator(arena);

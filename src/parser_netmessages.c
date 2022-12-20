@@ -395,6 +395,9 @@ static void handle_svc_create_stringtable(dg_parser *thisptr, dg_bitstream *stre
 
   ptr->data = bitstream_fork_and_advance(stream, ptr->data_length);
 
+  static int number = 0;
+  ++number;
+
   if((ptr->flags & 1) == 0 && thisptr->demo_version.demo_protocol <= 3) {
     dg_sentry_parse_args args;
     args.allocator = dg_parser_temp_allocator(thisptr);

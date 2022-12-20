@@ -87,7 +87,9 @@ static bool verify_updates(freddie::demo_t* demo) {
       dg_bitwriter_write_packetentities(&writer, args);
 
       dg_packetentities_data output;
+      memset(&output, 0, sizeof(output));
       dg_packetentities_parse_args args_parse;
+      memset(&args_parse, 0, sizeof(args_parse));
       args_parse.allocator = &alligator;
       args_parse.demver_data = &demo->demver_data;
       args_parse.entity_state = &state;
@@ -119,60 +121,64 @@ static bool verify_updates(freddie::demo_t* demo) {
   return !result.error;
 }
 
+void do_conversion(const Conversion& conversion) {
+  std::cout << "[----------] " << conversion.input << " => " << conversion.example << std::endl;
+
+  freddie::demo_t example;
+  freddie::demo_t input;
+  auto result = freddie::demo_t::parse_demo(&example, conversion.example.c_str());
+
+  if(result.error)
+  {
+    EXPECT_EQ(result.error, false) << "error parsing example demo: " << result.error_message;
+    return;
+  }
+
+  result = freddie::demo_t::parse_demo(&input, conversion.input.c_str());
+
+  if(result.error)
+  {
+    EXPECT_EQ(result.error, false) << "error parsing example demo: " << result.error_message;
+    return;
+  }
+
+  result = freddie::convert_demo(&example, &input);
+
+  if(result.error)
+  {
+    EXPECT_EQ(result.error, false) << "error parsing input demo: " << result.error_message;
+    return;
+  }
+
+  if(!verify_updates(&input)) {
+    return;
+  }
+
+  wrapped_memory_stream output_stream;
+  result = input.write_demo(&output_stream.underlying, {freddie::memory_stream_write});
+
+  if(result.error)
+  {
+    EXPECT_EQ(result.error, false) << "error writing demo: " << result.error_message;
+    return;
+  }
+
+  output_stream.underlying.offset = 0;
+  freddie::demo_t output;
+  result = freddie::demo_t::parse_demo(&output, &output_stream.underlying, {freddie::memory_stream_read, freddie::memory_stream_seek});
+
+  if(result.error)
+  {
+    EXPECT_EQ(result.error, false) << "error parsing result demo: " << result.error_message;
+    return;
+  }
+
+  EXPECT_EQ(output.packets.size(), input.packets.size());
+}
+
 TEST(convert, test) {
   auto conversions = get_test_conversions();
   for(auto& conversion : conversions) {
-    std::cout << "[----------] " << conversion.input << " => " << conversion.example << std::endl;
-
-    freddie::demo_t example;
-    freddie::demo_t input;
-    auto result = freddie::demo_t::parse_demo(&example, conversion.example.c_str());
-
-    if(result.error)
-    {
-      EXPECT_EQ(result.error, false) << "error parsing example demo: " << result.error_message;
-      continue;
-    }
-
-    result = freddie::demo_t::parse_demo(&input, conversion.input.c_str());
-
-    if(result.error)
-    {
-      EXPECT_EQ(result.error, false) << "error parsing example demo: " << result.error_message;
-      continue;
-    }
-
-    result = freddie::convert_demo(&example, &input);
-
-    if(result.error)
-    {
-      EXPECT_EQ(result.error, false) << "error parsing input demo: " << result.error_message;
-      continue;
-    }
-
-    if(!verify_updates(&input)) {
-      continue;
-    }
-
-    wrapped_memory_stream output_stream;
-    result = input.write_demo(&output_stream.underlying, {freddie::memory_stream_write});
-
-    if(result.error)
-    {
-      EXPECT_EQ(result.error, false) << "error writing demo: " << result.error_message;
-      continue;
-    }
-
-    output_stream.underlying.offset = 0;
-    freddie::demo_t output;
-    result = freddie::demo_t::parse_demo(&output, &output_stream.underlying, {freddie::memory_stream_read, freddie::memory_stream_seek});
-
-    if(result.error)
-    {
-      EXPECT_EQ(result.error, false) << "error parsing result demo: " << result.error_message;
-      continue;
-    }
-
-    EXPECT_EQ(output.packets.size(), input.packets.size());
+    do_conversion(conversion);
   }
 }

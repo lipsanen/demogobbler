@@ -396,6 +396,7 @@ static void handle_svc_create_stringtable(dg_parser *thisptr, dg_bitstream *stre
 
   ptr->data = bitstream_fork_and_advance(stream, data_length);
 
+  dg_parse_result result;
   if((ptr->flags & 1) == 0 && thisptr->demo_version.demo_protocol <= 3) {
     dg_sentry_parse_args args;
     args.allocator = dg_parser_temp_allocator(thisptr);
@@ -406,15 +407,23 @@ static void handle_svc_create_stringtable(dg_parser *thisptr, dg_bitstream *stre
     args.stream = ptr->data;
     args.user_data_fixed_size = ptr->user_data_size;
     args.user_data_size_bits = ptr->user_data_size_bits;
-    dg_parse_result result = dg_parse_stringtable_entry(&args, &ptr->stringtable);
+    result = dg_parse_stringtable_entry(&args, &ptr->stringtable);
 
     if(!result.error) {
       result = dg_parser_add_stringtable(thisptr, &ptr->stringtable);
     }
 
-    thisptr->error = result.error;
-    thisptr->error_message = result.error_message;
+  } else {
+    ptr->stringtable.dictionary_enabled = false;
+    ptr->stringtable.flags = ptr->flags;
+    ptr->stringtable.max_entries = ptr->max_entries;
+    ptr->stringtable.user_data_fixed_size = ptr->user_data_fixed_size;
+    ptr->stringtable.user_data_size_bits = ptr->user_data_size_bits;
+    result = dg_parser_add_stringtable(thisptr, &ptr->stringtable);
   }
+
+  thisptr->error = result.error;
+  thisptr->error_message = result.error_message;
 
   SEND_MESSAGE();
 }
@@ -469,16 +478,15 @@ static void handle_svc_update_stringtable(dg_parser *thisptr, dg_bitstream *stre
   }
   ptr->data = bitstream_fork_and_advance(stream, data_length);
 
-#if 0
-  if(ptr->table_id < thisptr->state.stringtables_count) {
+  if(ptr->table_id < thisptr->state.stringtables_count && thisptr->demo_version.demo_protocol <= 3) {
     dg_stringtable_data *data = thisptr->state.stringtables + ptr->table_id;
     dg_sentry_parse_args args;
     args.allocator = dg_parser_temp_allocator(thisptr);
     args.demver_data = &thisptr->demo_version;
+    args.flags = 0;
+    args.max_entries = data->max_entries;
     args.num_updated_entries = ptr->changed_entries;
     args.stream = ptr->data;
-    args.flags = data->flags;
-    args.max_entries = data->max_entries;
     args.user_data_fixed_size = data->user_data_fixed_size;
     args.user_data_size_bits = data->user_data_size_bits;
     
@@ -486,7 +494,6 @@ static void handle_svc_update_stringtable(dg_parser *thisptr, dg_bitstream *stre
     thisptr->error = result.error;
     thisptr->error_message = result.error_message;
   }
-#endif
 
   SEND_MESSAGE();
 }

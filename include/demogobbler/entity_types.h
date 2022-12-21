@@ -190,7 +190,7 @@ struct dg_stringtable_data {
 
 typedef struct dg_stringtable_data dg_stringtable_data;
 
-enum { MAX_STRINGTABLES = 18 };
+enum { MAX_STRINGTABLES = 32 };
 
 struct dg_parser_state {
   void *client_state;

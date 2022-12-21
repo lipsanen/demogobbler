@@ -11,10 +11,12 @@
 
 void dg_bitwriter_init(bitwriter *thisptr, uint32_t initial_size_bits) {
   memset(thisptr, 0, sizeof(*thisptr));
-  initial_size_bits += initial_size_bits & 0x7;
-  thisptr->ptr = malloc(initial_size_bits / 8 + 1);
+  uint32_t bytes = initial_size_bits / 8;
+  if((initial_size_bits & 0x7) != 0)
+    ++bytes;
+  thisptr->ptr = malloc(bytes);
   thisptr->bitoffset = 0;
-  thisptr->bitsize = initial_size_bits;
+  thisptr->bitsize = bytes * 8;
 }
 
 #ifdef GROUND_TRUTH_CHECK
@@ -72,9 +74,13 @@ int64_t dg_bitwriter_get_available_bits(bitwriter *thisptr) {
 
 static void bitwriter_allocate_space_if_needed(bitwriter *thisptr, unsigned int bits_wanted) {
   if (dg_bitwriter_get_available_bits(thisptr) < bits_wanted) {
-    thisptr->bitsize = MAX(thisptr->bitsize * 2, thisptr->bitsize + bits_wanted);
-    thisptr->bitsize += thisptr->bitsize & 0x7;
-    thisptr->ptr = realloc(thisptr->ptr, thisptr->bitsize / 8 + 1);
+    uint32_t bytes = (thisptr->bitsize + bits_wanted) / 8;
+    uint32_t current_bytes = thisptr->bitsize / 8;
+    if(bits_wanted % 8 != 0)
+      ++bytes;
+    bytes = MAX(current_bytes * 2, bytes);
+    thisptr->ptr = realloc(thisptr->ptr, bytes);
+    thisptr->bitsize = bytes * 8;
   }
 }
 
@@ -112,8 +118,11 @@ void NO_ASAN dg_bitwriter_write_bits(bitwriter *thisptr, const void *_src, unsig
     uint8_t *dest = thisptr->ptr + thisptr->bitoffset / 8;
 
     // Get rid of the extra bits at the end of the destination value
-    uint8_t cur_value = *dest << (8 - dest_byte_offset);
-    cur_value >>= (8 - dest_byte_offset);
+    uint8_t cur_value = 0;
+    if(dest_byte_offset != 0) {
+      cur_value = *dest << (8 - dest_byte_offset);
+      cur_value >>= (8 - dest_byte_offset);
+    }
 
     uint8_t src_value = *src;
     src_value >>= src_byte_offset;

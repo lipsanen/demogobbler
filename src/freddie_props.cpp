@@ -402,7 +402,7 @@ static void init_converted_baselines(const freddie::demo_t *demo,
       continue;
     auto status = info->get_datatable_status(datatable_id);
     if (status.exists) {
-      datatable_indices[status.index] = 1;
+      converted_indices[status.index] = 1;
     }
   }
 
@@ -410,7 +410,8 @@ static void init_converted_baselines(const freddie::demo_t *demo,
   size_t bytes = sizeof(dg_ent_update) * index_count;
   info->baselines_count = index_count;
   info->baselines = (dg_ent_update *)dg_arena_allocate(&info->arena, bytes, alignof(dg_ent_update));
-  memset(info->baselines, 0, bytes);
+  if(info->baselines)
+    memset(info->baselines, 0, bytes);
   std::size_t index = 0;
 
   for(size_t converted_id=0; converted_id < MAX_INDICES; ++converted_id) {

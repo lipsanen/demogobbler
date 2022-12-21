@@ -248,6 +248,7 @@ dg_bitstream freddie::get_start_state(const dg_bitwriter *writer) {
 
 void freddie::finalize_stream(dg_bitstream *stream, const dg_bitwriter *writer) {
   stream->bitsize = writer->bitoffset;
+  stream->data = writer->ptr;
 }
 
 static void fix_packets(demo_t *demo) {

@@ -270,9 +270,14 @@ dg_parse_result dg_parse_stringtable_entry(dg_sentry_parse_args *args, dg_sentry
   }
 
 
-  if(args->stream.overflow || dg_bitstream_bits_left(&args->stream) > 0) {
+  if(dg_bitstream_bits_left(&args->stream) > 0) {
     result.error = true;
     result.error_message = "stringtable parsing had bits left";
+  }
+
+  if(args->stream.overflow) {
+    result.error = true;
+    result.error_message = "stringtable parsing overflowed bitstream";
   }
 
 end:

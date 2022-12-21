@@ -97,6 +97,13 @@ void print_packet(parser_state *a, packet_parsed *message) {
       uint32_t data_length = dg_bitstream_bits_left(&msg.data);
       printf("\tsvc_create_stringtable %d = %s, %u entries, bits %u\n", create_stringtable_index, msg.name, msg.num_entries, data_length);
       ++create_stringtable_index;
+      if(msg.stringtable.values == NULL) {
+        continue;
+      }
+      for(size_t value_index=0; value_index < msg.stringtable.values_length; ++value_index) {
+        dg_sentry_value* sentry_value = msg.stringtable.values + value_index;
+        printf("\t\t[%s]: %u bits\n", sentry_value->stored_string, sentry_value->userdata_length);
+      }
     } else if (netmsg->mtype == svc_serverinfo) {
       struct dg_svc_serverinfo *msg = netmsg->message_svc_serverinfo;
       printf("\tsvc_serverinfo\n");

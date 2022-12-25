@@ -184,16 +184,7 @@ static bool test_baseline(const char* type, dg_ent_update* update, dg_ent_update
     return true;
   } else {
     for(size_t i=0; i < update->prop_value_array_size; ++i) {
-      prop_value* prev_value = update->prop_value_array + i - 1;
-      prop_value* prev_value_orig = NULL;
-      dg_sendprop* prev_prop = data->props + i - 1;
-      if(orig)
-        prev_value_orig = orig->prop_value_array + i - 1;
       prop_value* value = update->prop_value_array + i;
-      prop_value* value_orig = NULL;
-      dg_sendprop* prop = data->props + i;
-      if(orig)
-        value_orig = orig->prop_value_array + i;
       if(i != value->prop_index) {
         std::printf("%s : %lu index on datatable [%d] diverges\n", type, i, update->datatable_id);
         return false;

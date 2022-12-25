@@ -139,31 +139,6 @@ static void compare_sendtable_props(const compare_props_args *args,
   }
 }
 
-static void compare_sendtables(const compare_props_args *args, const estate *lhs,
-                               const estate *rhs) {
-  for (int32_t i = 0; i < (int32_t)lhs->serverclass_count; ++i) {
-    const char *name = lhs->class_datas[i].dt_name;
-    auto dt = get_dt(rhs, name, i);
-    if (dt == -1) {
-      ARGSPRINT(true, "[%d] %s only\n", i, name);
-    } else if (dt != i) {
-      ARGSPRINT(true, "[%d] %s index changed -> %d\n", i, name, dt);
-      compare_sendtable_props(args, lhs->class_datas + i, rhs->class_datas + dt);
-    } else {
-      ARGSPRINT(true, "[%d] %s matches\n", i, name);
-      compare_sendtable_props(args, lhs->class_datas + i, rhs->class_datas + dt);
-    }
-  }
-
-  for (int32_t i = 0; i < (int32_t)rhs->serverclass_count; ++i) {
-    const char *name = rhs->class_datas[i].dt_name;
-    auto dt = get_dt(lhs, name, i);
-    if (dt == -1) {
-      ARGSPRINT(false, "[%d] %s only\n", i, name);
-    }
-  }
-}
-
 int main(int argc, char **argv) {
   if (argc <= 2) {
     printf("Usage: ddiff <example file> <input file>\n");

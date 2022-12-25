@@ -338,24 +338,6 @@ static void compare_sendtables(freddie::datatable_change_info *info, const estat
   }
 }
 
-static void get_datatable_indices_from_packetentities(const dg_packetentities_data *data,
-                                                      int *datatable_indices) {
-  for (size_t i = 0; i < data->ent_updates_count; ++i) {
-    datatable_indices[data->ent_updates[i].datatable_id] = 1;
-  }
-}
-
-static void get_datatable_indices_from_packet(const packet_parsed *packet,
-                                              int *datatable_indices) {
-  for (size_t i = 0; i < packet->message_count; ++i) {
-    auto msg = packet->messages + i;
-    if (msg->mtype == svc_packet_entities) {
-      get_datatable_indices_from_packetentities(&msg->message_svc_packet_entities.parsed->data,
-                                                datatable_indices);
-    }
-  }
-}
-
 // TODO: This is supposed to be a C function, move it out of freddie
 void dg_init_baseline(dg_ent_update *baseline, const dg_serverclass_data *target_datatable,
                           dg_alloc_state* allocator) {
@@ -370,112 +352,6 @@ void dg_init_baseline(dg_ent_update *baseline, const dg_serverclass_data *target
     value->prop_index = i;
 
     init_value(prop, &value->value, allocator);
-  }
-}
-
-static constexpr size_t MAX_INDICES = 512;
-
-static size_t count_datatable_indices(int* datatable_indices) {
-  size_t count = 0;
-  for(size_t i=0; i < MAX_INDICES; ++i) {
-    if(datatable_indices[i] == 1)
-      ++count;
-  }
-
-  return count;
-}
-
-static void convert_create_stringtable(freddie::mallocator *mallocator,
-                                       const dg_demver_data *demver_data,
-                                       dg_svc_create_stringtable *table,
-                                       const freddie::datatable_change_info *info) {
-  size_t memory_size = sizeof(dg_sentry_value) * info->baselines_count;
-  char BUFFER[4];
-
-  dg_sentry sentry;
-  memset(&sentry, 0, sizeof(dg_sentry));
-  sentry.max_entries = table->max_entries;
-  sentry.values = (dg_sentry_value *)mallocator->alloc(memory_size);
-  sentry.values_length = table->num_entries = info->baselines_count;
-  memset(sentry.values, 0, memory_size);
-
-  for (size_t i = 0; i < info->baselines_count; ++i) {
-    dg_ent_update *update = info->baselines + i;
-    //printf("update %d\n", update->ent_index);
-    dg_sentry_value *value = sentry.values + i;
-    snprintf(BUFFER, sizeof(BUFFER), "%d", update->datatable_id);
-    size_t len = strlen(BUFFER);
-
-    value->has_name = true;
-    value->has_user_data = true;
-    value->entry_bit = true;
-    value->stored_string = (char *)mallocator->alloc(len + 1);
-    memcpy(value->stored_string, BUFFER, len + 1);
-
-    dg_bitwriter bitwriter;
-    bitwriter_init(&bitwriter, 1024);
-
-#if 0
-    bitwriter.truth_data = value->userdata.data;
-    bitwriter.truth_data_offset = value->userdata.bitoffset;
-    bitwriter.truth_size_bits = value->userdata.bitsize;
-#endif
-
-    value->userdata = get_start_state(&bitwriter);
-    dg_bitwriter_write_props(&bitwriter, demver_data, update);
-    unsigned bits = bitwriter.bitoffset;
-
-    while (bits % 8 != 0) {
-      bitwriter_write_bit(&bitwriter, 1);
-      bits += 1;
-    }
-    value->userdata_length = bits / 8;
-
-    finalize_stream(&value->userdata, &bitwriter);
-    mallocator->attach(bitwriter.ptr);
-  }
-
-  dg_bitwriter final_writer;
-  bitwriter_init(&final_writer, 1024);
-#if 0
-  final_writer.truth_data = table->data.data;
-  final_writer.truth_data_offset = table->data.bitoffset;
-  final_writer.truth_size_bits = table->data.bitsize;
-#endif
-
-  dg_sentry_write_args args;
-  args.input = &sentry;
-  args.writer = &final_writer;
-
-  table->data = get_start_state(&final_writer);
-  dg_write_stringtable_entry(&args);
-  finalize_stream(&table->data, &final_writer);
-  table->flags = 0;
-  mallocator->attach(final_writer.ptr);
-}
-
-static void convert_baselines(freddie::demo_t *demo, const freddie::datatable_change_info *info) {
-  for (size_t i = 0; i < demo->packets.size(); ++i) {
-    packet_parsed *packet_ptr = std::get_if<packet_parsed>(&demo->packets[i]->packet);
-    if (packet_ptr) {
-      for (size_t msg_index = 0; msg_index < packet_ptr->message_count; ++msg_index) {
-        packet_net_message *msg = packet_ptr->messages + msg_index;
-        if (msg->mtype == svc_create_stringtable) {
-          dg_svc_create_stringtable *table = &msg->message_svc_create_stringtable;
-          if (strcmp(table->name, "instancebaseline") == 0) {
-            convert_create_stringtable(&demo->packets[i]->memory, &demo->demver_data, table, info);
-          }
-        } else if (msg->mtype == svc_update_stringtable) {
-          if (msg->message_svc_update_stringtable.table_id == 5) {
-            size_t memory_size =
-                (packet_ptr->message_count - msg_index - 1) * sizeof(packet_net_message);
-            memmove(packet_ptr->messages + msg_index, packet_ptr->messages + msg_index + 1,
-                    memory_size);
-            --msg_index;
-          }
-        }
-      }
-    }
   }
 }
 
@@ -606,7 +482,6 @@ static dg_parse_result convert_baseline(baseline_conversion_args* args, datatabl
   dg_bitwriter_write_props(&writer, args->target_demver, &update);
   dg_alloc_attach(args->allocator, writer.ptr, writer.bitsize / 8);
 
-end:
   return result;
 }
 
@@ -651,9 +526,6 @@ dg_parse_result datatable_change_info::convert_instancebaselines(dg_sentry* stri
     bitwriter_free(&writer);
     return result;
   }
-
-  unsigned bits = writer.bitoffset;
-  unsigned original_message_bits = dg_bitstream_bits_left(data);
 
   if(writer.error) {
     result.error = true;

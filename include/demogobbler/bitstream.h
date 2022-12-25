@@ -62,7 +62,7 @@ int32_t dg_bitstream_read_field_index(dg_bitstream *thisptr, int32_t last_index,
 #define bitstream_read_bitvector dg_bitstream_read_bitvector
 #define bitstream_read_coordvector dg_bitstream_read_coordvector
 
-static inline int64_t dg_bitstream_bits_left(dg_bitstream *thisptr) {
+static inline int64_t dg_bitstream_bits_left(const dg_bitstream *thisptr) {
   if (thisptr->bitsize >= thisptr->bitoffset && !thisptr->overflow) {
     return thisptr->bitsize - thisptr->bitoffset;
   } else {

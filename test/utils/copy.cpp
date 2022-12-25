@@ -50,7 +50,7 @@ void copy_demo_freddie(const char *filepath) {
     wrapped_memory_stream input;
     output.underlying.ground_truth = &input.underlying;
     input.underlying.fill_with_file(filepath);
-    auto writeresult1 = testdemo.write_demo(&output.underlying, {freddie::memory_stream_write});
+    auto writeresult1 = testdemo.write_demo(&output.underlying, {freddie::memory_stream_write}, true);
     EXPECT_EQ(writeresult1.error, false) << writeresult1.error_message;
   }
 }

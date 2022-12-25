@@ -175,7 +175,8 @@ int main(int argc, char **argv) {
   firstdemo = argv[1];
   seconddemo = argv[2];
   auto result = freddie::demo_t::parse_demo(&lhs, argv[1]);
-  freddie::datatable_change_info change_info;
+  auto allocator = dg_arena_create_allocator(&lhs.arena);
+  freddie::datatable_change_info change_info(allocator);
 
   if(result.error)
   {

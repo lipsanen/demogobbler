@@ -206,7 +206,7 @@ static bool test_baseline(const char* type, dg_ent_update* update, dg_ent_update
   }
 }
 
-bool test_baseline(uint32_t datatable_id, const dg_serverclass_data *data, estate* estate, const dg_demver_data* demver_data, dg_arena* arena) {
+bool test_baseline(uint32_t datatable_id, const dg_serverclass_data *data, estate* estate, const dg_demver_data* demver_data, dg_alloc_state* arena) {
   if(data->props == NULL)
     return true;
   
@@ -229,9 +229,8 @@ bool test_baseline(uint32_t datatable_id, const dg_serverclass_data *data, estat
   memset(&output, 0, sizeof(output));
   output.datatable_id = datatable_id;
 
-  auto alligator = dg_arena_create_allocator(arena);
   auto stream = bitstream_create(writer.ptr, writer.bitoffset);
-  args.permanent_allocator = args.allocator = &alligator;
+  args.permanent_allocator = args.allocator = arena;
   args.datatable_id = datatable_id;
   args.demver_data = demver_data;
   args.estate_ptr = estate;
@@ -274,7 +273,7 @@ static dg_parse_result get_baselinegen_state(const char *filepath, baselinegen_s
     return result;
 
   for(size_t i=0; i < state->entity_state.serverclass_count; ++i) {
-    bool value = test_baseline(i, state->entity_state.class_datas + i, &state->entity_state, &state->demver_data, &state->memory);
+    bool value = test_baseline(i, state->entity_state.class_datas + i, &state->entity_state, &state->demver_data, &allocator);
     if(!value) {
       result.error = true;
       result.error_message = "baseline wrong";

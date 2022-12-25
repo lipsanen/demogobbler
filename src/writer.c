@@ -136,6 +136,14 @@ void dg_write_packet_parsed(writer *thisptr, packet_parsed *message_parsed) {
   WRITE_INT32(in_sequence);
   WRITE_INT32(out_sequence);
 
+#ifdef GROUND_TRUTH_CHECK
+  if(thisptr->expect_equal) {
+    thisptr->bitwriter.truth_data = message_parsed->orig.data;
+    thisptr->bitwriter.truth_data_offset = 0;
+    thisptr->bitwriter.truth_size_bits = message_parsed->orig.size_bytes * 8;
+  }
+#endif
+
   for (uint32_t i = 0; i < message_parsed->message_count; ++i) {
     packet_net_message *netmsg = message_parsed->messages + i;
     dg_bitwriter_write_netmessage(&thisptr->bitwriter, &thisptr->version, netmsg);
@@ -156,6 +164,11 @@ void dg_write_packet_parsed(writer *thisptr, packet_parsed *message_parsed) {
   uint32_t bytes = thisptr->bitwriter.bitoffset / 8;
   thisptr->output_funcs.write(thisptr->_stream, &bytes, 4);
   thisptr->output_funcs.write(thisptr->_stream, thisptr->bitwriter.ptr, bytes);
+#ifdef GROUND_TRUTH_CHECK
+  if(thisptr->expect_equal) {
+      thisptr->bitwriter.truth_data = NULL;
+  }
+#endif
 }
 
 void dg_write_synctick(writer *thisptr, dg_synctick *message) { WRITE_PREAMBLE(); }

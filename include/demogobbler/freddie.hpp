@@ -63,7 +63,7 @@ namespace freddie {
 
     static dg_parse_result parse_demo(demo_t *output, void *stream, dg_input_interface interface);
     static dg_parse_result parse_demo(demo_t *output, const char *filepath);
-    dg_parse_result write_demo(void *stream, dg_output_interface interface);
+    dg_parse_result write_demo(void *stream, dg_output_interface interface, bool expect_equal=false);
     dg_parse_result write_demo(const char *filepath);
     dg_datatables_parsed *get_datatables() const;
   };
@@ -84,7 +84,7 @@ namespace freddie {
   };
 
   struct datatable_change_info {
-    datatable_change_info();
+    datatable_change_info(dg_alloc_state allocator);
     ~datatable_change_info();
     datatable_change_info(const datatable_change_info& lhs) = delete;
     datatable_change_info& operator=(const datatable_change_info& lhs) = delete;
@@ -98,10 +98,11 @@ namespace freddie {
     prop_status get_prop_status(dg_sendprop* prop);
     datatable_status get_datatable_status(uint32_t index);
     dg_parse_result convert_updates(dg_packetentities_data* data);
+    dg_parse_result convert_instancebaselines(dg_sentry* stringtable, dg_bitstream* data);
     dg_parse_result convert_props(dg_ent_update* update, uint32_t new_datatable_id);
     dg_parse_result convert_demo(freddie::demo_t* input);
 
-    dg_arena arena;
+    dg_alloc_state allocator;
     estate input_estate;
     estate target_estate;
     std::unordered_map<dg_sendprop*, prop_status> prop_map;
@@ -109,6 +110,7 @@ namespace freddie {
     dg_ent_update* baselines;
     uint32_t baselines_count;
     dg_datatables_parsed target_datatable;
+    dg_demver_data target_demver;
   };
 
   typedef std::function<void(const char *error)> error_func;

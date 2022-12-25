@@ -94,7 +94,7 @@ void datatable_change_info::print_props(uint32_t datatable_id) {
   }
 }
 
-static void init_value(const dg_sendprop *prop, dg_prop_value_inner *value, dg_arena *arena) {
+static void init_value(const dg_sendprop *prop, dg_prop_value_inner *value, dg_alloc_state *arena) {
   memset(value, 0, sizeof(dg_prop_value_inner));
   value->prop_numbits = prop->prop_numbits;
   value->type = dg_sendprop_type(prop);
@@ -102,13 +102,13 @@ static void init_value(const dg_sendprop *prop, dg_prop_value_inner *value, dg_a
 
   if (value->proptype == sendproptype_array) {
     value->arr_val =
-        (dg_array_value *)dg_arena_allocate(arena, sizeof(dg_array_value), alignof(dg_array_value));
+        (dg_array_value *)dg_alloc_allocate(arena, sizeof(dg_array_value), alignof(dg_array_value));
     memset(value->arr_val, 0, sizeof(dg_array_value));
     size_t memory_size = prop->array_num_elements * sizeof(dg_prop_value_inner);
     value->arr_val->array_size = prop->array_num_elements;
     value->array_num_elements = prop->array_num_elements;
     value->arr_val->values =
-        (dg_prop_value_inner *)dg_arena_allocate(arena, memory_size, alignof(dg_prop_value_inner));
+        (dg_prop_value_inner *)dg_alloc_allocate(arena, memory_size, alignof(dg_prop_value_inner));
     memset(value->arr_val->values, 0, memory_size);
 
     for (size_t array_index = 0; array_index < prop->array_num_elements; ++array_index) {
@@ -116,7 +116,7 @@ static void init_value(const dg_sendprop *prop, dg_prop_value_inner *value, dg_a
     }
 
   } else if (value->proptype == sendproptype_vector2) {
-    value->v2_val = (dg_vector2_value *)dg_arena_allocate(arena, sizeof(dg_vector2_value),
+    value->v2_val = (dg_vector2_value *)dg_alloc_allocate(arena, sizeof(dg_vector2_value),
                                                           alignof(dg_vector2_value));
     memset(value->v2_val, 0, sizeof(dg_vector2_value));
     dg_sendprop innerprop = *prop;
@@ -124,7 +124,7 @@ static void init_value(const dg_sendprop *prop, dg_prop_value_inner *value, dg_a
     init_value(&innerprop, &value->v2_val->x, arena);
     init_value(&innerprop, &value->v2_val->y, arena);
   } else if (value->proptype == sendproptype_vector3) {
-    value->v3_val = (dg_vector3_value *)dg_arena_allocate(arena, sizeof(dg_vector3_value),
+    value->v3_val = (dg_vector3_value *)dg_alloc_allocate(arena, sizeof(dg_vector3_value),
                                                           alignof(dg_vector3_value));
     memset(value->v3_val, 0, sizeof(dg_vector3_value));
     dg_sendprop innerprop = *prop;
@@ -139,10 +139,10 @@ static void init_value(const dg_sendprop *prop, dg_prop_value_inner *value, dg_a
       value->v3_val->_sign = dg_vector3_sign_no;
     }
   } else if (value->proptype == sendproptype_string) {
-    value->str_val = (dg_string_value *)dg_arena_allocate(arena, sizeof(dg_string_value),
+    value->str_val = (dg_string_value *)dg_alloc_allocate(arena, sizeof(dg_string_value),
                                                           alignof(dg_string_value));
     memset(value->str_val, 0, sizeof(dg_string_value));
-    value->str_val->str = (char *)dg_arena_allocate(arena, 1, 1);
+    value->str_val->str = (char *)dg_alloc_allocate(arena, 1, 1);
     value->str_val->len = 1;
     value->str_val->str[0] = '\0';
   }
@@ -169,7 +169,7 @@ dg_parse_result datatable_change_info::convert_props(dg_ent_update *update,
     prop_ptr->prop_index = status.index; // remap the index
     // TODO: add conversion logic for props
     if (status.flags_changed) {
-      init_value(newprop, &prop_ptr->value, &this->arena);
+      init_value(newprop, &prop_ptr->value, &this->allocator);
     }
   }
 
@@ -356,11 +356,12 @@ static void get_datatable_indices_from_packet(const packet_parsed *packet,
   }
 }
 
+// TODO: This is supposed to be a C function, move it out of freddie
 void dg_init_baseline(dg_ent_update *baseline, const dg_serverclass_data *target_datatable,
-                          dg_arena *arena) {
+                          dg_alloc_state* allocator) {
   size_t props_size = sizeof(prop_value) * target_datatable->prop_count;
   baseline->prop_value_array =
-      (prop_value *)dg_arena_allocate(arena, props_size, alignof(prop_value));
+      (prop_value *)dg_alloc_allocate(allocator, props_size, alignof(prop_value));
   baseline->prop_value_array_size = target_datatable->prop_count;
   baseline->new_way = false;
   for (size_t i = 0; i < target_datatable->prop_count; ++i) {
@@ -368,7 +369,7 @@ void dg_init_baseline(dg_ent_update *baseline, const dg_serverclass_data *target
     prop_value *value = baseline->prop_value_array + i;
     value->prop_index = i;
 
-    init_value(prop, &value->value, arena);
+    init_value(prop, &value->value, allocator);
   }
 }
 
@@ -382,47 +383,6 @@ static size_t count_datatable_indices(int* datatable_indices) {
   }
 
   return count;
-}
-
-static void init_converted_baselines(const freddie::demo_t *demo,
-                                     freddie::datatable_change_info *info) {
-  int datatable_indices[MAX_INDICES];
-  int converted_indices[MAX_INDICES];
-  memset(datatable_indices, 0, sizeof(datatable_indices));
-  memset(converted_indices, 0, sizeof(converted_indices));
-  for (size_t i = 0; i < demo->packets.size(); ++i) {
-    packet_parsed *packet_ptr = std::get_if<packet_parsed>(&demo->packets[i]->packet);
-    if (packet_ptr) {
-      get_datatable_indices_from_packet(packet_ptr, datatable_indices);
-    }
-  }
-
-  for(size_t datatable_id=0; datatable_id < MAX_INDICES; ++datatable_id) {
-    if(datatable_indices[datatable_id] == 0)
-      continue;
-    auto status = info->get_datatable_status(datatable_id);
-    if (status.exists) {
-      converted_indices[status.index] = 1;
-    }
-  }
-
-  size_t index_count = count_datatable_indices(converted_indices);
-  size_t bytes = sizeof(dg_ent_update) * index_count;
-  info->baselines_count = index_count;
-  info->baselines = (dg_ent_update *)dg_arena_allocate(&info->arena, bytes, alignof(dg_ent_update));
-  if(info->baselines)
-    memset(info->baselines, 0, bytes);
-  std::size_t index = 0;
-
-  for(size_t converted_id=0; converted_id < MAX_INDICES; ++converted_id) {
-    if(converted_indices[converted_id] == 0)
-      continue;
-    dg_ent_update *baseline = info->baselines + index;
-    const dg_serverclass_data *target_datatable = info->target_estate.class_datas + converted_id;
-    baseline->datatable_id = converted_id;
-    ++index;
-    dg_init_baseline(baseline, target_datatable, &info->arena);
-  }
 }
 
 static void convert_create_stringtable(freddie::mallocator *mallocator,
@@ -455,6 +415,12 @@ static void convert_create_stringtable(freddie::mallocator *mallocator,
     dg_bitwriter bitwriter;
     bitwriter_init(&bitwriter, 1024);
 
+#if 0
+    bitwriter.truth_data = value->userdata.data;
+    bitwriter.truth_data_offset = value->userdata.bitoffset;
+    bitwriter.truth_size_bits = value->userdata.bitsize;
+#endif
+
     value->userdata = get_start_state(&bitwriter);
     dg_bitwriter_write_props(&bitwriter, demver_data, update);
     unsigned bits = bitwriter.bitoffset;
@@ -471,6 +437,11 @@ static void convert_create_stringtable(freddie::mallocator *mallocator,
 
   dg_bitwriter final_writer;
   bitwriter_init(&final_writer, 1024);
+#if 0
+  final_writer.truth_data = table->data.data;
+  final_writer.truth_data_offset = table->data.bitoffset;
+  final_writer.truth_size_bits = table->data.bitsize;
+#endif
 
   dg_sentry_write_args args;
   args.input = &sentry;
@@ -521,6 +492,14 @@ dg_parse_result datatable_change_info::convert_demo(freddie::demo_t *input) {
         if (netmsg->mtype == svc_packet_entities) {
           result = convert_updates(&netmsg->message_svc_packet_entities.parsed->data);
           break;
+        } else if(netmsg->mtype == svc_create_stringtable && 
+        strcmp("instancebaseline", netmsg->message_svc_create_stringtable.name) == 0) {
+          auto msg = &netmsg->message_svc_create_stringtable;
+          result = convert_instancebaselines(&msg->stringtable, &msg->data);
+        } else if (netmsg->mtype == svc_update_stringtable && 
+        netmsg->message_svc_update_stringtable.table_id == 5) {
+          auto msg = &netmsg->message_svc_update_stringtable;
+          result = convert_instancebaselines(&msg->parsed_sentry, &msg->data);
         }
       }
     } else if (dt_ptr) {
@@ -528,15 +507,11 @@ dg_parse_result datatable_change_info::convert_demo(freddie::demo_t *input) {
     }
   }
 
-  if (!result.error) {
-    convert_baselines(input, this);
-  }
-
   return result;
 }
 
-datatable_change_info::datatable_change_info() {
-  arena = dg_arena_create(1 << 10);
+datatable_change_info::datatable_change_info(dg_alloc_state allocator) {
+  this->allocator = allocator;
   memset(&input_estate, 0, sizeof(input_estate));
   memset(&target_estate, 0, sizeof(target_estate));
   baselines = NULL;
@@ -545,20 +520,13 @@ datatable_change_info::datatable_change_info() {
 }
 
 datatable_change_info::~datatable_change_info() {
-  dg_arena_free(&arena);
   dg_estate_free(&input_estate);
   dg_estate_free(&target_estate);
 }
 
 dg_parse_result datatable_change_info::init(freddie::demo_t *input, const freddie::demo_t *target) {
-  if (arena.block_count > 0)
-    abort(); // trying to init state again leaks memory
   dg_parse_result result;
   memset(&result, 0, sizeof(result));
-
-  dg_alloc_state allocator = {&arena, (func_dg_alloc)dg_arena_allocate,
-                              (func_dg_clear)dg_arena_clear, (func_dg_realloc)dg_arena_reallocate,
-                              (func_dg_attach)dg_arena_attach};
   dg_datatables_parsed *datatable1 = input->get_datatables();
   dg_datatables_parsed *datatable2 = target->get_datatables();
 
@@ -589,8 +557,111 @@ dg_parse_result datatable_change_info::init(freddie::demo_t *input, const freddi
 
   compare_sendtables(this, &input_estate, &target_estate);
   this->target_datatable = *datatable2; // TODO: memory management outta wazoo
-  init_converted_baselines(input, this);
+  this->target_demver = target->demver_data;
 
 end:
+  return result;
+}
+
+struct baseline_conversion_args {
+  dg_alloc_state* allocator;
+  estate* input_estate;
+  const dg_demver_data* target_demver;
+  dg_sentry_value* value;
+};
+
+static dg_parse_result convert_baseline(baseline_conversion_args* args, datatable_change_info* info) {
+  dg_parse_result result;
+
+  memset(&result, 0, sizeof(result));
+  dg_ent_update update;
+
+  dg_instancebaseline_args parse_args;
+  parse_args.permanent_allocator = parse_args.allocator = args->allocator;
+  parse_args.datatable_id = std::atoi(args->value->stored_string);
+  parse_args.demver_data = args->target_demver;
+  parse_args.estate_ptr = args->input_estate;
+  parse_args.output = &update;
+  parse_args.stream = &args->value->userdata;
+
+  dg_parse_instancebaseline(&parse_args);
+
+  auto status = info->get_datatable_status(parse_args.datatable_id);
+  auto data = dg_estate_serverclass_data(&info->target_estate, &info->target_demver, args->allocator, status.index);
+
+  if(status.index != parse_args.datatable_id) {
+    char BUFFER[4];
+    auto len = snprintf(BUFFER, sizeof(BUFFER), "%d", status.index) + 1;
+    args->value->stored_string = (char*)dg_alloc_allocate(args->allocator, len, 1);
+    memcpy(args->value->stored_string, BUFFER, len);
+  }
+
+  bitwriter writer;
+  bitwriter_init(&writer, 1024);
+#if 0
+  writer.truth_data = args->value->userdata.data;
+  writer.truth_data_offset = args->value->userdata.bitoffset;
+  writer.truth_size_bits = args->value->userdata.bitsize;
+#endif
+  dg_bitwriter_write_props(&writer, args->target_demver, &update);
+  dg_alloc_attach(args->allocator, writer.ptr, writer.bitsize / 8);
+
+end:
+  return result;
+}
+
+dg_parse_result datatable_change_info::convert_instancebaselines(dg_sentry* stringtable, dg_bitstream* data) {
+  dg_parse_result result;
+  memset(&result, 0, sizeof(result));
+
+  if(stringtable->values == NULL) {
+    result.error = true;
+    result.error_message = "svc_create_stringtable format not supported, cannot convert";
+    return result;
+  }
+
+  baseline_conversion_args args;
+  args.allocator = &this->allocator;
+  args.target_demver = &target_demver;
+  args.input_estate = &input_estate;
+
+  for(size_t i=0; i < stringtable->values_length && !result.error; ++i) {
+    args.value = stringtable->values + i;
+    result = convert_baseline(&args, this);
+  }
+
+  if(result.error) {
+    return result;
+  }
+
+  bitwriter writer;
+  bitwriter_init(&writer, 1 << 15);
+#if 0
+  writer.truth_data = msg->data.data;
+  writer.truth_data_offset = msg->data.bitoffset;
+  writer.truth_size_bits = msg->data.bitsize;
+#endif
+  dg_sentry_write_args write_args;
+  write_args.input = stringtable;
+  write_args.writer = &writer;
+
+  result = dg_write_stringtable_entry(&write_args);
+
+  if(result.error) {
+    bitwriter_free(&writer);
+    return result;
+  }
+
+  unsigned bits = writer.bitoffset;
+  unsigned original_message_bits = dg_bitstream_bits_left(data);
+
+  if(writer.error) {
+    result.error = true;
+    result.error_message = writer.error_message;
+  }
+
+  *data = dg_bitstream_create(writer.ptr, writer.bitoffset);
+  dg_alloc_attach(&this->allocator, writer.ptr, writer.bitsize / 8);
+
   return result;
 }

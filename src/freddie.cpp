@@ -145,11 +145,12 @@ dg_parse_result demo_t::parse_demo(demo_t *output, const char *filepath) {
   return result;
 }
 
-dg_parse_result demo_t::write_demo(void *stream, dg_output_interface interface) {
+dg_parse_result demo_t::write_demo(void *stream, dg_output_interface interface, bool expect_equal) {
   dg_parse_result result;
   std::memset(&result, 0, sizeof(result));
   dg_writer writer;
   dg_writer_init(&writer);
+  writer.expect_equal = expect_equal;
   writer.version = demver_data;
   dg_writer_open(&writer, stream, interface);
   dg_write_header(&writer, &header);
@@ -291,7 +292,8 @@ dg_parse_result freddie::convert_demo(const demo_t *example, demo_t *demo) {
   memcpy(demo->header.game_directory, example->header.game_directory, 260);
   fix_svc_serverinfo(example->header.game_directory, demo);
 
-  freddie::datatable_change_info info;
+  auto allocator = dg_arena_create_allocator(&demo->arena);
+  freddie::datatable_change_info info(allocator);
   info.init(demo, example);
   result = info.convert_demo(demo);
 

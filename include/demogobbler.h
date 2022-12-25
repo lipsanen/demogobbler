@@ -38,6 +38,7 @@ struct dg_writer {
   output_interface output_funcs;
   bool error;
   bool _custom_stream;
+  bool expect_equal;
   dg_demver_data version;
   struct dg_bitwriter bitwriter;
 };
@@ -113,7 +114,7 @@ dg_parse_result dg_parser_add_stringtable(dg_parser *thisptr, dg_sentry* table);
 dg_alloc_state* dg_parser_temp_allocator(dg_parser *thisptr);
 dg_alloc_state* dg_parser_perm_allocator(dg_parser *thisptr);
 void dg_init_baseline(dg_ent_update *baseline, const dg_serverclass_data *target_datatable,
-                          dg_arena *arena);
+                          dg_alloc_state* allocator);
 dg_parse_result dg_parse_packetentities(dg_packetentities_parse_args* args);
 
 #ifdef __cplusplus

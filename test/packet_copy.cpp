@@ -7,7 +7,7 @@
 
 struct packet_copy_tester {
   dg_demver_data version;
-  bitwriter writer;
+  dg_bitwriter writer;
   int64_t prev_offset;
   net_message_type last_message;
   void *current_data;
@@ -16,14 +16,14 @@ struct packet_copy_tester {
   bool error;
 
   ~packet_copy_tester() {
-    bitwriter_free(&writer);
+    dg_bitwriter_free(&writer);
     free(current_data);
   }
 
   packet_copy_tester() {
     memset(this, 0, sizeof(*this));
     this->last_message = svc_invalid;
-    bitwriter_init(&writer, 32768);
+    dg_bitwriter_init(&writer, 32768);
     current_data_size = 32768;
     current_data = malloc(current_data_size);
   }
@@ -69,7 +69,7 @@ static void packet_handler(parser_state *state, packet_parsed *packet_parsed) {
     }
   }
 
-  bitwriter_write_bitstream(&tester->writer, &packet_parsed->leftover_bits);
+  dg_bitwriter_write_bitstream(&tester->writer, &packet_parsed->leftover_bits);
 
   if (!tester->error) {
     for (int32_t i = 0; i < packet->size_bytes; ++i) {

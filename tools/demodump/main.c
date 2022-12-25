@@ -198,7 +198,7 @@ void print_stringtables_parsed(parser_state *a, dg_stringtables_parsed *message)
     for (size_t u = 0; u < table->entries_count; ++u) {
       dg_stringtable_entry *entry = table->entries + u;
       if (entry->size == 1) {
-        uint32_t value = bitstream_read_uint(&entry->data, 8);
+        uint32_t value = dg_bitstream_read_uint(&entry->data, 8);
         printf("\t\t[%lu] %s - 0x%x\n", u, entry->name, value);
       } else {
         printf("\t\t[%lu] %s - %u bytes\n", u, entry->name, entry->size);

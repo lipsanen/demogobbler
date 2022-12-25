@@ -12,7 +12,7 @@ static void bitstream_bench(benchmark::State &state) {
 
   srand(0);
   std::vector<unsigned> reads;
-  dg_bitstream stream = bitstream_create(memory, SIZE * 8);
+  dg_bitstream stream = dg_bitstream_create(memory, SIZE * 8);
   std::size_t size_left = SIZE * 8;
 
   while (size_left > 0) {
@@ -25,7 +25,7 @@ static void bitstream_bench(benchmark::State &state) {
   for (auto _ : state) {
     stream.bitoffset = 0;
     for (size_t i = 0; i < reads.size(); ++i) {
-      bitstream_read_uint(&stream, reads[i]);
+      dg_bitstream_read_uint(&stream, reads[i]);
     }
   }
 
@@ -50,10 +50,10 @@ static void bitstream_bench_ubitvar(benchmark::State &state) {
   char *memory = prepare_array();
 
   for (auto _ : state) {
-    dg_bitstream stream = bitstream_create(memory, SIZE * 8);
+    dg_bitstream stream = dg_bitstream_create(memory, SIZE * 8);
 
     while (stream.bitoffset < stream.bitsize && !stream.overflow)
-      bitstream_read_ubitvar(&stream);
+      dg_bitstream_read_ubitvar(&stream);
 
     benchmark::DoNotOptimize(stream);
   }
@@ -64,7 +64,7 @@ static void bitstream_bench_ubitvar(benchmark::State &state) {
 
 static void bitstream_bench_field_index(benchmark::State &state) {
   char *memory = prepare_array();
-  dg_bitstream stream = bitstream_create(memory, SIZE * 8);
+  dg_bitstream stream = dg_bitstream_create(memory, SIZE * 8);
 
   for (auto _ : state) {
     stream.bitoffset = 0;
@@ -72,7 +72,7 @@ static void bitstream_bench_field_index(benchmark::State &state) {
     stream.overflow = false;
 
     while (stream.bitoffset < stream.bitsize && !stream.overflow)
-      bitstream_read_field_index(&stream, -1, true);
+      dg_bitstream_read_field_index(&stream, -1, true);
   }
 
   state.SetBytesProcessed(SIZE * state.iterations());

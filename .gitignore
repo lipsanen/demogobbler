@@ -7,3 +7,5 @@ build/
 debug*/
 release*/
 .vs/
+compile_commands.json
+.cache/

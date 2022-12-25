@@ -190,7 +190,7 @@ bool FUN_ATTRIBUTE NO_ASAN dg_bitstream_read_bit(dg_bitstream *thisptr) {
 
   uint8_t *ptr = (uint8_t *)thisptr->data + (thisptr->bitoffset >> 3);
   int offset_alignment = thisptr->bitoffset & 0x7;
-  bitstream_advance(thisptr, 1);
+  dg_bitstream_advance(thisptr, 1);
 
   return *ptr & MASKS[offset_alignment];
 }
@@ -242,9 +242,9 @@ size_t FUN_ATTRIBUTE dg_bitstream_read_cstring(dg_bitstream *thisptr, char *dest
 dg_bitangle_vector FUN_ATTRIBUTE dg_bitstream_read_bitvector(dg_bitstream *thisptr,
                                                              unsigned int bits) {
   dg_bitangle_vector out;
-  out.x = bitstream_read_uint(thisptr, bits);
-  out.y = bitstream_read_uint(thisptr, bits);
-  out.z = bitstream_read_uint(thisptr, bits);
+  out.x = dg_bitstream_read_uint(thisptr, bits);
+  out.y = dg_bitstream_read_uint(thisptr, bits);
+  out.z = dg_bitstream_read_uint(thisptr, bits);
   out.bits = bits;
   return out;
 }
@@ -252,9 +252,9 @@ dg_bitangle_vector FUN_ATTRIBUTE dg_bitstream_read_bitvector(dg_bitstream *thisp
 dg_bitcoord_vector FUN_ATTRIBUTE dg_bitstream_read_coordvector(dg_bitstream *thisptr) {
   dg_bitcoord_vector out;
   memset(&out, 0, sizeof(out));
-  out.x.exists = bitstream_read_uint(thisptr, 1);
-  out.y.exists = bitstream_read_uint(thisptr, 1);
-  out.z.exists = bitstream_read_uint(thisptr, 1);
+  out.x.exists = dg_bitstream_read_uint(thisptr, 1);
+  out.y.exists = dg_bitstream_read_uint(thisptr, 1);
+  out.z.exists = dg_bitstream_read_uint(thisptr, 1);
 
   if (out.x.exists)
     out.x = dg_bitstream_read_bitcoord(thisptr);
@@ -301,7 +301,7 @@ dg_bitcoord FUN_ATTRIBUTE dg_bitstream_read_bitcoord(dg_bitstream *thisptr) {
     }
   }
 
-  bitstream_advance(thisptr, bits_used);
+  dg_bitstream_advance(thisptr, bits_used);
 
   return out;
 #else
@@ -344,19 +344,19 @@ int32_t FUN_ATTRIBUTE dg_bitstream_read_sint32(dg_bitstream *thisptr) {
 }
 
 uint32_t FUN_ATTRIBUTE dg_bitstream_read_ubitint(dg_bitstream *thisptr) {
-  uint32_t ret = bitstream_read_uint(thisptr, 4);
-  uint32_t num = bitstream_read_uint(thisptr, 2);
+  uint32_t ret = dg_bitstream_read_uint(thisptr, 4);
+  uint32_t num = dg_bitstream_read_uint(thisptr, 2);
   uint32_t add = 0;
 
   switch (num) {
   case 1:
-    add = bitstream_read_uint(thisptr, 4);
+    add = dg_bitstream_read_uint(thisptr, 4);
     break;
   case 2:
-    add = bitstream_read_uint(thisptr, 8);
+    add = dg_bitstream_read_uint(thisptr, 8);
     break;
   case 3:
-    add = bitstream_read_uint(thisptr, 28);
+    add = dg_bitstream_read_uint(thisptr, 28);
     break;
   default:
     break;
@@ -382,7 +382,7 @@ uint32_t FUN_ATTRIBUTE dg_bitstream_read_ubitvar(dg_bitstream *thisptr) {
   uint32_t sel = val & 0x3;
 
   uint32_t output = (val >> 2) & masks[sel];
-  bitstream_advance(thisptr, bits_per_sel[sel]);
+  dg_bitstream_advance(thisptr, bits_per_sel[sel]);
 
   return output;
 
@@ -406,13 +406,13 @@ dg_bitcellcoord FUN_ATTRIBUTE dg_bitstream_read_bitcellcoord(dg_bitstream *thisp
                                                              bool lp, unsigned bits) {
   dg_bitcellcoord output;
   memset(&output, 0, sizeof(output));
-  output.int_val = bitstream_read_uint(thisptr, bits);
+  output.int_val = dg_bitstream_read_uint(thisptr, bits);
 
   if (!is_int) {
     if (lp) {
-      output.fract_val = bitstream_read_uint(thisptr, FRAC_BITS_LP);
+      output.fract_val = dg_bitstream_read_uint(thisptr, FRAC_BITS_LP);
     } else {
-      output.fract_val = bitstream_read_uint(thisptr, FRAC_BITS);
+      output.fract_val = dg_bitstream_read_uint(thisptr, FRAC_BITS);
     }
   }
 
@@ -423,34 +423,34 @@ dg_bitcoordmp FUN_ATTRIBUTE dg_bitstream_read_bitcoordmp(dg_bitstream *thisptr, 
                                                          bool lp) {
   dg_bitcoordmp output;
   memset(&output, 0, sizeof(output));
-  output.inbounds = bitstream_read_bit(thisptr);
+  output.inbounds = dg_bitstream_read_bit(thisptr);
   if (is_int) {
-    output.int_has_val = bitstream_read_bit(thisptr);
+    output.int_has_val = dg_bitstream_read_bit(thisptr);
     if (output.int_has_val) {
-      output.sign = bitstream_read_bit(thisptr);
+      output.sign = dg_bitstream_read_bit(thisptr);
 
       if (output.inbounds) {
-        output.int_val = bitstream_read_uint(thisptr, COORD_INT_BITS_MP);
+        output.int_val = dg_bitstream_read_uint(thisptr, COORD_INT_BITS_MP);
       } else {
-        output.int_val = bitstream_read_uint(thisptr, COORD_INTEGER_BITS);
+        output.int_val = dg_bitstream_read_uint(thisptr, COORD_INTEGER_BITS);
       }
     }
   } else {
-    output.int_has_val = bitstream_read_bit(thisptr);
-    output.sign = bitstream_read_bit(thisptr);
+    output.int_has_val = dg_bitstream_read_bit(thisptr);
+    output.sign = dg_bitstream_read_bit(thisptr);
 
     if (output.int_has_val) {
       if (output.inbounds) {
-        output.int_val = bitstream_read_uint(thisptr, COORD_INT_BITS_MP);
+        output.int_val = dg_bitstream_read_uint(thisptr, COORD_INT_BITS_MP);
       } else {
-        output.int_val = bitstream_read_uint(thisptr, COORD_INTEGER_BITS);
+        output.int_val = dg_bitstream_read_uint(thisptr, COORD_INTEGER_BITS);
       }
     }
 
     if (lp) {
-      output.frac_val = bitstream_read_uint(thisptr, FRAC_BITS_LP);
+      output.frac_val = dg_bitstream_read_uint(thisptr, FRAC_BITS_LP);
     } else {
-      output.frac_val = bitstream_read_uint(thisptr, FRAC_BITS);
+      output.frac_val = dg_bitstream_read_uint(thisptr, FRAC_BITS);
     }
   }
 
@@ -461,34 +461,34 @@ dg_bitnormal FUN_ATTRIBUTE dg_bitstream_read_bitnormal(dg_bitstream *thisptr) {
   dg_bitnormal output;
   memset(&output, 0, sizeof(output));
   const size_t frac_bits = 11;
-  output.sign = bitstream_read_bit(thisptr);
-  output.frac = bitstream_read_uint(thisptr, frac_bits);
+  output.sign = dg_bitstream_read_bit(thisptr);
+  output.frac = dg_bitstream_read_uint(thisptr, frac_bits);
 
   return output;
 }
 
 int32_t FUN_ATTRIBUTE dg_bitstream_read_field_index(dg_bitstream *thisptr, int32_t last_index,
                                                     bool new_way) {
-  if (new_way && bitstream_read_bit(thisptr))
+  if (new_way && dg_bitstream_read_bit(thisptr))
     return last_index + 1;
 
   int32_t ret;
 
-  if (new_way && bitstream_read_bit(thisptr)) {
-    ret = bitstream_read_uint(thisptr, 3);
+  if (new_way && dg_bitstream_read_bit(thisptr)) {
+    ret = dg_bitstream_read_uint(thisptr, 3);
   } else {
-    ret = bitstream_read_uint(thisptr, 5);
-    uint32_t sw = bitstream_read_uint(thisptr, 2);
+    ret = dg_bitstream_read_uint(thisptr, 5);
+    uint32_t sw = dg_bitstream_read_uint(thisptr, 2);
 
     switch (sw) {
     case 1:
-      ret |= bitstream_read_uint(thisptr, 2) << 5;
+      ret |= dg_bitstream_read_uint(thisptr, 2) << 5;
       break;
     case 2:
-      ret |= bitstream_read_uint(thisptr, 4) << 5;
+      ret |= dg_bitstream_read_uint(thisptr, 4) << 5;
       break;
     case 3:
-      ret |= bitstream_read_uint(thisptr, 7) << 5;
+      ret |= dg_bitstream_read_uint(thisptr, 7) << 5;
       break;
     default:
       break;

@@ -82,8 +82,8 @@ static bool verify_updates(freddie::demo_t* demo) {
       args.data = &packet_entities->parsed->data;
       args.version = &demo->demver_data;
       args.is_delta = packet_entities->is_delta;
-      bitwriter writer;
-      bitwriter_init(&writer, 1024);
+      dg_bitwriter writer;
+      dg_bitwriter_init(&writer, 1024);
       dg_bitwriter_write_packetentities(&writer, args);
 
       dg_packetentities_data output;
@@ -112,7 +112,7 @@ static bool verify_updates(freddie::demo_t* demo) {
         EXPECT_EQ(result.error, false) << result.error_message;
       }
 
-      bitwriter_free(&writer);
+      dg_bitwriter_free(&writer);
     }
   }
 

@@ -50,8 +50,8 @@ static void parse_baselines(baseline_state* state) {
     dg_parse_result result = dg_parse_instancebaseline(&args);
     EXPECT_EQ(result.error, false) << result.error_message;
 
-    bitwriter writer;
-    bitwriter_init(&writer, value->userdata_length);
+    dg_bitwriter writer;
+    dg_bitwriter_init(&writer, value->userdata_length);
 #ifdef GROUND_TRUTH_CHECK
     writer.truth_data = value->userdata.data;
     writer.truth_data_offset = value->userdata.bitoffset;
@@ -60,12 +60,12 @@ static void parse_baselines(baseline_state* state) {
     dg_bitwriter_write_props(&writer, &state->demver_data, &update);
     unsigned bits = dg_bitstream_bits_left(&value->userdata);
     EXPECT_LE(bits - writer.bitoffset, 7);
-    bitwriter_free(&writer);
+    dg_bitwriter_free(&writer);
   }
 
-  bitwriter writer;
+  dg_bitwriter writer;
 
-  bitwriter_init(&writer, 1024);
+  dg_bitwriter_init(&writer, 1024);
 #ifdef GROUND_TRUTH_CHECK
   writer.truth_data = state->instancebaselines.data.data;
   writer.truth_data_offset = state->instancebaselines.data.bitoffset;
@@ -78,7 +78,7 @@ static void parse_baselines(baseline_state* state) {
   auto result = dg_write_stringtable_entry(&write_args);
   EXPECT_EQ(result.error, false);
   EXPECT_EQ(dg_bitstream_bits_left(&state->instancebaselines.data), writer.bitoffset);
-  bitwriter_free(&writer);
+  dg_bitwriter_free(&writer);
 }
 
 static void handle_dt(parser_state *_state, dg_datatables_parsed *value) {
@@ -211,8 +211,8 @@ bool test_baseline(uint32_t datatable_id, const dg_serverclass_data *data, estat
   if(!baseline_is_good)
     return baseline_is_good;
 
-  bitwriter writer;
-  bitwriter_init(&writer, 1024);
+  dg_bitwriter writer;
+  dg_bitwriter_init(&writer, 1024);
   dg_bitwriter_write_props(&writer, demver_data, &update);
 
   dg_instancebaseline_args args;
@@ -220,7 +220,7 @@ bool test_baseline(uint32_t datatable_id, const dg_serverclass_data *data, estat
   memset(&output, 0, sizeof(output));
   output.datatable_id = datatable_id;
 
-  auto stream = bitstream_create(writer.ptr, writer.bitoffset);
+  auto stream = dg_bitstream_create(writer.ptr, writer.bitoffset);
   args.permanent_allocator = args.allocator = arena;
   args.datatable_id = datatable_id;
   args.demver_data = demver_data;
@@ -232,7 +232,7 @@ bool test_baseline(uint32_t datatable_id, const dg_serverclass_data *data, estat
   EXPECT_EQ(result.error, false);
   bool output_is_good = test_baseline("output", &output, &update, data);
   EXPECT_EQ(output_is_good, true);
-  bitwriter_free(&writer);
+  dg_bitwriter_free(&writer);
 
   return output_is_good;
 }

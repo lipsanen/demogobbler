@@ -74,7 +74,7 @@ static dg_sendproptype raw_to_sendproptype(datatable_parser *thisptr, unsigned i
 
 static char *parse_cstring(dg_alloc_state *a, dg_bitstream *stream) {
   char STRINGBUF[1024];
-  size_t size = bitstream_read_cstring(stream, STRINGBUF, sizeof(STRINGBUF));
+  size_t size = dg_bitstream_read_cstring(stream, STRINGBUF, sizeof(STRINGBUF));
   char *rval = NULL;
 
   if (size == 0) {
@@ -165,37 +165,37 @@ static void get_sendprop_flags(datatable_parser *thisptr, dg_sendprop *prop, uns
 #undef GET_BIT
 }
 
-static void write_sendprop(writer *thisptr, bitwriter *writer, dg_sendprop *prop) {
+static void write_sendprop(writer *thisptr, dg_bitwriter *writer, dg_sendprop *prop) {
   unsigned int raw_value = sendproptype_to_raw(thisptr, prop->proptype);
   if (thisptr->error)
     return;
 
-  bitwriter_write_uint(writer, raw_value, 5);
-  bitwriter_write_cstring(writer, prop->name);
+  dg_bitwriter_write_uint(writer, raw_value, 5);
+  dg_bitwriter_write_cstring(writer, prop->name);
   unsigned int flags = get_flags_from_sendprop(thisptr, prop);
-  bitwriter_write_uint(writer, flags, thisptr->version.sendprop_flag_bits);
+  dg_bitwriter_write_uint(writer, flags, thisptr->version.sendprop_flag_bits);
 
   if (thisptr->version.demo_protocol >= 4 && thisptr->version.game != l4d) {
-    bitwriter_write_uint(writer, prop->priority, 8);
+    dg_bitwriter_write_uint(writer, prop->priority, 8);
   }
 
   if (prop->proptype == sendproptype_datatable) {
-    bitwriter_write_cstring(writer, prop->dtname);
+    dg_bitwriter_write_cstring(writer, prop->dtname);
   } else if (prop->flag_exclude) {
-    bitwriter_write_cstring(writer, prop->exclude_name);
+    dg_bitwriter_write_cstring(writer, prop->exclude_name);
   } else if (prop->proptype == sendproptype_array) {
-    bitwriter_write_uint(writer, prop->array_num_elements, 10);
+    dg_bitwriter_write_uint(writer, prop->array_num_elements, 10);
   } else {
-    bitwriter_write_float(writer, prop->prop_.low_value);
-    bitwriter_write_float(writer, prop->prop_.high_value);
-    bitwriter_write_uint(writer, prop->prop_numbits, thisptr->version.sendprop_numbits_for_numbits);
+    dg_bitwriter_write_float(writer, prop->prop_.low_value);
+    dg_bitwriter_write_float(writer, prop->prop_.high_value);
+    dg_bitwriter_write_uint(writer, prop->prop_numbits, thisptr->version.sendprop_numbits_for_numbits);
   }
 }
 
 static void parse_sendprop(datatable_parser *thisptr, dg_alloc_state *a, dg_bitstream *stream,
                            dg_sendtable *table, dg_sendprop *prop, size_t index) {
   memset(prop, 0, sizeof(dg_sendprop));
-  unsigned int raw_value = bitstream_read_uint(stream, 5);
+  unsigned int raw_value = dg_bitstream_read_uint(stream, 5);
   prop->proptype = raw_to_sendproptype(thisptr, raw_value);
 
   if (prop->proptype == sendproptype_invalid) {
@@ -205,11 +205,11 @@ static void parse_sendprop(datatable_parser *thisptr, dg_alloc_state *a, dg_bits
   }
 
   prop->name = parse_cstring(a, stream);
-  unsigned flags = bitstream_read_uint(stream, thisptr->demo_version->sendprop_flag_bits);
+  unsigned flags = dg_bitstream_read_uint(stream, thisptr->demo_version->sendprop_flag_bits);
   get_sendprop_flags(thisptr, prop, flags);
 
   if (thisptr->demo_version->demo_protocol >= 4 && thisptr->demo_version->game != l4d) {
-    prop->priority = bitstream_read_uint(stream, 8);
+    prop->priority = dg_bitstream_read_uint(stream, 8);
   }
 
   if (prop->proptype == sendproptype_datatable) {
@@ -218,7 +218,7 @@ static void parse_sendprop(datatable_parser *thisptr, dg_alloc_state *a, dg_bits
     prop->exclude_name = parse_cstring(a, stream);
   } else if (prop->proptype == sendproptype_array) {
     prop->baseclass = table;
-    prop->array_num_elements = bitstream_read_uint(stream, 10);
+    prop->array_num_elements = dg_bitstream_read_uint(stream, 10);
     prop->array_prop = (prop - 1); // The insidearray prop should be in the previous element
 
     if (index == 0 || !prop->array_prop->flag_insidearray) {
@@ -227,17 +227,17 @@ static void parse_sendprop(datatable_parser *thisptr, dg_alloc_state *a, dg_bits
     }
   } else {
     prop->baseclass = table;
-    prop->prop_.low_value = bitstream_read_float(stream);
-    prop->prop_.high_value = bitstream_read_float(stream);
+    prop->prop_.low_value = dg_bitstream_read_float(stream);
+    prop->prop_.high_value = dg_bitstream_read_float(stream);
     prop->prop_numbits =
-        bitstream_read_uint(stream, thisptr->demo_version->sendprop_numbits_for_numbits);
+        dg_bitstream_read_uint(stream, thisptr->demo_version->sendprop_numbits_for_numbits);
   }
 }
 
-static void write_sendtable(writer *thisptr, bitwriter *writer, dg_sendtable *ptable) {
-  bitwriter_write_bit(writer, ptable->needs_decoder);
-  bitwriter_write_cstring(writer, ptable->name);
-  bitwriter_write_uint(writer, ptable->prop_count, thisptr->version.datatable_propcount_bits);
+static void write_sendtable(writer *thisptr, dg_bitwriter *writer, dg_sendtable *ptable) {
+  dg_bitwriter_write_bit(writer, ptable->needs_decoder);
+  dg_bitwriter_write_cstring(writer, ptable->name);
+  dg_bitwriter_write_uint(writer, ptable->prop_count, thisptr->version.datatable_propcount_bits);
 
   for (size_t i = 0; i < ptable->prop_count; ++i) {
     write_sendprop(thisptr, writer, ptable->props + i);
@@ -249,7 +249,7 @@ static void write_sendtable(writer *thisptr, bitwriter *writer, dg_sendtable *pt
 static void parse_sendtable(datatable_parser *thisptr, dg_alloc_state *a, dg_bitstream *stream,
                             dg_sendtable *ptable) {
   memset(ptable, 0, sizeof(dg_sendtable));
-  ptable->needs_decoder = bitstream_read_bit(stream);
+  ptable->needs_decoder = dg_bitstream_read_bit(stream);
   ptable->name = parse_cstring(a, stream);
 
   if (ptable->name == NULL) {
@@ -258,7 +258,7 @@ static void parse_sendtable(datatable_parser *thisptr, dg_alloc_state *a, dg_bit
     return;
   }
 
-  ptable->prop_count = bitstream_read_uint(stream, thisptr->demo_version->datatable_propcount_bits);
+  ptable->prop_count = dg_bitstream_read_uint(stream, thisptr->demo_version->datatable_propcount_bits);
   ptable->props =
       dg_alloc_allocate(a, ptable->prop_count * sizeof(dg_sendprop), alignof(dg_sendprop));
 
@@ -267,16 +267,16 @@ static void parse_sendtable(datatable_parser *thisptr, dg_alloc_state *a, dg_bit
   }
 }
 
-static void write_serverclass(bitwriter *writer, dg_serverclass *pclass) {
-  bitwriter_write_uint(writer, pclass->serverclass_id, 16);
-  bitwriter_write_cstring(writer, pclass->serverclass_name);
-  bitwriter_write_cstring(writer, pclass->datatable_name);
+static void write_serverclass(dg_bitwriter *writer, dg_serverclass *pclass) {
+  dg_bitwriter_write_uint(writer, pclass->serverclass_id, 16);
+  dg_bitwriter_write_cstring(writer, pclass->serverclass_name);
+  dg_bitwriter_write_cstring(writer, pclass->datatable_name);
 }
 
 static void parse_serverclass(datatable_parser *thisptr, dg_alloc_state *a, dg_bitstream *stream,
                               dg_serverclass *pclass) {
   memset(pclass, 0, sizeof(dg_serverclass));
-  pclass->serverclass_id = bitstream_read_uint(stream, 16);
+  pclass->serverclass_id = dg_bitstream_read_uint(stream, 16);
   pclass->serverclass_name = parse_cstring(a, stream);
   pclass->datatable_name = parse_cstring(a, stream);
 }
@@ -285,15 +285,15 @@ static void parse_serverclass(datatable_parser *thisptr, dg_alloc_state *a, dg_b
 #define ERROR_SET (stream.overflow || thisptr->error)
 
 void dg_write_datatables_parsed(writer *thisptr, dg_datatables_parsed *datatables) {
-  bitwriter writer;
-  bitwriter_init(&writer, datatables->_raw_buffer_bytes * 8);
+  dg_bitwriter writer;
+  dg_bitwriter_init(&writer, datatables->_raw_buffer_bytes * 8);
 
   for (size_t i = 0; i < datatables->sendtable_count; ++i) {
-    bitwriter_write_bit(&writer, true);
+    dg_bitwriter_write_bit(&writer, true);
     write_sendtable(thisptr, &writer, datatables->sendtables + i);
   }
-  bitwriter_write_bit(&writer, false);
-  bitwriter_write_uint(&writer, datatables->serverclass_count, 16);
+  dg_bitwriter_write_bit(&writer, false);
+  dg_bitwriter_write_uint(&writer, datatables->serverclass_count, 16);
 
   for (size_t i = 0; i < datatables->serverclass_count; ++i) {
     write_serverclass(&writer, datatables->serverclasses + i);
@@ -308,11 +308,11 @@ void dg_write_datatables_parsed(writer *thisptr, dg_datatables_parsed *datatable
       // If we are exactly at the same number of bytes, copy the last bits out of the buffer to
       // ensure bit for bit equality
       dg_bitstream stream =
-          bitstream_create(datatables->_raw_buffer, datatables->_raw_buffer_bytes * 8);
-      bitstream_advance(&stream, writer.bitoffset);
+          dg_bitstream_create(datatables->_raw_buffer, datatables->_raw_buffer_bytes * 8);
+      dg_bitstream_advance(&stream, writer.bitoffset);
       unsigned int bits_left = stream.bitsize - stream.bitoffset;
-      unsigned int value = bitstream_read_uint(&stream, bits_left);
-      bitwriter_write_uint(&writer, value, bits_left);
+      unsigned int value = dg_bitstream_read_uint(&stream, bits_left);
+      dg_bitwriter_write_uint(&writer, value, bits_left);
     }
   }
 
@@ -327,7 +327,7 @@ void dg_write_datatables_parsed(writer *thisptr, dg_datatables_parsed *datatable
     thisptr->output_funcs.write(thisptr->_stream, writer.ptr, bytes);
   }
 
-  bitwriter_free(&writer);
+  dg_bitwriter_free(&writer);
 }
 
 dg_datatables_parsed_rval dg_parse_datatables(dg_demver_data *version_data,
@@ -342,12 +342,12 @@ dg_datatables_parsed_rval dg_parse_datatables(dg_demver_data *version_data,
   output._raw_buffer = input->data;
   output._raw_buffer_bytes = input->size_bytes;
 
-  dg_bitstream stream = bitstream_create(input->data, input->size_bytes * 8);
+  dg_bitstream stream = dg_bitstream_create(input->data, input->size_bytes * 8);
 
   size_t array_size = 1024; // a guess at what the array size could be
   output.sendtables = malloc(array_size * sizeof(dg_sendtable));
 
-  while (bitstream_read_bit(&stream)) {
+  while (dg_bitstream_read_bit(&stream)) {
     if (output.sendtable_count >= array_size) {
       array_size <<= 1;
       output.sendtables = realloc(output.sendtables, array_size * sizeof(dg_sendtable));
@@ -358,7 +358,7 @@ dg_datatables_parsed_rval dg_parse_datatables(dg_demver_data *version_data,
   //printf("sendtable count %lu\n", output.sendtable_count);
   dg_alloc_attach(allocator, output.sendtables, array_size * sizeof(dg_sendtable));
 
-  output.serverclass_count = bitstream_read_uint(&stream, 16);
+  output.serverclass_count = dg_bitstream_read_uint(&stream, 16);
   output.serverclasses = dg_alloc_allocate(
       allocator, output.serverclass_count * sizeof(dg_serverclass), alignof(dg_serverclass));
 

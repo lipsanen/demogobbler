@@ -10,9 +10,9 @@ extern "C" {
 
 void handle_packetentities(parser_state *state, dg_svc_packetentities_parsed *parsed) {
   dg_parser *thisptr = (dg_parser *)((size_t)(state)-offsetof(dg_parser, state)); // dont try this at home
-  bitwriter writer;
+  dg_bitwriter writer;
   uint32_t bits = parsed->orig->data.bitsize - parsed->orig->data.bitoffset;
-  bitwriter_init(&writer, 1024);
+  dg_bitwriter_init(&writer, 1024);
   write_packetentities_args args;
   args.data = &parsed->data;
   args.is_delta = parsed->orig->is_delta;
@@ -28,7 +28,7 @@ void handle_packetentities(parser_state *state, dg_svc_packetentities_parsed *pa
     thisptr->error = true;
     thisptr->error_message = writer.error_message;
   }
-  bitwriter_free(&writer);
+  dg_bitwriter_free(&writer);
 }
 
 TEST(E2E, test_ents_reading) {

@@ -472,8 +472,8 @@ static dg_parse_result convert_baseline(baseline_conversion_args* args, datatabl
     memcpy(args->value->stored_string, BUFFER, len);
   }
 
-  bitwriter writer;
-  bitwriter_init(&writer, 1024);
+  dg_bitwriter writer;
+  dg_bitwriter_init(&writer, 1024);
 #if 0
   writer.truth_data = args->value->userdata.data;
   writer.truth_data_offset = args->value->userdata.bitoffset;
@@ -509,8 +509,8 @@ dg_parse_result datatable_change_info::convert_instancebaselines(dg_sentry* stri
     return result;
   }
 
-  bitwriter writer;
-  bitwriter_init(&writer, 1 << 15);
+  dg_bitwriter writer;
+  dg_bitwriter_init(&writer, 1 << 15);
 #if 0
   writer.truth_data = msg->data.data;
   writer.truth_data_offset = msg->data.bitoffset;
@@ -523,7 +523,7 @@ dg_parse_result datatable_change_info::convert_instancebaselines(dg_sentry* stri
   result = dg_write_stringtable_entry(&write_args);
 
   if(result.error) {
-    bitwriter_free(&writer);
+    dg_bitwriter_free(&writer);
     return result;
   }
 

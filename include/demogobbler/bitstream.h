@@ -44,24 +44,6 @@ dg_bitcoordmp dg_bitstream_read_bitcoordmp(dg_bitstream *thisptr, bool is_int, b
 dg_bitnormal dg_bitstream_read_bitnormal(dg_bitstream *thisptr);
 int32_t dg_bitstream_read_field_index(dg_bitstream *thisptr, int32_t last_index, bool new_way);
 
-#define bitstream_create dg_bitstream_create
-#define bitstream_advance dg_bitstream_advance
-#define bitstream_fork_and_advance dg_bitstream_fork_and_advance
-#define bitstream_read_bit dg_bitstream_read_bit
-#define bitstream_read_uint dg_bitstream_read_uint
-#define bitstream_read_ubitint dg_bitstream_read_ubitint
-#define bitstream_read_ubitvar dg_bitstream_read_ubitvar
-#define bitstream_read_uint32 dg_bitstream_read_uint32
-#define bitstream_read_varuint32 dg_bitstream_read_varuint32
-#define bitstream_read_sint dg_bitstream_read_sint
-#define bitstream_read_sint32 dg_bitstream_read_sint32
-#define bitstream_read_fixed_string dg_bitstream_read_fixed_string
-#define bitstream_read_cstring dg_bitstream_read_cstring
-#define bitstream_read_float dg_bitstream_read_float
-#define bitstream_read_field_index dg_bitstream_read_field_index
-#define bitstream_read_bitvector dg_bitstream_read_bitvector
-#define bitstream_read_coordvector dg_bitstream_read_coordvector
-
 static inline int64_t dg_bitstream_bits_left(const dg_bitstream *thisptr) {
   if (thisptr->bitsize >= thisptr->bitoffset && !thisptr->overflow) {
     return thisptr->bitsize - thisptr->bitoffset;

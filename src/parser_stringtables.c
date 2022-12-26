@@ -133,7 +133,7 @@ void dg_parser_parse_stringtables(dg_parser *thisptr, dg_stringtables *input) {
   memset(&out, 0, sizeof(out));
   memset(&args, 0, sizeof(args));
 
-  args.allocator = dg_parser_temp_allocator(thisptr);
+  args.allocator = dg_parser_packet_allocator(thisptr);
   args.message = input;
 
   dg_parse_result result = dg_parse_stringtables(&out, args);

@@ -106,7 +106,7 @@ static void write_net_stringcmd(dg_bitwriter *writer, dg_demver_data *version,
 static void handle_net_setconvar(dg_parser *thisptr, dg_bitstream *stream, packet_net_message *message,
                                  blk *scrap) {
   // Reserve space on stack for maximum amount of convars
-  dg_alloc_state* arena = dg_parser_temp_allocator(thisptr);
+  dg_alloc_state* arena = dg_parser_packet_allocator(thisptr);
   struct dg_net_setconvar *ptr = &message->message_net_setconvar;
   ptr->count = dg_bitstream_read_uint(stream, 8);
   ptr->convars =
@@ -201,7 +201,7 @@ static void write_svc_print(dg_bitwriter *writer, dg_demver_data *version,
 
 static void handle_svc_serverinfo(dg_parser *thisptr, dg_bitstream *stream,
                                   packet_net_message *message, blk *scrap) {
-  dg_alloc_state* arena = dg_parser_temp_allocator(thisptr);
+  dg_alloc_state* arena = dg_parser_packet_allocator(thisptr);
   message->message_svc_serverinfo = dg_alloc_allocate(
       arena, sizeof(struct dg_svc_serverinfo), alignof(struct dg_svc_serverinfo));
   struct dg_svc_serverinfo *ptr = message->message_svc_serverinfo;
@@ -317,7 +317,7 @@ static void handle_svc_classinfo(dg_parser *thisptr, dg_bitstream *stream, packe
   ptr->length = dg_bitstream_read_uint(stream, 16);
   ptr->create_on_client = dg_bitstream_read_bit(stream);
   unsigned int bits = highest_bit_index(ptr->length) + 1;
-  dg_alloc_state* arena = dg_parser_temp_allocator(thisptr);
+  dg_alloc_state* arena = dg_parser_packet_allocator(thisptr);
 
   // Could in theory have 32768 classes so use the allocator for this
   if (!ptr->create_on_client) {
@@ -399,7 +399,7 @@ static void handle_svc_create_stringtable(dg_parser *thisptr, dg_bitstream *stre
   dg_parse_result result;
   if((ptr->flags & 1) == 0 && thisptr->demo_version.demo_protocol <= 3) {
     dg_sentry_parse_args args;
-    args.allocator = dg_parser_temp_allocator(thisptr);
+    args.allocator = dg_parser_packet_allocator(thisptr);
     args.flags = ptr->flags;
     args.demver_data = &thisptr->demo_version;
     args.max_entries = ptr->max_entries;
@@ -481,7 +481,7 @@ static void handle_svc_update_stringtable(dg_parser *thisptr, dg_bitstream *stre
   if(ptr->table_id < thisptr->state.stringtables_count && thisptr->demo_version.demo_protocol <= 3) {
     dg_stringtable_data *data = thisptr->state.stringtables + ptr->table_id;
     dg_sentry_parse_args args;
-    args.allocator = dg_parser_temp_allocator(thisptr);
+    args.allocator = dg_parser_packet_allocator(thisptr);
     args.demver_data = &thisptr->demo_version;
     args.flags = 0;
     args.max_entries = data->max_entries;
@@ -976,7 +976,7 @@ void parse_netmessages(dg_parser *thisptr, dg_packet *packet) {
   // We allocate a single scrap buffer for the duration of parsing the packet that is as large as
   // the whole packet. Should never run out of space as long as we don't make things larger as we
   // read it out
-  dg_alloc_state* arena = dg_parser_temp_allocator(thisptr);
+  dg_alloc_state* arena = dg_parser_packet_allocator(thisptr);
   blk scrap_blk;
   scrap_blk.address = dg_alloc_allocate(arena, size, 1);
   scrap_blk.size = size;

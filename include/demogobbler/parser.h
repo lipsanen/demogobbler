@@ -59,6 +59,9 @@ typedef void (*func_dg_packetentities_parsed)(parser_state *state,
 typedef void (*func_dg_estate_init)(parser_state *state);
 typedef struct dg_settings dg_settings;
 
+enum dg_alloc_type { dg_alloc_temp, dg_alloc_permanent };
+typedef enum dg_alloc_type dg_alloc_type;
+
 // The settings struct contains all the callbacks for application code
 struct dg_settings {
   func_dg_consolecmd consolecmd_handler;
@@ -79,6 +82,7 @@ struct dg_settings {
   dg_parser_funcs funcs;
   dg_alloc_state temp_alloc_state;
   dg_alloc_state permanent_alloc_state;
+  dg_alloc_type packet_alloc_type;
   bool parse_packetentities;
   void *client_state;
 };

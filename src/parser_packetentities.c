@@ -592,7 +592,7 @@ end:;
 void dg_parser_handle_packetentities(dg_parser *thisptr, struct dg_svc_packet_entities *message) {
   dg_packetentities_data output;
   dg_packetentities_parse_args args;
-  args.allocator = dg_parser_temp_allocator(thisptr);
+  args.allocator = dg_parser_packet_allocator(thisptr);
   args.demver_data = &thisptr->demo_version;
   args.entity_state = &thisptr->state.entity_state;
   args.message = message;

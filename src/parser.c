@@ -134,10 +134,12 @@ dg_alloc_state* dg_parser_perm_allocator(dg_parser *thisptr)
   return &thisptr->m_settings.permanent_alloc_state;
 }
 
-void* dg_parser_temp_allocate(dg_parser *thisptr, uint32_t size, uint32_t alignment)
-{
-  dg_alloc_state *a = dg_parser_temp_allocator(thisptr);
-  return dg_alloc_allocate(a, size, alignment);
+dg_alloc_state* dg_parser_packet_allocator(dg_parser *thisptr) {
+  if(thisptr->m_settings.packet_alloc_type == dg_alloc_permanent) {
+    return &thisptr->m_settings.permanent_alloc_state;
+  } else {
+    return &thisptr->m_settings.temp_alloc_state;
+  }
 }
 
 static void init_parsing_funcs(dg_parser *thisptr) {
@@ -371,7 +373,8 @@ void _parse_consolecmd(dg_parser *thisptr) {
   if (message.size_bytes > 0) {
     ;
     if (thisptr->m_settings.consolecmd_handler) {
-      void *block = dg_parser_temp_allocate(thisptr, message.size_bytes, 1);
+      dg_alloc_state* a = dg_parser_packet_allocator(thisptr);
+      void *block = dg_alloc_allocate(a, message.size_bytes, 1);
       READ_MESSAGE_DATA();
 
       if (!thisptr->error) {
@@ -397,7 +400,8 @@ void _parse_customdata(dg_parser *thisptr) {
   message.size_bytes = _parser_read_length(thisptr);
 
   if (thisptr->m_settings.customdata_handler && message.size_bytes > 0) {
-    void *block = dg_parser_temp_allocate(thisptr, message.size_bytes, 1);
+    dg_alloc_state* a = dg_parser_packet_allocator(thisptr);
+    void *block = dg_alloc_allocate(a, message.size_bytes, 1);
     READ_MESSAGE_DATA();
     if (!thisptr->error) {
       thisptr->m_settings.customdata_handler(&thisptr->state, &message);
@@ -420,7 +424,8 @@ void _parse_datatables(dg_parser *thisptr) {
                                thisptr->m_settings.flattened_props_handler;
 
   if (has_datatable_handler && message.size_bytes > 0) {
-    void *block = dg_parser_temp_allocate(thisptr, message.size_bytes, 1);
+    dg_alloc_state* a = dg_parser_packet_allocator(thisptr);
+    void *block = dg_alloc_allocate(a, message.size_bytes, 1);
     READ_MESSAGE_DATA();
     if (!thisptr->error) {
 
@@ -463,7 +468,8 @@ void _parse_packet(dg_parser *thisptr, enum dg_type type) {
   message.size_bytes = _parser_read_length(thisptr);
 
   if ((thisptr->m_settings.packet_handler || should_parse_netmessages) && message.size_bytes > 0) {
-    void *block = dg_parser_temp_allocate(thisptr, message.size_bytes, 1);
+    dg_alloc_state* a = dg_parser_packet_allocator(thisptr);
+    void *block = dg_alloc_allocate(a, message.size_bytes, 1);
     READ_MESSAGE_DATA();
     if (!thisptr->error) {
 
@@ -494,7 +500,7 @@ void _parse_stop(dg_parser *thisptr) {
 
     do {
       size_t new_reserve_size = bytes_reserved + bytes_per_read;
-      dg_alloc_state* a = dg_parser_temp_allocator(thisptr);
+      dg_alloc_state* a = dg_parser_packet_allocator(thisptr);
       ptr = dg_alloc_reallocate(a, ptr, bytes_reserved, new_reserve_size, 1);
       bytes_reserved = new_reserve_size;
 
@@ -518,7 +524,8 @@ void _parse_stringtables(dg_parser *thisptr, enum dg_type type) {
       thisptr->m_settings.stringtables_parsed_handler || thisptr->m_settings.stringtables_handler;
 
   if (should_parse && message.size_bytes > 0) {
-    void *block = dg_parser_temp_allocate(thisptr, message.size_bytes, 1);
+    dg_alloc_state* a = dg_parser_packet_allocator(thisptr);
+    void *block = dg_alloc_allocate(a, message.size_bytes, 1);
     READ_MESSAGE_DATA();
     if (!thisptr->error) {
       if (thisptr->m_settings.stringtables_handler)
@@ -552,7 +559,8 @@ void _parse_usercmd(dg_parser *thisptr) {
 
   if (thisptr->m_settings.usercmd_handler) {
     if (message.size_bytes > 0) {
-      void *block = dg_parser_temp_allocate(thisptr, message.size_bytes, 1);
+      dg_alloc_state* a = dg_parser_packet_allocator(thisptr);
+      void *block = dg_alloc_allocate(a, message.size_bytes, 1);
       READ_MESSAGE_DATA();
     } else {
       message.data = NULL;

@@ -391,7 +391,7 @@ void parse_datatables(dg_parser *thisptr, dg_datatables *input) {
     allocator = dg_parser_perm_allocator(thisptr);
     init_entity_state = false;
   } else {
-    allocator = dg_parser_temp_allocator(thisptr);
+    allocator = dg_parser_packet_allocator(thisptr);
     init_entity_state = true;
   }
 

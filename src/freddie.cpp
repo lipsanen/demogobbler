@@ -106,11 +106,6 @@ static void noop(void *allocator) {}
 dg_parse_result demo_t::parse_demo(demo_t *output, void *stream, dg_input_interface interface) {
   dg_settings settings;
   dg_settings_init(&settings);
-  settings.temp_alloc_state.allocator = &output->temp_allocator;
-  settings.temp_alloc_state.alloc = mallocator_allocate;
-  settings.temp_alloc_state.attach = mallocator_attach;
-  settings.temp_alloc_state.clear = mallocator_clear;
-  settings.temp_alloc_state.realloc = mallocator_reallocate;
   settings.permanent_alloc_state.allocator = &output->arena;
   settings.permanent_alloc_state.clear = noop;
   settings.client_state = output;
@@ -126,6 +121,7 @@ dg_parse_result demo_t::parse_demo(demo_t *output, void *stream, dg_input_interf
   settings.synctick_handler = handle_dg_synctick;
   settings.usercmd_handler = handle_dg_usercmd;
   settings.parse_packetentities = true;
+  settings.packet_alloc_type = dg_alloc_permanent;
 
   return dg_parse(&settings, stream, interface);
 }

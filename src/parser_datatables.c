@@ -1,12 +1,12 @@
 #include "parser_datatables.h"
-#include "alignof_wrapper.h"
+#include "demogobbler/alignof_wrapper.h"
 #include "demogobbler/allocator.h"
 #include "demogobbler.h"
 #include "demogobbler/bitstream.h"
 #include "demogobbler/bitwriter.h"
 #include "demogobbler/datatable_types.h"
 #include "parser_entity_state.h"
-#include "utils.h"
+#include "demogobbler/utils.h"
 #include <string.h>
 
 typedef dg_datatables_parsed datatables;

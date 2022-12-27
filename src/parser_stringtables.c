@@ -1,10 +1,10 @@
 #include "parser_stringtables.h"
-#include "alignof_wrapper.h"
+#include "demogobbler/alignof_wrapper.h"
 #include "demogobbler.h"
 #include "demogobbler/allocator.h"
 #include "demogobbler/bitstream.h"
 #include "demogobbler/streams.h"
-#include "utils.h"
+#include "demogobbler/utils.h"
 #include "writer.h"
 #include <string.h>
 

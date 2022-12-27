@@ -1,6 +1,6 @@
 #include "gtest/gtest.h"
 extern "C" {
-  #include "version_utils.h"
+  #include "demogobbler/version_utils.h"
 }
 
 void test_l4d2_version(bool expected, int expected_build, const char* str) {

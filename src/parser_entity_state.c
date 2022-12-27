@@ -1,9 +1,9 @@
 #include "parser_entity_state.h"
-#include "alignof_wrapper.h"
+#include "demogobbler/alignof_wrapper.h"
 #include "demogobbler/allocator.h"
 #include "demogobbler.h"
-#include "hashtable.h"
-#include "utils.h"
+#include "demogobbler/hashtable.h"
+#include "demogobbler/utils.h"
 #include <string.h>
 
 static void free_inner_value(dg_prop_value_inner *value, dg_sendprop *prop);

@@ -5,7 +5,7 @@
 #include <cstdint>
 
 extern "C" {
-#include "utils.h"
+#include "demogobbler/utils.h"
 }
 
 template <typename T> bool test_num(T num, T &got, unsigned int bits, unsigned int bitOffset) {

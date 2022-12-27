@@ -1,6 +1,7 @@
 extern "C" {
     #include "demogobbler/bitwriter.h"
-    #include "parser_usercmd.h"
+    #include "demogobbler/usercmd_types.h"
+    #include "demogobbler.h"
 }
 
 #include "gtest/gtest.h"

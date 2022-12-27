@@ -1,6 +1,6 @@
 #include "demogobbler/bitstream.h"
 #include "demogobbler/allocator.h"
-#include "utils.h"
+#include "demogobbler/utils.h"
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>

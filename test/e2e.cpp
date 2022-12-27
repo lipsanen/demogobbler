@@ -1,6 +1,6 @@
-#include "copy.hpp"
+#include "utils/copy.hpp"
 #include "demogobbler.h"
-#include "test_demos.hpp"
+#include "utils/test_demos.hpp"
 #include "gtest/gtest.h"
 
 TEST(E2E, copy_demos) {

@@ -1,6 +1,6 @@
 #include "demogobbler/filereader.h"
 #include "demogobbler/streams.h"
-#include "utils.h"
+#include "demogobbler/utils.h"
 
 #include <stdlib.h>
 #include <string.h>

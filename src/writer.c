@@ -2,8 +2,8 @@
 #include "demogobbler/bitstream.h"
 #include "demogobbler/bitwriter.h"
 #include "demogobbler/streams.h"
-#include "utils.h"
-#include "version_utils.h"
+#include "demogobbler/utils.h"
+#include "demogobbler/version_utils.h"
 #include <stdlib.h>
 #include <string.h>
 

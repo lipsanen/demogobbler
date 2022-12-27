@@ -1,5 +1,5 @@
 #include "demogobbler.h"
-#include "test_demos.hpp"
+#include "utils/test_demos.hpp"
 #include "gtest/gtest.h"
 
 struct baseline_state {

@@ -1,11 +1,10 @@
 #include "demogobbler.h"
 #include "demogobbler/bitwriter.h"
-#include "test_demos.hpp"
+#include "utils/test_demos.hpp"
 #include "gtest/gtest.h"
 
 extern "C" {
 #include "demogobbler/parser.h"
-#include "parser_packetentities.h"
 }
 
 void handle_packetentities(parser_state *state, dg_svc_packetentities_parsed *parsed) {

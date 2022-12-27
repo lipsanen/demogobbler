@@ -1,8 +1,8 @@
 #include "demogobbler.h"
 #include "demogobbler/bitstream.h"
 #include "demogobbler/bitwriter.h"
-#include "test_demos.hpp"
-#include "utils.h"
+#include "utils/test_demos.hpp"
+#include "demogobbler/utils.h"
 #include "gtest/gtest.h"
 
 struct packet_copy_tester {

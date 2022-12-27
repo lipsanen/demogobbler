@@ -1,5 +1,5 @@
-#include "vector_array.h"
-#include "utils.h"
+#include "demogobbler/vector_array.h"
+#include "demogobbler/utils.h"
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>

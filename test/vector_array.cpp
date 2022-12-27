@@ -1,7 +1,7 @@
 #include "gtest/gtest.h"
 
 extern "C" {
-#include "vector_array.h"
+#include "demogobbler/vector_array.h"
 }
 
 TEST(dg_vector_array, create) {

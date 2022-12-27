@@ -1,5 +1,5 @@
-#include "version_utils.h"
-#include "utils.h"
+#include "demogobbler/version_utils.h"
+#include "demogobbler/utils.h"
 #include <string.h>
 
 // clang-format off

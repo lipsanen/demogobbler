@@ -3,9 +3,9 @@
 #include "demogobbler/bitstream.h"
 #include "demogobbler/bitwriter.h"
 #include "parser_packetentities.h"
-#include "utils.h"
-#include "vector_array.h"
-#include "version_utils.h"
+#include "demogobbler/utils.h"
+#include "demogobbler/vector_array.h"
+#include "demogobbler/version_utils.h"
 #include <string.h>
 
 #define TOSS_STRING() dg_bitstream_read_cstring(stream, scrap, 260);

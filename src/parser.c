@@ -1,16 +1,16 @@
 #include "demogobbler/parser.h"
-#include "alignof_wrapper.h"
+#include "demogobbler/alignof_wrapper.h"
 #include "demogobbler/allocator.h"
 #include "demogobbler/streams.h"
 #include "demogobbler.h"
 #include "demogobbler/filereader.h"
 #include "demogobbler/packettypes.h"
-#include "hashtable.h"
+#include "demogobbler/hashtable.h"
 #include "parser_datatables.h"
 #include "parser_netmessages.h"
 #include "parser_stringtables.h"
-#include "utils.h"
-#include "version_utils.h"
+#include "demogobbler/utils.h"
+#include "demogobbler/version_utils.h"
 #include <stddef.h>
 #include <string.h>
 

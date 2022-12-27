@@ -1,6 +1,6 @@
 #include "demogobbler.h"
 #include "demogobbler/freddie.hpp"
-#include "utils.h"
+#include "demogobbler/utils.h"
 #include <stdio.h>
 #include <string.h>
 

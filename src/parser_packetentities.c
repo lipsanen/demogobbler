@@ -5,8 +5,8 @@
 #include "demogobbler/bitwriter.h"
 #include "demogobbler/entity_types.h"
 #include "parser_entity_state.h"
-#include "utils.h"
-#include "vector_array.h"
+#include "demogobbler/utils.h"
+#include "demogobbler/vector_array.h"
 #include <string.h>
 
 #ifdef DEBUG_BREAK_PROP

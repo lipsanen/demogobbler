@@ -1,7 +1,7 @@
 #pragma once
 
 #include "demogobbler/allocator.h"
-#include "alignof_wrapper.h"
+#include "demogobbler/alignof_wrapper.h"
 #include <stdbool.h>
 #include <stdint.h>
 

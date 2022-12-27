@@ -118,6 +118,11 @@ void dg_init_baseline(dg_ent_update *baseline, const dg_serverclass_data *target
                           dg_alloc_state* allocator);
 dg_parse_result dg_parse_packetentities(dg_packetentities_parse_args* args);
 
+struct dg_usercmd_parsed;
+
+dg_parse_result dg_parser_parse_usercmd(const dg_demver_data* version_data, const dg_usercmd *input, struct dg_usercmd_parsed* out);
+void dg_bitwriter_write_usercmd(dg_bitwriter* thisptr, struct dg_usercmd_parsed* parsed);
+
 #ifdef __cplusplus
 }
 #endif

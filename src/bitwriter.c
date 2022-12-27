@@ -1,6 +1,6 @@
 #include "demogobbler/bitwriter.h"
 #include "demogobbler/bitstream.h"
-#include "utils.h"
+#include "demogobbler/utils.h"
 #include <string.h>
 
 #ifdef _MSC_VER

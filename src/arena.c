@@ -1,5 +1,5 @@
 #include "demogobbler/allocator.h"
-#include "utils.h"
+#include "demogobbler/utils.h"
 #include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>

@@ -24,15 +24,28 @@ list(APPEND DEMOGOBBLER_SOURCES
 )
 
 if(gcc_like_cxx)
+  if(DEBUG_BUILD)
+    list(APPEND GOBBLER_FLAGS
+      "-DGROUND_TRUTH_CHECK=1"
+      "-DDEBUG"
+    )
+    message("Debug mode flags enabled")
+  else()
+    message("Release mode flags enabled")
+  endif()
+
   list(APPEND GOBBLER_FLAGS
     "-fno-omit-frame-pointer"
     "$<$<COMPILE_LANGUAGE:C>:-Werror-implicit-function-declaration>"
     "$<$<COMPILE_LANGUAGE:C>:-Werror=incompatible-pointer-types>"
     "-Werror=pedantic"
+    "-fno-strict-aliasing"
+    "-fwrapv"
   )
 endif()
 
 add_library(demogobbler ${DEMOGOBBLER_SOURCES})
 target_compile_options(demogobbler PRIVATE ${GOBBLER_FLAGS})
+target_compile_options(demogobbler INTERFACE ${GOBBLER_FLAGS})
 target_include_directories(demogobbler PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../include")
 target_include_directories(demogobbler INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/../include")

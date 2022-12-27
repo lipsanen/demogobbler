@@ -631,7 +631,6 @@ dg_parse_result dg_parse_instancebaseline(const dg_instancebaseline_args* args) 
 
   prop_value props_array[512];
   state.prop_array = dg_va_create(props_array, prop_value);
-  state.allocator = args->allocator;
   state.stream = &stream;
   state.entity_state = args->estate_ptr;
   state.allocator = args->allocator;

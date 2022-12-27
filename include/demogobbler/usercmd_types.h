@@ -37,7 +37,7 @@ enum dg_usercmd_buttons {
   Ability1 = 1 << 28,
   Ability2 = 1 << 29,
   Ability3 = 1 << 30,
-  Ability4 = 1 << 31
+  Ability4 = -2147483648
 };
 
 typedef enum dg_usercmd_buttons dg_usercmd_buttons;

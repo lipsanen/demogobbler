@@ -4,6 +4,8 @@ set(CMAKE_C_STANDARD 17)
 set(CMAKE_CXX_STANDARD 17)
 project(Demogobbler VERSION 1.0.0)
 
+set(gcc_like_cxx "$<COMPILE_LANG_AND_ID:CXX,ARMClang,AppleClang,Clang,GNU,LCC>")
+
 option(DEMOGOBBLER_TEST "Testing enabled" ON)
 option(DEMOGOBBLER_BENCH "Benching enabled" ON)
 

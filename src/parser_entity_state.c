@@ -67,7 +67,7 @@ dg_prop_value_inner *dg_eproparr_next(const dg_eproparr *thisptr, dg_prop_value_
   }
 }
 
-dg_eproplist dg_eproplist_init() {
+dg_eproplist dg_eproplist_init(void) {
   dg_eproplist list;
   memset(&list, 0, sizeof(dg_eproplist));
   list.head = malloc(sizeof(dg_epropnode));

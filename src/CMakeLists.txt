@@ -41,11 +41,17 @@ if(gcc_like_cxx)
     "-Werror=pedantic"
     "-fno-strict-aliasing"
     "-fwrapv"
+    "-flto"
+  )
+
+  list(APPEND GOBBLER_LINK_FLAGS 
+    "-flto"
   )
 endif()
 
 add_library(demogobbler ${DEMOGOBBLER_SOURCES})
-target_compile_options(demogobbler PRIVATE ${GOBBLER_FLAGS})
+target_compile_options(demogobbler PRIVATE ${GOBBLER_PRIVATE_FLAGS})
 target_compile_options(demogobbler INTERFACE ${GOBBLER_FLAGS})
+target_link_options(demogobbler PUBLIC ${GOBBLER_LINK_FLAGS})
 target_include_directories(demogobbler PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/../include")
 target_include_directories(demogobbler INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/../include")

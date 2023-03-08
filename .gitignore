@@ -3,7 +3,7 @@ subprojects/googletest*
 subprojects/packagecache
 test_demos/
 test_convert/
-build/
+build*/
 debug*/
 release*/
 .vs/

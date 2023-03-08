@@ -15,3 +15,6 @@ target_link_libraries(perftest demogobbler)
 
 add_executable(propdiffer propdiffer/main.cpp)
 target_link_libraries(propdiffer demogobbler)
+
+add_executable(healthupdates healthupdates/main.c)
+target_link_libraries(healthupdates demogobbler)

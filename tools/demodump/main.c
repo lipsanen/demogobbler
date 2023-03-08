@@ -505,7 +505,7 @@ void handle_version(parser_state *a, dg_demver_data message) {
   state->version_data = message;
 }
 
-void print_help() {
+void print_help(void) {
   printf("Usage: demodump <filepath>\n");
   printf("\t--filter <string of different filters> - if filter is found within the given string then "
          "its output is included. By default all outputs are emitted\n");

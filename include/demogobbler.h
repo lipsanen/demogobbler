@@ -96,7 +96,7 @@ dg_prop_value_inner *dg_eproparr_get(dg_eproparr *thisptr, uint16_t index, bool 
 dg_prop_value_inner *dg_eproparr_next(const dg_eproparr *thisptr, dg_prop_value_inner *current);
 void dg_eproparr_free(dg_eproparr *thisptr);
 
-dg_eproplist dg_eproplist_init();
+dg_eproplist dg_eproplist_init(void);
 dg_epropnode *dg_eproplist_get(dg_eproplist *thisptr, dg_epropnode *initial_guess, uint16_t index,
                                bool *new_prop);
 dg_epropnode *dg_eproplist_next(const dg_eproplist *thisptr, dg_epropnode *current);

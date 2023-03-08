@@ -27,6 +27,7 @@ static void bitstream_bench(benchmark::State &state) {
     for (size_t i = 0; i < reads.size(); ++i) {
       dg_bitstream_read_uint(&stream, reads[i]);
     }
+    benchmark::DoNotOptimize(stream);
   }
 
   state.SetBytesProcessed(SIZE * state.iterations());

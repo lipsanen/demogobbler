@@ -23,7 +23,8 @@ list(APPEND DEMOGOBBLER_SOURCES
   "writer.c"
 )
 
-if(gcc_like_cxx)
+if(MSVC)
+else()
   if(DEBUG_BUILD)
     list(APPEND GOBBLER_FLAGS
       "-DGROUND_TRUTH_CHECK=1"

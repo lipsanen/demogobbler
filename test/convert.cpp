@@ -24,7 +24,7 @@ namespace {
     std::smatch m;
 
     for (auto &file : std::filesystem::directory_iterator("./test_convert/")) {
-      std::string path = file.path();
+      std::string path = file.path().string();
       if (file.is_regular_file() && std::regex_search(path, m, demo_regex)) {
         Demo demo;
         demo.path = path;

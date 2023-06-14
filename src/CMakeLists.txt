@@ -41,12 +41,8 @@ if(gcc_like_cxx)
     "-Werror=pedantic"
     "-fno-strict-aliasing"
     "-fwrapv"
-    "-flto"
   )
 
-  list(APPEND GOBBLER_LINK_FLAGS 
-    "-flto"
-  )
 endif()
 
 add_library(demogobbler ${DEMOGOBBLER_SOURCES})

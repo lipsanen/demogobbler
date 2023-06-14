@@ -21,4 +21,4 @@ list(APPEND DEMOGOBBLER_TEST_SOURCES
 add_executable(demogobbler_test ${DEMOGOBBLER_TEST_SOURCES})
 target_link_libraries(demogobbler_test demogobbler GTest::gtest_main)
 include(GoogleTest)
-gtest_discover_tests(demogobbler_test WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})
+add_test(NAME demogobbler_test COMMAND demogobbler_test WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})

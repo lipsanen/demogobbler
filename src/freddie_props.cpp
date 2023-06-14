@@ -1,4 +1,5 @@
 #include "demogobbler/freddie.hpp"
+#include <algorithm>
 #include <cstdio>
 #include <set>
 #include <string.h>

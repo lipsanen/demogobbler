@@ -18,3 +18,6 @@ target_link_libraries(propdiffer demogobbler)
 
 add_executable(healthupdates healthupdates/main.c)
 target_link_libraries(healthupdates demogobbler)
+
+add_executable(demosuperimposer demosuperimposer/main.cpp)
+target_link_libraries(demosuperimposer demogobbler)

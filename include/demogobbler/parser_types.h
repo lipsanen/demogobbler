@@ -347,7 +347,7 @@ typedef struct dg_packet_net_message packet_net_message;
 enum dg_game { csgo, l4d, l4d2, portal2, orangebox, steampipe };
 
 struct dg_demver_data {
-  enum dg_game game : 3;
+  unsigned int game : 3;
   unsigned int netmessage_type_bits : 3;
   unsigned int demo_protocol : 3;
   unsigned int cmdinfo_size : 3;

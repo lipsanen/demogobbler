@@ -21,3 +21,6 @@ target_link_libraries(healthupdates demogobbler)
 
 add_executable(demosuperimposer demosuperimposer/main.cpp)
 target_link_libraries(demosuperimposer demogobbler)
+
+add_executable(speedpolice speedpolice.c)
+target_link_libraries(speedpolice demogobbler)

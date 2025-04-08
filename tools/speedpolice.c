@@ -77,7 +77,7 @@ static void handle_packet(parser_state* state, dg_packet* packet)
     float xyspeed = speed(police->vel);
     if(police->currentTick - police->previousJump == 1 && xyspeed > police->speedlimit && police->vel[2] > 146)
     {
-        printf("tick %d, horizontal speed %f, speed (%f, %f, %f)\n", police->currentTick, police->previousJump, 
+        printf("tick %d, horizontal speed %f, speed (%f, %f, %f)\n", police->currentTick, 
             xyspeed, police->vel[0], police->vel[1], police->vel[2]);
     }
     police->currentTick = packet->preamble.tick;

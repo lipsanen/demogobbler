@@ -75,7 +75,7 @@ static void handle_packet(parser_state* state, dg_packet* packet)
 {
     Speedpolice* police = (Speedpolice*)state->client_state;
     float xyspeed = speed(police->vel);
-    if(police->currentTick - police->previousJump == 1 && xyspeed > police->speedlimit && police->vel[2] > 146)
+    if(xyspeed > police->speedlimit && fabs(police->vel[2] - 146.5) < 0.01)
     {
         printf("tick %d, horizontal speed %f, speed (%f, %f, %f)\n", police->currentTick, 
             xyspeed, police->vel[0], police->vel[1], police->vel[2]);
@@ -100,6 +100,7 @@ int main(int argc, char **argv) {
     police.speedlimit = 225.0f;
   }
 
+  printf("Using a speed limit of %f\n", police.speedlimit);
   dg_settings settings;
   dg_settings_init(&settings);
   settings.packetentities_parsed_handler = handle_svcpacketentities_parsed;

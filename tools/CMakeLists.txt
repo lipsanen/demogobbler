@@ -24,3 +24,6 @@ target_link_libraries(demosuperimposer demogobbler)
 
 add_executable(speedpolice speedpolice.c)
 target_link_libraries(speedpolice demogobbler)
+
+add_executable(posprint posprint.c)
+target_link_libraries(posprint demogobbler)
